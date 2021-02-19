@@ -133,14 +133,19 @@ class AstroWeather:
 
             hour_of_day = forecast_time.hour % 24
 
-            # Skip daytime, we're only interested in 9pm to 3am
-            if hour_of_day > 3 and hour_of_day < 21:
+            # Skip daytime, we're only interested in the forecasts in
+            # between 9pm to 3am.
+            # Possible timestamps within the data:
+            # 15 18 (21 00 03) 06 09 12
+            # 16 (19 22 01) 04 07 10 13
+            # 17 (20 23 02) 05 08 11 14
+            # Relevant ones in brackets
+            if hour_of_day > 3 and hour_of_day < 19:
                 continue
 
             cloudcover = row["cloudcover"]
             seeing = row["seeing"]
             transparency = row["transparency"]
-            temp2m = row["temp2m"]
 
             # Calculate Condition
             # round( (3*cloudcover + seeing + transparency) / (3*9+8+8) * 5)
@@ -149,12 +154,10 @@ class AstroWeather:
             )
 
             forecast_item = {
-                "timepoint": row["timepoint"],
                 "hour": hour_of_day,
                 "cloudcover": cloudcover,
                 "seeing": seeing,
                 "transparency": transparency,
-                "temp2m": temp2m,
                 "condition": condition,
             }
             dsforecast.append(forecast_item)
@@ -173,7 +176,7 @@ class AstroWeather:
                 timeout=ClientTimeout(total=DEFAULT_TIMEOUT),
             )
 
-        # BASE_URL = "http://www.7timer.info/bin/api.pl?lon=11.985&lat=48.313&product=astro&output=json"
+        # BASE_URL = "http://www.7timer.info/bin/api.pl?lon=XX.XXX&lat=YY.YYY&product=astro&output=json"
         # STIMER_PRODUCT = "astro"
         # STIMER_OUTPUT = "json"
 

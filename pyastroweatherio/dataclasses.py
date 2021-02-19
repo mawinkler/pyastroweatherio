@@ -169,6 +169,25 @@ class ForecastData:
     @property
     def forecast0_plain(self) -> []:
         """Return Forecast."""
+        _LOGGER.debug(
+            "forecast0_plain: H{}:C{}:S{}:T{}:{}-H{}:C{}:S{}:T{}:{}-H{}:C{}:S{}:T{}:{}".format(
+                self._forecast[0].get("hour", -1),
+                self._forecast[0].get("cloudcover", -1),
+                self._forecast[0].get("seeing", -1),
+                self._forecast[0].get("transparency", -1),
+                CONDITION[self._forecast[0].get("condition", -1) - 1],
+                self._forecast[1].get("hour", -1),
+                self._forecast[1].get("cloudcover", -1),
+                self._forecast[1].get("seeing", -1),
+                self._forecast[1].get("transparency", -1),
+                CONDITION[self._forecast[1].get("condition", -1) - 1],
+                self._forecast[2].get("hour", -1),
+                self._forecast[2].get("cloudcover", -1),
+                self._forecast[2].get("seeing", -1),
+                self._forecast[2].get("transparency", -1),
+                CONDITION[self._forecast[2].get("condition", -1) - 1],
+            )
+        )
         return "{}-{}-{}".format(
             CONDITION[self._forecast[0].get("condition", -1) - 1],
             CONDITION[self._forecast[1].get("condition", -1) - 1],
@@ -192,6 +211,25 @@ class ForecastData:
     @property
     def forecast1_plain(self) -> []:
         """Return Forecast."""
+        _LOGGER.debug(
+            "forecast1_plain: H{}:C{}:S{}:T{}:{}-H{}:C{}:S{}:T{}:{}-H{}:C{}:S{}:T{}:{}".format(
+                self._forecast[0].get("hour", -1),
+                self._forecast[3].get("cloudcover", -1),
+                self._forecast[3].get("seeing", -1),
+                self._forecast[3].get("transparency", -1),
+                CONDITION[self._forecast[3].get("condition", -1) - 1],
+                self._forecast[1].get("hour", -1),
+                self._forecast[4].get("cloudcover", -1),
+                self._forecast[4].get("seeing", -1),
+                self._forecast[4].get("transparency", -1),
+                CONDITION[self._forecast[4].get("condition", -1) - 1],
+                self._forecast[2].get("hour", -1),
+                self._forecast[5].get("cloudcover", -1),
+                self._forecast[5].get("seeing", -1),
+                self._forecast[5].get("transparency", -1),
+                CONDITION[self._forecast[5].get("condition", -1) - 1],
+            )
+        )
         return "{}-{}-{}".format(
             CONDITION[self._forecast[3].get("condition", -1) - 1],
             CONDITION[self._forecast[4].get("condition", -1) - 1],

@@ -113,7 +113,7 @@ async def main() -> None:
                 + "\n"
                 + "VIEW CONDITION PLAIN: "
                 + str(row.view_condition_plain)
-                + "\n",
+                + "\n"
             )
 
     except AstroWeatherError as err:
