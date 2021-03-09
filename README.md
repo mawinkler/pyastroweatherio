@@ -17,11 +17,23 @@ For astronimical observations, the lower the values are the better it is (beside
 
 ## Functions
 
-The module exposes the following functions:
+The module exposes the following function:
 
-### AstroWeather()
+### AstroWeather(latitude, longitude, elevation)
 
-this will return the current forecast data from now to in 72
+This will return a handle to the AstroWeather class and open the connection.
+
+**latitude**
+
+(float)(Required) The geographic coordinate that specifies the norh-south position of the location of interest in angle.
+
+**longitude**
+
+(float)(Required) The geographic coordinate that specifies the east-west position of the location of interest in angle.
+
+**elevation**
+
+(int)(Required) The elevation above Earth's sea level of the geographic location in m.
 
 ## Setup
 

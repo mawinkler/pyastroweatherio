@@ -19,7 +19,7 @@ async def main() -> None:
     logging.basicConfig(level=logging.DEBUG)
 
     # astroweather = AstroWeather()
-    astroweather = AstroWeather(latitude=48.313, longitude=11.985)
+    astroweather = AstroWeather(latitude=48.313, longitude=11.985, elevation=460)
 
     start = time.time()
 
@@ -113,6 +113,18 @@ async def main() -> None:
                 + "\n"
                 + "VIEW CONDITION PLAIN: "
                 + str(row.view_condition_plain)
+                + "\n"
+                + "SUN NEXT SETTING: "
+                + str(row.sun_next_setting)
+                + "\n"
+                + "MOON NEXT RISING: "
+                + str(row.moon_next_rising)
+                + "\n"
+                + "MOON NEXT SETTING: "
+                + str(row.moon_next_setting)
+                + "\n"
+                + "MOON PHASE: "
+                + str(row.moon_phase)
                 + "\n"
             )
 

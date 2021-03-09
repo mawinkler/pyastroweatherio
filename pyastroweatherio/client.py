@@ -3,6 +3,7 @@ import asyncio
 import json
 import logging
 import time
+import ephem
 from datetime import datetime
 from datetime import timedelta
 from typing import Optional
@@ -23,6 +24,7 @@ from pyastroweatherio.dataclasses import ForecastData
 from pyastroweatherio.errors import RequestError
 from pyastroweatherio.errors import ResultError
 from pyastroweatherio.helper_functions import ConversionFunctions
+from pyastroweatherio.helper_functions import AstronomicalRoutines
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -35,10 +37,12 @@ class AstroWeather:
         session: Optional[ClientSession] = None,
         latitude=HOME_LATITUDE,
         longitude=HOME_LONGITUDE,
+        elevation=0,
     ):
         self._session: ClientSession = session
         self._latitude = latitude
         self._longitude = longitude
+        self._elevation = elevation
         self.req = session
 
     async def get_forecast(
@@ -56,15 +60,12 @@ class AstroWeather:
     ) -> None:
         """Return Forecast data for the Station."""
 
-        latitude = self._latitude
-        longitude = self._longitude
-
         # Timezone Offset is currently calculated based on system time
         offset = time.timezone if (time.localtime().tm_isdst == 0) else time.altzone
         offset = offset / 60 / 60 * (-1)
 
         cnv = ConversionFunctions()
-        json_data = await self.async_request(latitude, longitude, "get")
+        json_data = await self.async_request(self._latitude, self._longitude, "get")
         items = []
 
         _LOGGER.debug("TIMEZONE OFFSET: " + str(offset))
@@ -85,18 +86,35 @@ class AstroWeather:
         init_night_diff = 21 - init_ts.hour
         _LOGGER.debug("\n" + "INIT NIGHT DIFF: " + str(init_night_diff))
 
+        # Ephem
+        astro_routines = AstronomicalRoutines()
+        # We need a sun and a moon observer, since we want to compute
+        # the sun based on the astronomical twilight and set the horizon
+        # to -18°. The moon is calculated without this correction.
+        sun_observer = await astro_routines.get_sun_observer(
+            self._latitude, self._longitude, self._elevation
+        )
+        moon_observer = await astro_routines.get_moon_observer(
+            self._latitude, self._longitude, self._elevation
+        )
+        moon = ephem.Moon()
+
         for row in forecast:
             # Skip over past forecasts
             forecast_time = init_ts + timedelta(hours=row["timepoint"])
             if now > forecast_time:
                 continue
 
+            sun_observer.date = forecast_time - timedelta(hours=offset)
+            moon_observer.date = forecast_time - timedelta(hours=offset)
+            moon.compute(moon_observer)
+
             item = {
                 "product": product,
                 "init": init_ts,
                 "timepoint": row["timepoint"],
-                "latitude": latitude,
-                "longitude": longitude,
+                "latitude": self._latitude,
+                "longitude": self._longitude,
                 "cloudcover": row["cloudcover"],
                 "seeing": row["seeing"],
                 "transparency": row["transparency"],
@@ -111,6 +129,19 @@ class AstroWeather:
                     init_ts,
                     row["timepoint"],
                 ),
+                "sun_next_setting": (
+                    sun_observer.next_setting(ephem.Sun(), use_center=True).datetime()
+                    + timedelta(hours=offset)
+                ).strftime("%Y-%m-%d %H:%M:%S"),
+                "moon_next_rising": (
+                    moon_observer.next_rising(ephem.Moon(), use_center=True).datetime()
+                    + timedelta(hours=offset)
+                ).strftime("%Y-%m-%d %H:%M:%S"),
+                "moon_next_setting": (
+                    moon_observer.next_setting(ephem.Moon(), use_center=True).datetime()
+                    + timedelta(hours=offset)
+                ).strftime("%Y-%m-%d %H:%M:%S"),
+                "moon_phase": moon.phase,
             }
             items.append(ForecastData(item))
             # Limit number of Hours

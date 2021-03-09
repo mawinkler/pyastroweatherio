@@ -35,6 +35,10 @@ class ForecastData:
         self._temp2m = data["temp2m"]
         self._prec_type = data["prec_type"]
         self._forecast = data["forecast"]
+        self._sun_next_setting = data["sun_next_setting"]
+        self._moon_next_rising = data["moon_next_rising"]
+        self._moon_next_setting = data["moon_next_setting"]
+        self._moon_phase = data["moon_phase"]
 
     @property
     def product(self) -> int:
@@ -130,7 +134,7 @@ class ForecastData:
     @property
     def wind10m_direction(self) -> str:
         """Return 10m Wind Direction."""
-        return self._wind10m.get("direction", "O")
+        return self._wind10m.get("direction", "O").upper()
 
     @property
     def wind10m_speed(self) -> int:
@@ -150,7 +154,7 @@ class ForecastData:
     @property
     def prec_type(self) -> str:
         """Return Precipitation Type."""
-        return self._prec_type
+        return self._prec_type.capitalize()
 
     @property
     def forecast0(self) -> []:
@@ -253,3 +257,23 @@ class ForecastData:
     def view_condition_plain(self) -> str:
         """Return Current View Conditions."""
         return CONDITION[self._forecast[0].get("condition", -1) - 1]
+
+    @property
+    def sun_next_setting(self) -> datetime:
+        """Return Current View Conditions."""
+        return self._sun_next_setting
+
+    @property
+    def moon_next_rising(self) -> datetime:
+        """Return Current View Conditions."""
+        return self._moon_next_rising
+
+    @property
+    def moon_next_setting(self) -> datetime:
+        """Return Current View Conditions."""
+        return self._moon_next_setting
+
+    @property
+    def moon_phase(self) -> float:
+        """Return Current View Conditions."""
+        return round(self._moon_phase, 1)
