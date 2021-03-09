@@ -15,6 +15,8 @@ This module communicates with the API endpoint of 7Timer ([documentation](http:/
 
 For astronimical observations, the lower the values are the better it is (besides 2m temperature).
 
+In addition to the weather data, some calculations for the astronomical twilight and Moon setting, rising and phase are implemented. They indicate the darkness you can expect the upcoming night.
+
 ## Functions
 
 The module exposes the following function:
