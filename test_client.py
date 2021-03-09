@@ -44,6 +44,8 @@ async def main() -> None:
                 + str(row.latitude)
                 + ", LONG="
                 + str(row.longitude)
+                + ", ELEV="
+                + str(row.elevation)
                 + "\n"
                 + "TIMESTAMP: "
                 + str(row.timestamp)

@@ -24,6 +24,7 @@ class ForecastData:
         self._timepoint = data["timepoint"]
         self._latitude = data["latitude"]
         self._longitude = data["longitude"]
+        self._elevation = data["elevation"]
         self._cloudcover = data["init"]
         self._timepoint = data["timepoint"]
         self._cloudcover = data["cloudcover"]
@@ -57,13 +58,18 @@ class ForecastData:
 
     @property
     def latitude(self) -> float:
-        """Return Forecast Hour."""
+        """Return Latitude."""
         return self._latitude
 
     @property
     def longitude(self) -> float:
-        """Return Forecast Hour."""
+        """Return Longitude."""
         return self._longitude
+
+    @property
+    def elevation(self) -> float:
+        """Return Elevation."""
+        return self._elevation
 
     @property
     def timestamp(self) -> datetime:
@@ -144,7 +150,7 @@ class ForecastData:
     @property
     def wind10m_speed_plain(self) -> str:
         """Return 10m Wind Speed."""
-        return WIND10M_SPEED_PLAIN[self._wind10m.get("speed", -1) - 1]
+        return WIND10M_SPEED_PLAIN[self._wind10m.get("speed", -1) - 1].capitalize()
 
     @property
     def temp2m(self) -> int:
@@ -193,9 +199,9 @@ class ForecastData:
             )
         )
         return "{}-{}-{}".format(
-            CONDITION[self._forecast[0].get("condition", -1) - 1],
-            CONDITION[self._forecast[1].get("condition", -1) - 1],
-            CONDITION[self._forecast[2].get("condition", -1) - 1],
+            CONDITION[self._forecast[0].get("condition", -1) - 1].capitalize(),
+            CONDITION[self._forecast[1].get("condition", -1) - 1].capitalize(),
+            CONDITION[self._forecast[2].get("condition", -1) - 1].capitalize(),
         )
 
     @property
@@ -235,9 +241,9 @@ class ForecastData:
             )
         )
         return "{}-{}-{}".format(
-            CONDITION[self._forecast[3].get("condition", -1) - 1],
-            CONDITION[self._forecast[4].get("condition", -1) - 1],
-            CONDITION[self._forecast[5].get("condition", -1) - 1],
+            CONDITION[self._forecast[3].get("condition", -1) - 1].capitalize(),
+            CONDITION[self._forecast[4].get("condition", -1) - 1].capitalize(),
+            CONDITION[self._forecast[5].get("condition", -1) - 1].capitalize(),
         )
 
     @property
@@ -256,7 +262,7 @@ class ForecastData:
     @property
     def view_condition_plain(self) -> str:
         """Return Current View Conditions."""
-        return CONDITION[self._forecast[0].get("condition", -1) - 1]
+        return CONDITION[self._forecast[0].get("condition", -1) - 1].capitalize()
 
     @property
     def sun_next_setting(self) -> datetime:

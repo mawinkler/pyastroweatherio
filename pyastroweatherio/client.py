@@ -115,6 +115,7 @@ class AstroWeather:
                 "timepoint": row["timepoint"],
                 "latitude": self._latitude,
                 "longitude": self._longitude,
+                "elevation": self._elevation,
                 "cloudcover": row["cloudcover"],
                 "seeing": row["seeing"],
                 "transparency": row["transparency"],
