@@ -33,7 +33,7 @@ class AstronomicalRoutines:
         observer.elevation = elevation
         observer.horizon = ASTRONOMICAL_TWILIGHT * degree
         observer.pressure = 0
-        observer.epoch = datetime.now().strftime('%Y/%m/%d')
+        observer.epoch = datetime.now().strftime("%Y/%m/%d")
         return observer
 
     async def get_moon_observer(self, lat, lon, elevation) -> ephem.Observer:
@@ -45,5 +45,5 @@ class AstronomicalRoutines:
         observer.elevation = elevation
         observer.horizon = 0
         observer.pressure = 0
-        observer.epoch = datetime.now().strftime('%Y/%m/%d')
+        observer.epoch = datetime.now().strftime("%Y/%m/%d")
         return observer

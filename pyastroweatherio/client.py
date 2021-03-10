@@ -4,6 +4,7 @@ import json
 import logging
 import time
 import ephem
+from ephem import AlwaysUpError, NeverUpError
 from datetime import datetime
 from datetime import timedelta
 from typing import Optional
@@ -97,6 +98,7 @@ class AstroWeather:
         moon_observer = await astro_routines.get_moon_observer(
             self._latitude, self._longitude, self._elevation
         )
+        sun = ephem.Sun()
         moon = ephem.Moon()
 
         for row in forecast:
@@ -106,8 +108,42 @@ class AstroWeather:
                 continue
 
             sun_observer.date = forecast_time - timedelta(hours=offset)
+            sun.compute(sun_observer)
             moon_observer.date = forecast_time - timedelta(hours=offset)
             moon.compute(moon_observer)
+            sun_next_setting = ""
+            moon_next_rising = ""
+            moon_next_setting = ""
+
+            try:
+                sun_next_setting = (
+                    sun_observer.next_setting(ephem.Sun(), use_center=True).datetime()
+                    + timedelta(hours=offset)
+                ).strftime("%Y-%m-%d %H:%M:%S")
+            except AlwaysUpError:
+                sun_next_setting = "Always up"
+            except NeverUpError:
+                sun_next_setting = "Always down"
+
+            try:
+                moon_next_rising = (
+                    moon_observer.next_rising(ephem.Moon(), use_center=True).datetime()
+                    + timedelta(hours=offset)
+                ).strftime("%Y-%m-%d %H:%M:%S")
+            except AlwaysUpError:
+                moon_next_rising = "Always up"
+            except NeverUpError:
+                moon_next_rising = "Always down"
+
+            try:
+                moon_next_setting = (
+                    moon_observer.next_setting(ephem.Moon(), use_center=True).datetime()
+                    + timedelta(hours=offset)
+                ).strftime("%Y-%m-%d %H:%M:%S")
+            except AlwaysUpError:
+                moon_next_setting = "Always up"
+            except NeverUpError:
+                moon_next_setting = "Always down"
 
             item = {
                 "product": product,
@@ -130,18 +166,9 @@ class AstroWeather:
                     init_ts,
                     row["timepoint"],
                 ),
-                "sun_next_setting": (
-                    sun_observer.next_setting(ephem.Sun(), use_center=True).datetime()
-                    + timedelta(hours=offset)
-                ).strftime("%Y-%m-%d %H:%M:%S"),
-                "moon_next_rising": (
-                    moon_observer.next_rising(ephem.Moon(), use_center=True).datetime()
-                    + timedelta(hours=offset)
-                ).strftime("%Y-%m-%d %H:%M:%S"),
-                "moon_next_setting": (
-                    moon_observer.next_setting(ephem.Moon(), use_center=True).datetime()
-                    + timedelta(hours=offset)
-                ).strftime("%Y-%m-%d %H:%M:%S"),
+                "sun_next_setting": sun_next_setting,
+                "moon_next_rising": moon_next_rising,
+                "moon_next_setting": moon_next_setting,
                 "moon_phase": moon.phase,
             }
             items.append(ForecastData(item))
