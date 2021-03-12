@@ -17,6 +17,7 @@ from pyastroweatherio.const import BASE_URL
 from pyastroweatherio.const import CONDITION
 from pyastroweatherio.const import DEEP_SKY_THRESHOLD
 from pyastroweatherio.const import DEFAULT_TIMEOUT
+from pyastroweatherio.const import DEFAULT_ELEVATION
 from pyastroweatherio.const import HOME_LATITUDE
 from pyastroweatherio.const import HOME_LONGITUDE
 from pyastroweatherio.const import STIMER_OUTPUT
@@ -38,7 +39,7 @@ class AstroWeather:
         session: Optional[ClientSession] = None,
         latitude=HOME_LATITUDE,
         longitude=HOME_LONGITUDE,
-        elevation=0,
+        elevation=DEFAULT_ELEVATION,
     ):
         self._session: ClientSession = session
         self._latitude = latitude
@@ -85,7 +86,7 @@ class AstroWeather:
 
         # Calc time difference in between init timestamp and 9pm
         init_night_diff = 21 - init_ts.hour
-        _LOGGER.debug("\n" + "INIT NIGHT DIFF: " + str(init_night_diff))
+        _LOGGER.debug("INIT NIGHT DIFF: " + str(init_night_diff))
 
         # Ephem
         astro_routines = AstronomicalRoutines()
@@ -251,7 +252,7 @@ class AstroWeather:
             + STIMER_OUTPUT
         )
         try:
-            _LOGGER.debug("\n" + "QUERY URL: " + url)
+            _LOGGER.debug("QUERY URL: " + url)
             async with session.request(method, url) as resp:
                 resp.raise_for_status()
                 plain = str(await resp.text()).replace("\n", " ")
