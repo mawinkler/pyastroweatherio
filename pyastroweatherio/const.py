@@ -1,13 +1,14 @@
 """Constant Definitions for AstroWeather."""
 
 BASE_URL = "http://www.7timer.info/bin/api.pl"
-STIMER_PRODUCT = "astro"
 STIMER_OUTPUT = "json"
 
 DEFAULT_TIMEOUT = 10
+DEFAULT_CACHE_TIMEOUT = 300
 DEFAULT_ELEVATION = 0
+ASTRONOMICAL_TWILIGHT = -18
 
-DEEP_SKY_THRESHOLD = 2
+DEEP_SKY_THRESHOLD = 75
 HOME_LATITUDE = 0.0
 HOME_LONGITUDE = 0.0
 
@@ -46,14 +47,14 @@ TRANSPARENCY_PLAIN = [
 ]
 
 LIFTED_INDEX_PLAIN = [
-    "Below -7",
-    "-7 to -5",
-    "-5 to -3",
-    "-3 to 0",
-    "0 to 4",
-    "4 to 8",
-    "8 to 11",
-    "Over 11",
+    "Below -7, very unstable",
+    "-7 to -5, very unstable",
+    "-5 to -3, unstable",
+    "-3 to 0, slightly unstable",
+    "0 to 4, stable",
+    "4 to 8, stable",
+    "8 to 11, very stable",
+    "Over 11, very stable",
 ]
 
 RH2M_PLAIN = [
@@ -91,4 +92,39 @@ WIND10M_SPEED_PLAIN = [
     "hurricane",
 ]
 
+MAP_WEATHER_TYPE = {
+    "clearday": "Total cloud cover less than 20%",
+    "clearnight": "Total cloud cover less than 20%",
+    "pcloudyday": "Total cloud cover between 20%-60%",
+    "pcloudynight": "Total cloud cover between 20%-60%",
+    "mcloudyday": "Total cloud cover between 60%-80%",
+    "mcloudynight": "Total cloud cover between 60%-80%",
+    "cloudyday": "Total cloud cover over 80%",
+    "cloudynight": "Total cloud cover over 80%",
+    "humidday": "Relative humidity over 90% with total cloud cover less than 60%",
+    "humidnight": "Relative humidity over 90% with total cloud cover less than 60%",
+    "lightrainday": "Precipitation rate less than 4mm/hr with total cloud cover more than 80%",
+    "lightrainnight": "Precipitation rate less than 4mm/hr with total cloud cover more than 80%",
+    "oshowerday": "Precipitation rate less than 4mm/hr with total cloud cover between 60%-80%",
+    "oshowernight": "Precipitation rate less than 4mm/hr with total cloud cover between 60%-80%",
+    "ishowerday": "Precipitation rate less than 4mm/hr with total cloud cover less than 60%",
+    "ishowernight": "Precipitation rate less than 4mm/hr with total cloud cover less than 60%",
+    "lightsnowday": "Precipitation rate less than 4mm/hr",
+    "lightsnownight": "Precipitation rate less than 4mm/hr",
+    "rainday": "Precipitation rate over 4mm/hr",
+    "rainnight": "Precipitation rate over 4mm/hr",
+    "snowday": "Precipitation rate over 4mm/hr",
+    "snownight": "Precipitation rate over 4mm/hr",
+    "rainsnowday": "Precipitation type to be ice pellets or freezing rain",
+    "rainsnownight": "Precipitation type to be ice pellets or freezing rain",
+}
+
 CONDITION = ["excellent", "good", "fair", "poor", "bad"]
+
+FORECAST_TYPE_DAILY = "daily"
+FORECAST_TYPE_HOURLY = "hourly"
+
+FORECAST_TYPES = [
+    FORECAST_TYPE_DAILY,
+    FORECAST_TYPE_HOURLY,
+]

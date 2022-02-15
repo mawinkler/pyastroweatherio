@@ -1,32 +1,27 @@
 """Defines the Data Classes used."""
-import logging
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
+import math
 
-from pyastroweatherio.const import CLOUDCOVER_PLAIN
-from pyastroweatherio.const import CONDITION
-from pyastroweatherio.const import DEEP_SKY_THRESHOLD
-from pyastroweatherio.const import LIFTED_INDEX_PLAIN
-from pyastroweatherio.const import RH2M_PLAIN
-from pyastroweatherio.const import SEEING_PLAIN
-from pyastroweatherio.const import TRANSPARENCY_PLAIN
-from pyastroweatherio.const import WIND10M_SPEED_PLAIN
+from pyastroweatherio.const import (
+    CLOUDCOVER_PLAIN,
+    CONDITION,
+    DEEP_SKY_THRESHOLD,
+    LIFTED_INDEX_PLAIN,
+    RH2M_PLAIN,
+    SEEING_PLAIN,
+    TRANSPARENCY_PLAIN,
+    WIND10M_SPEED_PLAIN,
+    MAP_WEATHER_TYPE,
+)
 
-_LOGGER = logging.getLogger(__name__)
 
-
-class ForecastData:
-    """A representation of 3-Hour Based Forecast AstroWeather Data."""
+class BaseData:
+    """A representation of the base class for AstroWeather Data."""
 
     def __init__(self, data):
-        self._product = data["product"]
         self._init = data["init"]
         self._timepoint = data["timepoint"]
-        self._latitude = data["latitude"]
-        self._longitude = data["longitude"]
-        self._elevation = data["elevation"]
-        self._cloudcover = data["init"]
-        self._timepoint = data["timepoint"]
+        self._timestamp = data["timestamp"]
         self._cloudcover = data["cloudcover"]
         self._seeing = data["seeing"]
         self._transparency = data["transparency"]
@@ -35,16 +30,7 @@ class ForecastData:
         self._wind10m = data["wind10m"]
         self._temp2m = data["temp2m"]
         self._prec_type = data["prec_type"]
-        self._forecast = data["forecast"]
-        self._sun_next_setting = data["sun_next_setting"]
-        self._moon_next_rising = data["moon_next_rising"]
-        self._moon_next_setting = data["moon_next_setting"]
-        self._moon_phase = data["moon_phase"]
-
-    @property
-    def product(self) -> int:
-        """Return Forecast Product Type."""
-        return self._product
+        self._weather = data["weather"]
 
     @property
     def init(self) -> datetime:
@@ -55,6 +41,105 @@ class ForecastData:
     def timepoint(self) -> int:
         """Return Forecast Hour."""
         return self._timepoint
+
+    @property
+    def timestamp(self) -> datetime:
+        """Return Forecast Hour."""
+        return self._timestamp
+
+    @property
+    def condition_percentage(self) -> int:
+        """Return condition based on cloud cover, seeing and transparency"""
+        # For the condition, clouds are weighted three times
+        # Possible Values:
+        #   Clouds: 1-9
+        #   Seeing: 1-8
+        #   Transparency: 1-8
+        # Min: 5, Max: 43
+        return int(
+            100
+            - (3 * self._cloudcover + self._seeing + self._transparency - 5)
+            * 100
+            / (43 - 5)
+        )
+
+    @property
+    def cloudcover(self) -> int:
+        """Return Cloud Coverage."""
+        return self._cloudcover
+
+    @property
+    def cloudcover_percentage(self) -> int:
+        """Return Cloud Coverage."""
+        return int((100 + 100 / 8 - self._cloudcover * 100 / 8))
+
+    @property
+    def seeing(self) -> int:
+        """Return Seeing."""
+        return self._seeing
+
+    @property
+    def seeing_percentage(self) -> int:
+        """Return Seeing."""
+        return int((100 + 100 / 7 - self._seeing * 100 / 7))
+
+    @property
+    def transparency(self) -> int:
+        """Return Transparency."""
+        return self._transparency
+
+    @property
+    def transparency_percentage(self) -> int:
+        """Return Transparency."""
+        return int((100 + 100 / 7 - self._transparency * 100 / 7))
+
+    @property
+    def lifted_index(self) -> int:
+        """Return Lifted Index."""
+        return self._lifted_index
+
+    @property
+    def rh2m(self) -> int:
+        """Return 2m Relative Humidity."""
+        return self._rh2m
+
+    @property
+    def wind10m_speed(self) -> int:
+        """Return 10m Wind Speed."""
+        return self._wind10m.get("speed", -1)
+
+    @property
+    def temp2m(self) -> int:
+        """Return 2m Temperature."""
+        return self._temp2m
+
+    @property
+    def prec_type(self) -> str:
+        """Return Precipitation Type."""
+        return self._prec_type.capitalize()
+
+    @property
+    def weather(self) -> str:
+        """Return Current Weather."""
+        return self._weather
+
+
+class LocationData(BaseData):
+    """A representation of the Location AstroWeather Data."""
+
+    def __init__(self, data):
+        super().__init__(data)
+        self._latitude = data["latitude"]
+        self._longitude = data["longitude"]
+        self._elevation = data["elevation"]
+        self._sun_next_rising = data["sun_next_rising"]
+        self._sun_next_rising_astro = data["sun_next_rising_astro"]
+        self._sun_next_setting = data["sun_next_setting"]
+        self._sun_next_setting_astro = data["sun_next_setting_astro"]
+        self._moon_next_rising = data["moon_next_rising"]
+        self._moon_next_setting = data["moon_next_setting"]
+        self._moon_phase = data["moon_phase"]
+        self._deepsky_forecast = data["deepsky_forecast"]
 
     @property
     def latitude(self) -> float:
@@ -72,24 +157,9 @@ class ForecastData:
         return self._elevation
 
     @property
-    def timestamp(self) -> datetime:
-        """Return Data Timestamp."""
-        return self._init + timedelta(hours=self._timepoint)
-
-    @property
-    def cloudcover(self) -> int:
-        """Return Cloud Coverage."""
-        return self._cloudcover
-
-    @property
     def cloudcover_plain(self) -> str:
         """Return Cloud Coverage."""
         return CLOUDCOVER_PLAIN[self._cloudcover - 1]
-
-    @property
-    def seeing(self) -> int:
-        """Return Seeing."""
-        return self._seeing
 
     @property
     def seeing_plain(self) -> str:
@@ -97,19 +167,9 @@ class ForecastData:
         return SEEING_PLAIN[self._seeing - 1]
 
     @property
-    def transparency(self) -> int:
-        """Return Transparency."""
-        return self._transparency
-
-    @property
     def transparency_plain(self) -> str:
         """Return Transparency."""
         return TRANSPARENCY_PLAIN[self._transparency - 1]
-
-    @property
-    def lifted_index(self) -> int:
-        """Return Lifted Index."""
-        return self._lifted_index
 
     @property
     def lifted_index_plain(self) -> str:
@@ -128,11 +188,6 @@ class ForecastData:
         return trans.get(self._lifted_index, "")
 
     @property
-    def rh2m(self) -> int:
-        """Return 2m Relative Humidity."""
-        return self._rh2m
-
-    @property
     def rh2m_plain(self) -> str:
         """Return 2m Relative Humidity."""
         return RH2M_PLAIN[self._rh2m - 4]
@@ -143,131 +198,50 @@ class ForecastData:
         return self._wind10m.get("direction", "O").upper()
 
     @property
-    def wind10m_speed(self) -> int:
-        """Return 10m Wind Speed."""
-        return self._wind10m.get("speed", -1)
-
-    @property
     def wind10m_speed_plain(self) -> str:
         """Return 10m Wind Speed."""
         return WIND10M_SPEED_PLAIN[self._wind10m.get("speed", -1) - 1].capitalize()
 
     @property
-    def temp2m(self) -> int:
-        """Return 2m Temperature."""
-        return self._temp2m
-
-    @property
-    def prec_type(self) -> str:
-        """Return Precipitation Type."""
-        return self._prec_type.capitalize()
-
-    @property
-    def forecast0(self) -> []:
-        """Return Forecast."""
-        fc = round(
-            (
-                self._forecast[0].get("condition", -1)
-                + self._forecast[1].get("condition", -1)
-                + self._forecast[2].get("condition", -1)
-            )
-            / 3,
-            1,
-        )
-        return fc
-
-    @property
-    def forecast0_plain(self) -> []:
-        """Return Forecast."""
-        _LOGGER.debug(
-            "forecast0_plain: H{}:C{}:S{}:T{}:{}-H{}:C{}:S{}:T{}:{}-H{}:C{}:S{}:T{}:{}".format(
-                self._forecast[0].get("hour", -1),
-                self._forecast[0].get("cloudcover", -1),
-                self._forecast[0].get("seeing", -1),
-                self._forecast[0].get("transparency", -1),
-                CONDITION[self._forecast[0].get("condition", -1) - 1],
-                self._forecast[1].get("hour", -1),
-                self._forecast[1].get("cloudcover", -1),
-                self._forecast[1].get("seeing", -1),
-                self._forecast[1].get("transparency", -1),
-                CONDITION[self._forecast[1].get("condition", -1) - 1],
-                self._forecast[2].get("hour", -1),
-                self._forecast[2].get("cloudcover", -1),
-                self._forecast[2].get("seeing", -1),
-                self._forecast[2].get("transparency", -1),
-                CONDITION[self._forecast[2].get("condition", -1) - 1],
-            )
-        )
-        return "{}-{}-{}".format(
-            CONDITION[self._forecast[0].get("condition", -1) - 1].capitalize(),
-            CONDITION[self._forecast[1].get("condition", -1) - 1].capitalize(),
-            CONDITION[self._forecast[2].get("condition", -1) - 1].capitalize(),
-        )
-
-    @property
-    def forecast1(self) -> []:
-        """Return Forecast."""
-        fc = round(
-            (
-                self._forecast[3].get("condition", -1)
-                + self._forecast[4].get("condition", -1)
-                + self._forecast[5].get("condition", -1)
-            )
-            / 3,
-            1,
-        )
-        return fc
-
-    @property
-    def forecast1_plain(self) -> []:
-        """Return Forecast."""
-        _LOGGER.debug(
-            "forecast1_plain: H{}:C{}:S{}:T{}:{}-H{}:C{}:S{}:T{}:{}-H{}:C{}:S{}:T{}:{}".format(
-                self._forecast[0].get("hour", -1),
-                self._forecast[3].get("cloudcover", -1),
-                self._forecast[3].get("seeing", -1),
-                self._forecast[3].get("transparency", -1),
-                CONDITION[self._forecast[3].get("condition", -1) - 1],
-                self._forecast[1].get("hour", -1),
-                self._forecast[4].get("cloudcover", -1),
-                self._forecast[4].get("seeing", -1),
-                self._forecast[4].get("transparency", -1),
-                CONDITION[self._forecast[4].get("condition", -1) - 1],
-                self._forecast[2].get("hour", -1),
-                self._forecast[5].get("cloudcover", -1),
-                self._forecast[5].get("seeing", -1),
-                self._forecast[5].get("transparency", -1),
-                CONDITION[self._forecast[5].get("condition", -1) - 1],
-            )
-        )
-        return "{}-{}-{}".format(
-            CONDITION[self._forecast[3].get("condition", -1) - 1].capitalize(),
-            CONDITION[self._forecast[4].get("condition", -1) - 1].capitalize(),
-            CONDITION[self._forecast[5].get("condition", -1) - 1].capitalize(),
-        )
-
-    @property
     def deep_sky_view(self) -> bool:
         """Return True if Deep Sky should be possible."""
-        if self._forecast[0].get("condition", -1) <= DEEP_SKY_THRESHOLD:
+        if self.condition_percentage >= DEEP_SKY_THRESHOLD:
             return True
-
         return False
 
     @property
-    def view_condition(self) -> int:
+    def condition_plain(self) -> str:
         """Return Current View Conditions."""
-        return self._forecast[0].get("condition", -1)
+        # return CONDITION[self._current_condition - 1].capitalize()
+        if self.condition_percentage > 80:
+            return CONDITION[0].capitalize()
+        if self.condition_percentage > 60:
+            return CONDITION[1].capitalize()
+        if self.condition_percentage > 40:
+            return CONDITION[2].capitalize()
+        if self.condition_percentage > 20:
+            return CONDITION[3].capitalize()
+        return CONDITION[4].capitalize()
 
     @property
-    def view_condition_plain(self) -> str:
+    def sun_next_rising(self) -> datetime:
         """Return Current View Conditions."""
-        return CONDITION[self._forecast[0].get("condition", -1) - 1].capitalize()
+        return self._sun_next_rising
+
+    @property
+    def sun_next_rising_astro(self) -> datetime:
+        """Return Current View Conditions."""
+        return self._sun_next_rising_astro
 
     @property
     def sun_next_setting(self) -> datetime:
         """Return Current View Conditions."""
         return self._sun_next_setting
+
+    @property
+    def sun_next_setting_astro(self) -> datetime:
+        """Return Current View Conditions."""
+        return self._sun_next_setting_astro
 
     @property
     def moon_next_rising(self) -> datetime:
@@ -283,3 +257,156 @@ class ForecastData:
     def moon_phase(self) -> float:
         """Return Current View Conditions."""
         return round(self._moon_phase, 1)
+
+    @property
+    def deepsky_forecast(self):
+        """Return Current Weather."""
+        return self._deepsky_forecast
+
+    @property
+    def deepsky_forecast_today(self) -> int:
+        """Return Forecas Today in Percentt."""
+        nightly_conditions = self._deepsky_forecast[0]
+        return int(
+            round(
+                (
+                    nightly_conditions.nightly_conditions[0]
+                    + nightly_conditions.nightly_conditions[1]
+                    + nightly_conditions.nightly_conditions[2]
+                )
+                / 3,
+                1,
+            )
+        )
+
+    @property
+    def deepsky_forecast_today_plain(self):
+        """Return Forecast Today."""
+        nightly_conditions = self._deepsky_forecast[0]
+        out = ""
+        out += (
+            CONDITION[
+                4 - math.floor(nightly_conditions.nightly_conditions[0] / 20)
+            ].capitalize()
+            + "-"
+        )
+        out += (
+            CONDITION[
+                4 - math.floor(nightly_conditions.nightly_conditions[1] / 20)
+            ].capitalize()
+            + "-"
+        )
+        out += CONDITION[
+            4 - math.floor(nightly_conditions.nightly_conditions[2] / 20)
+        ].capitalize()
+        return out
+
+    @property
+    def deepsky_forecast_today_desc(self):
+        """Return Forecast Today."""
+        nightly_conditions = self._deepsky_forecast[0]
+        return MAP_WEATHER_TYPE[nightly_conditions.weather]
+
+    @property
+    def deepsky_forecast_tomorrow(self) -> int:
+        """Return Forecas Tomorrow in Percentt."""
+        nightly_conditions = self._deepsky_forecast[1]
+        return int(
+            round(
+                (
+                    nightly_conditions.nightly_conditions[0]
+                    + nightly_conditions.nightly_conditions[1]
+                    + nightly_conditions.nightly_conditions[2]
+                )
+                / 3,
+                1,
+            )
+        )
+
+    @property
+    def deepsky_forecast_tomorrow_plain(self):
+        """Return FORECAST Tomorrow."""
+        nightly_conditions = self._deepsky_forecast[1]
+        out = ""
+        out += (
+            CONDITION[
+                4 - math.floor(nightly_conditions.nightly_conditions[0] / 20)
+            ].capitalize()
+            + "-"
+        )
+        out += (
+            CONDITION[
+                4 - math.floor(nightly_conditions.nightly_conditions[1] / 20)
+            ].capitalize()
+            + "-"
+        )
+        out += CONDITION[
+            4 - math.floor(nightly_conditions.nightly_conditions[2] / 20)
+        ].capitalize()
+        return out
+
+    @property
+    def deepsky_forecast_tomorrow_desc(self):
+        """Return FORECAST Tomorrow."""
+        nightly_conditions = self._deepsky_forecast[1]
+        return MAP_WEATHER_TYPE[nightly_conditions.weather]
+
+
+class ForecastData(BaseData):
+    """A representation of 3-Hour Based Forecast AstroWeather Data."""
+
+    def __init__(self, data):
+        super().__init__(data)
+        self._hour = data["hour"]
+
+    @property
+    def hour(self) -> int:
+        """Return Forecast Hour of the day."""
+        return self._hour
+
+    @property
+    def wind10m_direction(self) -> str:
+        """Return 10m Wind Direction."""
+        return self._wind10m.get("direction", "O").upper()
+
+    @property
+    def wind10m_speed(self) -> int:
+        """Return 10m Wind Speed."""
+        return self._wind10m.get("speed", -1)
+
+    @property
+    def deep_sky_view(self) -> bool:
+        """Return True if Deep Sky should be possible."""
+        if self.condition_percentage <= DEEP_SKY_THRESHOLD:
+            return True
+        return False
+
+
+class NightlyConditionsData:
+    """A representation of nights Sky Quality Data."""
+
+    def __init__(self, data):
+        self._init = data["init"]
+        self._hour = data["hour"]
+        self._nightly_conditions = data["nightly_conditions"]
+        self._weather = data["weather"]
+
+    @property
+    def init(self) -> datetime:
+        """Return Forecast Anchor."""
+        return self._init
+
+    @property
+    def hour(self) -> int:
+        """Return Forecast Hour."""
+        return self._hour
+
+    @property
+    def nightly_conditions(self) -> int:
+        """Return Forecast Hour."""
+        return self._nightly_conditions
+
+    @property
+    def weather(self) -> str:
+        """Return Current Weather."""
+        return self._weather
