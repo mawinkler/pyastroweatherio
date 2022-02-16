@@ -102,20 +102,18 @@ class AstronomicalRoutines:
         sun.compute(self._sun_observer)
 
         try:
-            self._sun_next_rising = (
-                self._sun_observer.next_rising(ephem.Sun(), use_center=True).datetime()
-                + timedelta(hours=self._offset)
-            ).strftime("%Y-%m-%d %H:%M:%S")
+            self._sun_next_rising = self._sun_observer.next_rising(
+                ephem.Sun(), use_center=True
+            ).datetime() + timedelta(hours=self._offset)
         except AlwaysUpError:
             self._sun_next_rising = "Always up"
         except NeverUpError:
             self._sun_next_rising = "Always down"
 
         try:
-            self._sun_next_setting = (
-                self._sun_observer.next_setting(ephem.Sun(), use_center=True).datetime()
-                + timedelta(hours=self._offset)
-            ).strftime("%Y-%m-%d %H:%M:%S")
+            self._sun_next_setting = self._sun_observer.next_setting(
+                ephem.Sun(), use_center=True
+            ).datetime() + timedelta(hours=self._offset)
         except AlwaysUpError:
             self._sun_next_setting = "Always up"
         except NeverUpError:
@@ -127,24 +125,18 @@ class AstronomicalRoutines:
         sun.compute(self._sun_observer_astro)
 
         try:
-            self._sun_next_rising_astro = (
-                self._sun_observer_astro.next_rising(
-                    ephem.Sun(), use_center=True
-                ).datetime()
-                + timedelta(hours=self._offset)
-            ).strftime("%Y-%m-%d %H:%M:%S")
+            self._sun_next_rising_astro = self._sun_observer_astro.next_rising(
+                ephem.Sun(), use_center=True
+            ).datetime() + timedelta(hours=self._offset)
         except AlwaysUpError:
             self._sun_next_rising_astro = "Always up"
         except NeverUpError:
             self._sun_next_rising_astro = "Always down"
 
         try:
-            self._sun_next_setting_astro = (
-                self._sun_observer_astro.next_setting(
-                    ephem.Sun(), use_center=True
-                ).datetime()
-                + timedelta(hours=self._offset)
-            ).strftime("%Y-%m-%d %H:%M:%S")
+            self._sun_next_setting_astro = self._sun_observer_astro.next_setting(
+                ephem.Sun(), use_center=True
+            ).datetime() + timedelta(hours=self._offset)
         except AlwaysUpError:
             self._sun_next_setting_astro = "Always up"
         except NeverUpError:
@@ -161,53 +153,47 @@ class AstronomicalRoutines:
         self._moon.compute(self._moon_observer)
 
         try:
-            self._moon_next_rising = (
-                self._moon_observer.next_rising(
-                    ephem.Moon(), use_center=True
-                ).datetime()
-                + timedelta(hours=self._offset)
-            ).strftime("%Y-%m-%d %H:%M:%S")
+            self._moon_next_rising = self._moon_observer.next_rising(
+                ephem.Moon(), use_center=True
+            ).datetime() + timedelta(hours=self._offset)
         except AlwaysUpError:
             self._moon_next_rising = "Always up"
         except NeverUpError:
             self._moon_next_rising = "Always down"
 
         try:
-            self._moon_next_setting = (
-                self._moon_observer.next_setting(
-                    ephem.Moon(), use_center=True
-                ).datetime()
-                + timedelta(hours=self._offset)
-            ).strftime("%Y-%m-%d %H:%M:%S")
+            self._moon_next_setting = self._moon_observer.next_setting(
+                ephem.Moon(), use_center=True
+            ).datetime() + timedelta(hours=self._offset)
         except AlwaysUpError:
             self._moon_next_setting = "Always up"
         except NeverUpError:
             self._moon_next_setting = "Always down"
 
-    async def sun_next_rising(self) -> str:
+    async def sun_next_rising(self) -> datetime:
         """Returns sun next rising"""
         return self._sun_next_rising
 
-    async def sun_next_setting(self) -> str:
+    async def sun_next_setting(self) -> datetime:
         """Returns sun next setting"""
         return self._sun_next_setting
 
-    async def sun_next_rising_astro(self) -> str:
+    async def sun_next_rising_astro(self) -> datetime:
         """Returns sun next astronomical rising"""
         return self._sun_next_rising_astro
 
-    async def sun_next_setting_astro(self) -> str:
+    async def sun_next_setting_astro(self) -> datetime:
         """Returns sun next astronomical setting"""
         return self._sun_next_setting_astro
 
-    async def moon_next_rising(self) -> str:
+    async def moon_next_rising(self) -> datetime:
         """Returns moon next rising"""
         return self._moon_next_rising
 
-    async def moon_next_setting(self) -> str:
+    async def moon_next_setting(self) -> datetime:
         """Returns moon next setting"""
         return self._moon_next_setting
 
-    async def moon_phase(self) -> str:
+    async def moon_phase(self) -> float:
         """Returns the moon phase"""
         return self._moon.phase
