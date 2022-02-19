@@ -57,31 +57,8 @@ LIFTED_INDEX_PLAIN = [
     "Over 11, very stable",
 ]
 
-RH2M_PLAIN = [
-    "0-5",
-    "5-10",
-    "10-15",
-    "15-20",
-    "20-25",
-    "25-30",
-    "30-35",
-    "35-40",
-    "40-45",
-    "45-50",
-    "50-55",
-    "55-60",
-    "60-65",
-    "65-70",
-    "70-75",
-    "75-80",
-    "80-85",
-    "85-90",
-    "90-95",
-    "95-99",
-    "100",
-]
-
 WIND10M_SPEED_PLAIN = [
+    "none",
     "calm",
     "light",
     "moderate",
@@ -91,6 +68,38 @@ WIND10M_SPEED_PLAIN = [
     "storm",
     "hurricane",
 ]
+
+WIND10M_SPEED = [
+    0,
+    0.3,
+    3.4,
+    8.0,
+    10.8,
+    17.2,
+    24.5,
+    32.6,
+    36.7,
+    41.4,
+    46.2,
+    50.9,
+    55.9,
+    60.9,
+]
+# WIND10M_SPEED = [
+#     "0.3m/s (calm)",
+#     "0.3-3.4m/s (light)",
+#     "3.4-8.0m/s (moderate)",
+#     "8.0-10.8m/s (fresh)",
+#     "10.8-17.2m/s (strong)",
+#     "17.2-24.5m/s (gale)",
+#     "24.5-32.6m/s (storm)",
+#     "32.6-36.7m/s (hurricane)",
+#     "36.7-41.4m/s (hurricane+)",
+#     "41.4-46.2m/s (hurricane+)",
+#     "46.2-50.9m/s (hurricane+)",
+#     "50.9-55.9m/s (hurricane+)",
+#     "Over 55.9m/s (hurricane+)",
+# ]
 
 MAP_WEATHER_TYPE = {
     "clearday": "Total cloud cover less than 20%",

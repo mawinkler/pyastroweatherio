@@ -7,10 +7,11 @@ from pyastroweatherio.const import (
     CONDITION,
     DEEP_SKY_THRESHOLD,
     LIFTED_INDEX_PLAIN,
-    RH2M_PLAIN,
+    # RH2M_PLAIN,
     SEEING_PLAIN,
     TRANSPARENCY_PLAIN,
     WIND10M_SPEED_PLAIN,
+    WIND10M_SPEED,
     MAP_WEATHER_TYPE,
 )
 
@@ -44,7 +45,7 @@ class BaseData:
 
     @property
     def timestamp(self) -> datetime:
-        """Return Forecast Hour."""
+        """Return Forecast Timestamp."""
         return self._timestamp
 
     @property
@@ -104,9 +105,9 @@ class BaseData:
         return self._rh2m
 
     @property
-    def wind10m_speed(self) -> int:
+    def wind10m_speed(self) -> float:
         """Return 10m Wind Speed."""
-        return self._wind10m.get("speed", -1)
+        return float(WIND10M_SPEED[self._wind10m.get("speed", 0)])
 
     @property
     def temp2m(self) -> int:
@@ -188,11 +189,6 @@ class LocationData(BaseData):
         return trans.get(self._lifted_index, "")
 
     @property
-    def rh2m_plain(self) -> str:
-        """Return 2m Relative Humidity."""
-        return RH2M_PLAIN[self._rh2m - 4]
-
-    @property
     def wind10m_direction(self) -> str:
         """Return 10m Wind Direction."""
         return self._wind10m.get("direction", "O").upper()
@@ -200,7 +196,11 @@ class LocationData(BaseData):
     @property
     def wind10m_speed_plain(self) -> str:
         """Return 10m Wind Speed."""
-        return WIND10M_SPEED_PLAIN[self._wind10m.get("speed", -1) - 1].capitalize()
+        speed = self._wind10m.get("speed", -1)
+        if speed < 8:
+            return WIND10M_SPEED_PLAIN[self._wind10m.get("speed", 0)].capitalize()
+        else:
+            return WIND10M_SPEED_PLAIN[8].capitalize()
 
     @property
     def deep_sky_view(self) -> bool:
@@ -225,42 +225,42 @@ class LocationData(BaseData):
 
     @property
     def sun_next_rising(self) -> datetime:
-        """Return Current View Conditions."""
+        """Return Sun Next Rising Civil."""
         return self._sun_next_rising
 
     @property
     def sun_next_rising_astro(self) -> datetime:
-        """Return Current View Conditions."""
+        """Return Sun Next Rising Astronomical."""
         return self._sun_next_rising_astro
 
     @property
     def sun_next_setting(self) -> datetime:
-        """Return Current View Conditions."""
+        """Return Next Setting Civil."""
         return self._sun_next_setting
 
     @property
     def sun_next_setting_astro(self) -> datetime:
-        """Return Current View Conditions."""
+        """Return Sun Next Setting Astronomical."""
         return self._sun_next_setting_astro
 
     @property
     def moon_next_rising(self) -> datetime:
-        """Return Current View Conditions."""
+        """Return Moon Next Rising."""
         return self._moon_next_rising
 
     @property
     def moon_next_setting(self) -> datetime:
-        """Return Current View Conditions."""
+        """Return Moon Next Setting."""
         return self._moon_next_setting
 
     @property
     def moon_phase(self) -> float:
-        """Return Current View Conditions."""
+        """Return Moon Phase."""
         return round(self._moon_phase, 1)
 
     @property
     def deepsky_forecast(self):
-        """Return Current Weather."""
+        """Return Deepsky Forecast."""
         return self._deepsky_forecast
 
     @property
@@ -303,7 +303,7 @@ class LocationData(BaseData):
 
     @property
     def deepsky_forecast_today_desc(self):
-        """Return Forecast Today."""
+        """Return Forecast Today Description."""
         nightly_conditions = self._deepsky_forecast[0]
         return MAP_WEATHER_TYPE[nightly_conditions.weather]
 
@@ -325,7 +325,7 @@ class LocationData(BaseData):
 
     @property
     def deepsky_forecast_tomorrow_plain(self):
-        """Return FORECAST Tomorrow."""
+        """Return Forecast Tomorrow."""
         nightly_conditions = self._deepsky_forecast[1]
         out = ""
         out += (
@@ -347,7 +347,7 @@ class LocationData(BaseData):
 
     @property
     def deepsky_forecast_tomorrow_desc(self):
-        """Return FORECAST Tomorrow."""
+        """Return Forecast Tomorrow Description."""
         nightly_conditions = self._deepsky_forecast[1]
         return MAP_WEATHER_TYPE[nightly_conditions.weather]
 
@@ -368,11 +368,6 @@ class ForecastData(BaseData):
     def wind10m_direction(self) -> str:
         """Return 10m Wind Direction."""
         return self._wind10m.get("direction", "O").upper()
-
-    @property
-    def wind10m_speed(self) -> int:
-        """Return 10m Wind Speed."""
-        return self._wind10m.get("speed", -1)
 
     @property
     def deep_sky_view(self) -> bool:

@@ -82,12 +82,12 @@ async def main() -> None:
                 + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.transparency_plain)}{esc('0')}"
             )
             print(
-                f"{esc(COLOR_RED)}Lifted Index: {esc(COLOR_GREEN)}{str(row.lifted_index)}\t\t"
+                f"{esc(COLOR_RED)}Lifted Index: {esc(COLOR_GREEN)}{str(row.lifted_index)}\t\t\t"
                 + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.lifted_index_plain)}{esc('0')}"
             )
+            # + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.rh2m_plain)}{esc('0')}"
             print(
-                f"{esc(COLOR_RED)}Rel. Humidity: {esc(COLOR_GREEN)}{str(row.rh2m)}\t\t"
-                + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.rh2m_plain)}{esc('0')}"
+                f"{esc(COLOR_RED)}Rel. Humidity: {esc(COLOR_GREEN)}{str(row.rh2m)}\t\t{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}Wind Direction: {esc(COLOR_GREEN)}{str(row.wind10m_direction)}\t\t"

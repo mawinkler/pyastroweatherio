@@ -299,9 +299,10 @@ class AstroWeather:
             civil_dataseries = json_data_civil.get("dataseries")
             # /Testing
 
-            for a, c in zip(astro_dataseries, civil_dataseries):
-                if a["timepoint"] == c["timepoint"]:
-                    a["weather"] = c["weather"]
+            for astro, civil in zip(astro_dataseries, civil_dataseries):
+                if astro["timepoint"] == civil["timepoint"]:
+                    astro["weather"] = civil["weather"]
+                    astro["rh2m"] = int(civil["rh2m"].replace("%", ""))
 
             self._weather_data = astro_dataseries
             self._weather_data_init = json_data_astro.get("init")
