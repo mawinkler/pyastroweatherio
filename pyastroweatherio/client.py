@@ -286,7 +286,7 @@ class AstroWeather:
             _LOGGER.debug("Updating data")
 
             # Testing
-            # json_data_astro = {"init": "2022020900"}
+            # json_data_astro = {"init": "2022022200"}
             # with open("astro.json") as json_file:
             #     astro_dataseries = json.load(json_file)
             # with open("civil.json") as json_file:

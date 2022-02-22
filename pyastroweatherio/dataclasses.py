@@ -36,7 +36,7 @@ class BaseData:
     @property
     def init(self) -> datetime:
         """Return Forecast Anchor."""
-        return self._init
+        return self._init.replace(microsecond=0).isoformat()
 
     @property
     def timepoint(self) -> int:
@@ -46,7 +46,7 @@ class BaseData:
     @property
     def timestamp(self) -> datetime:
         """Return Forecast Timestamp."""
-        return self._timestamp
+        return self._timestamp.replace(microsecond=0).isoformat()
 
     @property
     def condition_percentage(self) -> int:
@@ -226,32 +226,32 @@ class LocationData(BaseData):
     @property
     def sun_next_rising(self) -> datetime:
         """Return Sun Next Rising Civil."""
-        return self._sun_next_rising
+        return self._sun_next_rising.replace(microsecond=0).isoformat()
 
     @property
     def sun_next_rising_astro(self) -> datetime:
         """Return Sun Next Rising Astronomical."""
-        return self._sun_next_rising_astro
+        return self._sun_next_rising_astro.replace(microsecond=0).isoformat()
 
     @property
     def sun_next_setting(self) -> datetime:
         """Return Next Setting Civil."""
-        return self._sun_next_setting
+        return self._sun_next_setting.replace(microsecond=0).isoformat()
 
     @property
     def sun_next_setting_astro(self) -> datetime:
         """Return Sun Next Setting Astronomical."""
-        return self._sun_next_setting_astro
+        return self._sun_next_setting_astro.replace(microsecond=0).isoformat()
 
     @property
     def moon_next_rising(self) -> datetime:
         """Return Moon Next Rising."""
-        return self._moon_next_rising
+        return self._moon_next_rising.replace(microsecond=0).isoformat()
 
     @property
     def moon_next_setting(self) -> datetime:
         """Return Moon Next Setting."""
-        return self._moon_next_setting
+        return self._moon_next_setting.replace(microsecond=0).isoformat()
 
     @property
     def moon_phase(self) -> float:
@@ -389,7 +389,7 @@ class NightlyConditionsData:
     @property
     def init(self) -> datetime:
         """Return Forecast Anchor."""
-        return self._init
+        return self._init.replace(microsecond=0).isoformat()
 
     @property
     def hour(self) -> int:
