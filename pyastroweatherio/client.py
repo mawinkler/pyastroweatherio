@@ -326,9 +326,9 @@ class AstroWeather:
         url = (
             str(f"{BASE_URL}")
             + "?lon="
-            + str(self._longitude)
+            + str("%.1f" % round(self._longitude, 2))
             + "&lat="
-            + str(self._latitude)
+            + str("%.1f" % round(self._latitude, 2))
             + "&product="
             + str(product)
             + "&output="
