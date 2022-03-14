@@ -33,6 +33,11 @@ class BaseData:
         self._prec_type = data["prec_type"]
         self._weather = data["weather"]
 
+        # In progress, make condition calculation customizable
+        self._cloudcover_weight = 3
+        self._seeing_weight = 2
+        self._transparency_weight = 1
+
     @property
     def init(self) -> datetime:
         """Return Forecast Anchor."""
@@ -63,6 +68,24 @@ class BaseData:
             * 100
             / (43 - 5)
         )
+        # return int(
+        #     100
+        #     - (
+        #         self._cloudcover_weight * self._cloudcover
+        #         + self._seeing_weight * self._seeing
+        #         + self._transparency_weight * self._transparency
+        #         - self._cloudcover_weight
+        #         - self._seeing_weight
+        #         - self._transparency_weight
+        #     )
+        #     * 100
+        #     / (
+        #         43
+        #         - self._cloudcover_weight
+        #         - self._seeing_weight
+        #         - self._transparency_weight
+        #     )
+        # )
 
     @property
     def cloudcover(self) -> int:

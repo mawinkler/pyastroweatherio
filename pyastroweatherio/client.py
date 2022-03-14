@@ -297,8 +297,8 @@ class AstroWeather:
             json_data_astro = await self.async_request("astro", "get")
             json_data_civil = await self.async_request("civil", "get")
 
-            astro_dataseries = json_data_astro.get("dataseries")
-            civil_dataseries = json_data_civil.get("dataseries")
+            astro_dataseries = json_data_astro.get("dataseries", {})
+            civil_dataseries = json_data_civil.get("dataseries", {})
             # /Testing
 
             for astro, civil in zip(astro_dataseries, civil_dataseries):
