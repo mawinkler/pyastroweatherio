@@ -208,13 +208,14 @@ class AstroWeather:
         cnv = ConversionFunctions()
         items = []
 
-        _LOGGER.debug("Timezone offset: %s", str(offset))
         await self.retrieve_data()
         now = datetime.now()
-
         # Anchor timestamp of forecast considering offset
         init_ts = (await cnv.anchor_timestamp(self._weather_data_init)) + timedelta(
             hours=offset
+        )
+        _LOGGER.debug(
+            "Init Timestamp: %s, Timezone offset: %s", str(init_ts), str(offset)
         )
 
         # Calc time difference in between init timestamp and 9pm
@@ -224,6 +225,7 @@ class AstroWeather:
         start_forecast_hour = 0
         start_weather = ""
         interval_points = []
+
         for row in self._weather_data:
             # Skip over past forecasts
             forecast_time = init_ts + timedelta(hours=row["timepoint"])
@@ -340,6 +342,13 @@ class AstroWeather:
                 resp.raise_for_status()
                 plain = str(await resp.text()).replace("\n", " ")
                 data = json.loads(plain)
+
+                # Testing
+                # json_string = json.dumps(data)
+                # with open(product + ".json", "w") as outfile:
+                #     outfile.write(json_string)
+                # /Testing
+
                 return data
         except asyncio.TimeoutError:
             raise RequestError("Request to endpoint timed out")

@@ -266,90 +266,102 @@ class LocationData(BaseData):
     @property
     def deepsky_forecast_today(self) -> int:
         """Return Forecas Today in Percentt."""
-        nightly_conditions = self._deepsky_forecast[0]
-        return int(
-            round(
-                (
-                    nightly_conditions.nightly_conditions[0]
-                    + nightly_conditions.nightly_conditions[1]
-                    + nightly_conditions.nightly_conditions[2]
+        if len(self._deepsky_forecast) > 0:
+            nightly_conditions = self._deepsky_forecast[0]
+            return int(
+                round(
+                    (
+                        nightly_conditions.nightly_conditions[0]
+                        + nightly_conditions.nightly_conditions[1]
+                        + nightly_conditions.nightly_conditions[2]
+                    )
+                    / 3,
+                    1,
                 )
-                / 3,
-                1,
             )
-        )
+        return None
 
     @property
     def deepsky_forecast_today_plain(self):
         """Return Forecast Today."""
-        nightly_conditions = self._deepsky_forecast[0]
-        out = ""
-        out += (
-            CONDITION[
-                4 - math.floor(nightly_conditions.nightly_conditions[0] / 20)
+        if len(self._deepsky_forecast) > 0:
+            nightly_conditions = self._deepsky_forecast[0]
+            out = ""
+            out += (
+                CONDITION[
+                    4 - math.floor(nightly_conditions.nightly_conditions[0] / 20)
+                ].capitalize()
+                + "-"
+            )
+            out += (
+                CONDITION[
+                    4 - math.floor(nightly_conditions.nightly_conditions[1] / 20)
+                ].capitalize()
+                + "-"
+            )
+            out += CONDITION[
+                4 - math.floor(nightly_conditions.nightly_conditions[2] / 20)
             ].capitalize()
-            + "-"
-        )
-        out += (
-            CONDITION[
-                4 - math.floor(nightly_conditions.nightly_conditions[1] / 20)
-            ].capitalize()
-            + "-"
-        )
-        out += CONDITION[
-            4 - math.floor(nightly_conditions.nightly_conditions[2] / 20)
-        ].capitalize()
-        return out
+            return out
+        return None
 
     @property
     def deepsky_forecast_today_desc(self):
         """Return Forecast Today Description."""
-        nightly_conditions = self._deepsky_forecast[0]
-        return MAP_WEATHER_TYPE[nightly_conditions.weather]
+        if len(self._deepsky_forecast) > 0:
+            nightly_conditions = self._deepsky_forecast[0]
+            return MAP_WEATHER_TYPE[nightly_conditions.weather]
+        return None
 
     @property
     def deepsky_forecast_tomorrow(self) -> int:
         """Return Forecas Tomorrow in Percentt."""
-        nightly_conditions = self._deepsky_forecast[1]
-        return int(
-            round(
-                (
-                    nightly_conditions.nightly_conditions[0]
-                    + nightly_conditions.nightly_conditions[1]
-                    + nightly_conditions.nightly_conditions[2]
+        if len(self._deepsky_forecast) > 1:
+            nightly_conditions = self._deepsky_forecast[1]
+            return int(
+                round(
+                    (
+                        nightly_conditions.nightly_conditions[0]
+                        + nightly_conditions.nightly_conditions[1]
+                        + nightly_conditions.nightly_conditions[2]
+                    )
+                    / 3,
+                    1,
                 )
-                / 3,
-                1,
             )
-        )
+        return None
 
     @property
     def deepsky_forecast_tomorrow_plain(self):
         """Return Forecast Tomorrow."""
-        nightly_conditions = self._deepsky_forecast[1]
-        out = ""
-        out += (
-            CONDITION[
-                4 - math.floor(nightly_conditions.nightly_conditions[0] / 20)
+        if len(self._deepsky_forecast) > 1:
+            nightly_conditions = self._deepsky_forecast[1]
+            out = ""
+            out += (
+                CONDITION[
+                    4 - math.floor(nightly_conditions.nightly_conditions[0] / 20)
+                ].capitalize()
+                + "-"
+            )
+            out += (
+                CONDITION[
+                    4 - math.floor(nightly_conditions.nightly_conditions[1] / 20)
+                ].capitalize()
+                + "-"
+            )
+            out += CONDITION[
+                4 - math.floor(nightly_conditions.nightly_conditions[2] / 20)
             ].capitalize()
-            + "-"
-        )
-        out += (
-            CONDITION[
-                4 - math.floor(nightly_conditions.nightly_conditions[1] / 20)
-            ].capitalize()
-            + "-"
-        )
-        out += CONDITION[
-            4 - math.floor(nightly_conditions.nightly_conditions[2] / 20)
-        ].capitalize()
-        return out
+            return out
+        return None
 
     @property
     def deepsky_forecast_tomorrow_desc(self):
         """Return Forecast Tomorrow Description."""
-        nightly_conditions = self._deepsky_forecast[1]
-        return MAP_WEATHER_TYPE[nightly_conditions.weather]
+        if len(self._deepsky_forecast) > 1:
+            nightly_conditions = self._deepsky_forecast[1]
+            return MAP_WEATHER_TYPE[nightly_conditions.weather]
+        return None
 
 
 class ForecastData(BaseData):
