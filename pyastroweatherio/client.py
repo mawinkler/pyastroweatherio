@@ -20,6 +20,9 @@ from pyastroweatherio.const import (
     STIMER_OUTPUT,
     FORECAST_TYPE_DAILY,
     FORECAST_TYPE_HOURLY,
+    CONDITION_CLOUDCOVER_WEIGHT,
+    CONDITION_SEEING_WEIGHT,
+    CONDITION_TRANSPARENCY_WEIGHT,
 )
 from pyastroweatherio.dataclasses import (
     ForecastData,
@@ -51,6 +54,10 @@ class AstroWeather:
         self._weather_data_timestamp = datetime.now() - timedelta(
             seconds=(DEFAULT_CACHE_TIMEOUT + 1)
         )
+        # In progress, make condition calculation customizable
+        self._cloudcover_weight = CONDITION_CLOUDCOVER_WEIGHT
+        self._seeing_weight = CONDITION_SEEING_WEIGHT
+        self._transparency_weight = CONDITION_TRANSPARENCY_WEIGHT
         self.req = session
 
     # Public functions
@@ -121,6 +128,9 @@ class AstroWeather:
                 "cloudcover": row["cloudcover"],
                 "seeing": row["seeing"],
                 "transparency": row["transparency"],
+                "condition_percentage": await self.calc_condition_percentage(
+                    row["cloudcover"], row["seeing"], row["transparency"]
+                ),
                 "lifted_index": row["lifted_index"],
                 "rh2m": row["rh2m"],
                 "wind10m": row["wind10m"],
@@ -185,6 +195,9 @@ class AstroWeather:
                 "cloudcover": cloudcover,
                 "seeing": seeing,
                 "transparency": transparency,
+                "condition_percentage": await self.calc_condition_percentage(
+                    row["cloudcover"], row["seeing"], row["transparency"]
+                ),
                 "lifted_index": row["lifted_index"],
                 "rh2m": row["rh2m"],
                 "wind10m": row["wind10m"],
@@ -255,11 +268,9 @@ class AstroWeather:
                 start_weather = row.get("weather", "")
 
             # Calculate Condition
-            # round( (3*cloudcover + seeing + transparency) / (3*9+8+8) * 5)
-            condition = int(
-                100 - (3 * cloudcover + seeing + transparency - 5) * 100 / (43 - 5)
+            interval_points.append(
+                await self.calc_condition_percentage(cloudcover, seeing, transparency)
             )
-            interval_points.append(condition)
 
             if len(interval_points) == 3:
                 item = {
@@ -279,7 +290,33 @@ class AstroWeather:
 
         return items
 
+    async def calc_condition_percentage(self, cloudcover, seeing, transparency):
+        """Return condition based on cloud cover, seeing and transparency"""
+        # Possible Values:
+        #   Clouds: 1-9
+        #   Seeing: 1-8
+        #   Transparency: 1-8
+        return int(
+            100
+            - (
+                self._cloudcover_weight * cloudcover
+                + self._seeing_weight * seeing
+                + self._transparency_weight * transparency
+                - self._cloudcover_weight
+                - self._seeing_weight
+                - self._transparency_weight
+            )
+            * 100
+            / (
+                43
+                - self._cloudcover_weight
+                - self._seeing_weight
+                - self._transparency_weight
+            )
+        )
+
     async def retrieve_data(self):
+        """Retrieves current data from 7timer"""
 
         if (
             (datetime.now() - self._weather_data_timestamp).total_seconds()
@@ -288,12 +325,12 @@ class AstroWeather:
             _LOGGER.debug("Updating data")
 
             # Testing
-            # json_data_astro = {"init": "2022022200"}
+            # json_data_astro = {"init": "2022031612"}
             # with open("astro.json") as json_file:
-            #     astro_dataseries = json.load(json_file)
+            #     astro_dataseries = json.load(json_file).get("dataseries", {})
             # with open("civil.json") as json_file:
-            #     civil_dataseries = json.load(json_file)
-            # /Testing
+            #     civil_dataseries = json.load(json_file).get("dataseries", {})
+            # -Testing
             json_data_astro = await self.async_request("astro", "get")
             json_data_civil = await self.async_request("civil", "get")
 
@@ -312,7 +349,7 @@ class AstroWeather:
             _LOGGER.debug("Using cached data")
 
     async def async_request(self, product="astro", method="get") -> dict:
-        """Make a request against the AstroWeather API."""
+        """Make a request against the 7timer API."""
 
         use_running_session = self._session and not self._session.closed
 
@@ -323,7 +360,7 @@ class AstroWeather:
                 timeout=ClientTimeout(total=DEFAULT_TIMEOUT),
             )
 
-        # BASE_URL = "http://www.7timer.info/bin/api.pl?lon=XX.XXX&lat=YY.YYY&product=astro&output=json"
+        # BASE_URL = "http://www.7timer.info/bin/api.pl?lon=XX.XX&lat=YY.YY&product=astro&output=json"
         # STIMER_OUTPUT = "json"
         url = (
             str(f"{BASE_URL}")

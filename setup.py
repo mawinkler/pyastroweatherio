@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
     name="pyastroweatherio",
     packages=["pyastroweatherio"],
-    version="0.20.8.1",
+    version="0.20.9.dev1",
     license="MIT",
     description="Python Wrapper for 7Timer REST API",
     long_description=" ".join(

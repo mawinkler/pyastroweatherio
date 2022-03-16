@@ -26,17 +26,13 @@ class BaseData:
         self._cloudcover = data["cloudcover"]
         self._seeing = data["seeing"]
         self._transparency = data["transparency"]
+        self._condition_percentage = data["condition_percentage"]
         self._lifted_index = data["lifted_index"]
         self._rh2m = data["rh2m"]
         self._wind10m = data["wind10m"]
         self._temp2m = data["temp2m"]
         self._prec_type = data["prec_type"]
         self._weather = data["weather"]
-
-        # In progress, make condition calculation customizable
-        self._cloudcover_weight = 3
-        self._seeing_weight = 2
-        self._transparency_weight = 1
 
     @property
     def init(self) -> datetime:
@@ -56,36 +52,7 @@ class BaseData:
     @property
     def condition_percentage(self) -> int:
         """Return condition based on cloud cover, seeing and transparency"""
-        # For the condition, clouds are weighted three times
-        # Possible Values:
-        #   Clouds: 1-9
-        #   Seeing: 1-8
-        #   Transparency: 1-8
-        # Min: 5, Max: 43
-        return int(
-            100
-            - (3 * self._cloudcover + self._seeing + self._transparency - 5)
-            * 100
-            / (43 - 5)
-        )
-        # return int(
-        #     100
-        #     - (
-        #         self._cloudcover_weight * self._cloudcover
-        #         + self._seeing_weight * self._seeing
-        #         + self._transparency_weight * self._transparency
-        #         - self._cloudcover_weight
-        #         - self._seeing_weight
-        #         - self._transparency_weight
-        #     )
-        #     * 100
-        #     / (
-        #         43
-        #         - self._cloudcover_weight
-        #         - self._seeing_weight
-        #         - self._transparency_weight
-        #     )
-        # )
+        return self._condition_percentage
 
     @property
     def cloudcover(self) -> int:
