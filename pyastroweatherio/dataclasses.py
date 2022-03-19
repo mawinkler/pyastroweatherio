@@ -61,8 +61,12 @@ class BaseData:
 
     @property
     def cloudcover_percentage(self) -> int:
-        """Return Cloud Coverage."""
-        return int((100 + 100 / 8 - self._cloudcover * 100 / 8))
+        """Return Cloud Coverage.
+        Plain value is an int between 1 and 9 (1 is 0-6%, 9 is 94-100%;
+        see https://github.com/Yeqzids/7timer-issues/wiki/Wiki#astro),
+        converting it to value between 0 and 100.
+        """
+        return int(100 * (self._cloudcover - 1 ) / 8)
 
     @property
     def seeing(self) -> int:
@@ -71,8 +75,12 @@ class BaseData:
 
     @property
     def seeing_percentage(self) -> int:
-        """Return Seeing."""
-        return int((100 + 100 / 7 - self._seeing * 100 / 7))
+        """Return Seeing.
+        Plain value is an int between 1 and 8 (1 is below .5", 8 is above 2.5"; 1 is best;
+        see https://github.com/Yeqzids/7timer-issues/wiki/Wiki#astro),
+        converting it to value between 0 and 100.
+        """
+        return int(100 - 100 * (self._seeing - 1 ) / 7)
 
     @property
     def transparency(self) -> int:
@@ -81,8 +89,12 @@ class BaseData:
 
     @property
     def transparency_percentage(self) -> int:
-        """Return Transparency."""
-        return int((100 + 100 / 7 - self._transparency * 100 / 7))
+        """Return Transparency.
+        Plain value is an int between 1 and 8 (1 is below 0.3, 8 is above 1; 1 is best;
+        see https://github.com/Yeqzids/7timer-issues/wiki/Wiki#astro),
+        converting it to value between 0 and 100.
+        """
+        return int(100 - 100 * (self._transparency - 1 ) / 7)
 
     @property
     def lifted_index(self) -> int:
