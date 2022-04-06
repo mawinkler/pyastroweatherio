@@ -235,6 +235,7 @@ class AstroWeather:
         # init_night_diff = 21 - init_ts.hour
 
         # Create forecast
+        forecast_dayname = ""
         start_forecast_hour = 0
         start_weather = ""
         interval_points = []
@@ -264,6 +265,7 @@ class AstroWeather:
             seeing = row["seeing"]
             transparency = row["transparency"]
             if len(interval_points) == 0:
+                forecast_dayname = forecast_time.strftime("%A")
                 start_forecast_hour = hour_of_day
                 start_weather = row.get("weather", "")
 
@@ -275,13 +277,15 @@ class AstroWeather:
             if len(interval_points) == 3:
                 item = {
                     "init": init_ts,
+                    "dayname": forecast_dayname,
                     "hour": start_forecast_hour,
                     "nightly_conditions": interval_points,
                     "weather": start_weather,
                 }
                 items.append(NightlyConditionsData(item))
                 _LOGGER.debug(
-                    "Nightly conditions start hour: %s, condition percentages: %s",
+                    "Nightly conditions day: %s, start hour: %s, condition percentages: %s",
+                    str(forecast_dayname),
                     str(start_forecast_hour),
                     str(interval_points),
                 )

@@ -272,6 +272,14 @@ class LocationData(BaseData):
         return None
 
     @property
+    def deepsky_forecast_today_dayname(self):
+        """Return Forecast Todays Dayname."""
+        if len(self._deepsky_forecast) > 0:
+            nightly_conditions = self._deepsky_forecast[0]
+            return nightly_conditions.dayname
+        return None
+
+    @property
     def deepsky_forecast_today_plain(self):
         """Return Forecast Today."""
         if len(self._deepsky_forecast) > 0:
@@ -319,6 +327,14 @@ class LocationData(BaseData):
                     1,
                 )
             )
+        return None
+
+    @property
+    def deepsky_forecast_tomorrow_dayname(self):
+        """Return Forecast Todays Dayname."""
+        if len(self._deepsky_forecast) > 1:
+            nightly_conditions = self._deepsky_forecast[1]
+            return nightly_conditions.dayname
         return None
 
     @property
@@ -384,6 +400,7 @@ class NightlyConditionsData:
 
     def __init__(self, data):
         self._init = data["init"]
+        self._dayname = data["dayname"]
         self._hour = data["hour"]
         self._nightly_conditions = data["nightly_conditions"]
         self._weather = data["weather"]
@@ -392,6 +409,11 @@ class NightlyConditionsData:
     def init(self) -> datetime:
         """Return Forecast Anchor."""
         return self._init.replace(microsecond=0).isoformat()
+
+    @property
+    def dayname(self) -> str:
+        """Return Forecast Name of the Day."""
+        return self._dayname
 
     @property
     def hour(self) -> int:
