@@ -61,8 +61,13 @@ class BaseData:
 
     @property
     def cloudcover_percentage(self) -> int:
-        """Return Cloud Coverage."""
-        return int((100 + 100 / 8 - self._cloudcover * 100 / 8))
+        """Return Cloud Cover Percentage."""
+        return int(-(100 * (1 - self._cloudcover) / 8))
+
+    @property
+    def cloudless_percentage(self) -> int:
+        """Return Cloudless Percentage."""
+        return int(100 + 100 * (1 - self._cloudcover) / 8)
 
     @property
     def seeing(self) -> int:

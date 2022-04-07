@@ -71,6 +71,7 @@ async def main() -> None:
             )
             print(
                 f"{esc(COLOR_RED)}Cloudcover: {esc(COLOR_GREEN)}{str(row.cloudcover_percentage)}\t\t\t"
+                + f"{esc(COLOR_RED)}Cloudless: {esc(COLOR_GREEN)}{str(row.cloudless_percentage)}\t\t\t"
                 + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.cloudcover_plain)}{esc('0')}"
             )
             print(
@@ -151,6 +152,7 @@ async def main() -> None:
             )
             print(
                 f"{esc(COLOR_RED)}Cloudcover: {esc(COLOR_GREEN)}{str(row.cloudcover_percentage)}\t\t\t"
+                + f"{esc(COLOR_RED)}Cloudless: {esc(COLOR_GREEN)}{str(row.cloudless_percentage)}\t\t\t"
                 + f"{esc(COLOR_RED)}Seeing: {esc(COLOR_GREEN)}{str(row.seeing_percentage)}\t\t\t"
                 + f"{esc(COLOR_RED)}Transparency: {esc(COLOR_GREEN)}{str(row.transparency_percentage)}\t\t\t"
                 + f"{esc(COLOR_RED)}Liftet Index: {esc(COLOR_GREEN)}{str(row.lifted_index)}{esc('0')}"
