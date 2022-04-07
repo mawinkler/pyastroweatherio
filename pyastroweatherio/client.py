@@ -107,10 +107,12 @@ class AstroWeather:
             hours=offset
         )
 
+        forecast_skipped = 0
         for row in self._weather_data:
             # Skip over past forecasts
             forecast_time = init_ts + timedelta(hours=row["timepoint"])
             if now > forecast_time:
+                forecast_skipped += 1
                 continue
 
             # Astro Routines
@@ -122,6 +124,7 @@ class AstroWeather:
                 "init": init_ts,
                 "timepoint": row["timepoint"],
                 "timestamp": forecast_time,
+                "forecast_length": (len(self._weather_data) - forecast_skipped) * 3,
                 "latitude": self._latitude,
                 "longitude": self._longitude,
                 "elevation": self._elevation,

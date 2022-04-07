@@ -125,6 +125,7 @@ class LocationData(BaseData):
 
     def __init__(self, data):
         super().__init__(data)
+        self._forecast_length = data["forecast_length"]
         self._latitude = data["latitude"]
         self._longitude = data["longitude"]
         self._elevation = data["elevation"]
@@ -136,6 +137,11 @@ class LocationData(BaseData):
         self._moon_next_setting = data["moon_next_setting"]
         self._moon_phase = data["moon_phase"]
         self._deepsky_forecast = data["deepsky_forecast"]
+
+    @property
+    def forecast_length(self) -> int:
+        """Return Forecast Length in Hours"""
+        return self._forecast_length
 
     @property
     def latitude(self) -> float:

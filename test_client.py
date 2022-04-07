@@ -58,7 +58,8 @@ async def main() -> None:
             print(
                 f"{esc(COLOR_RED)}Init: {esc(COLOR_GREEN)}{str(row.init)}\t"
                 + f"{esc(COLOR_RED)}Timepoint: {esc(COLOR_GREEN)}{str(row.timepoint)}\t\t\t"
-                + f"{esc(COLOR_RED)}Timestamp: {esc(COLOR_GREEN)}{str(row.timestamp)}{esc('0')}"
+                + f"{esc(COLOR_RED)}Timestamp: {esc(COLOR_GREEN)}{str(row.timestamp)}\t\t\t"
+                + f"{esc(COLOR_RED)}Length: {esc(COLOR_GREEN)}{str(row.forecast_length)}\t\t\t{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}Latitude: {esc(COLOR_GREEN)}{str(row.latitude)}\t\t"
