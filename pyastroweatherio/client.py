@@ -15,14 +15,14 @@ from pyastroweatherio.const import (
     DEFAULT_TIMEOUT,
     DEFAULT_CACHE_TIMEOUT,
     DEFAULT_ELEVATION,
+    DEFAULT_CONDITION_CLOUDCOVER_WEIGHT,
+    DEFAULT_CONDITION_SEEING_WEIGHT,
+    DEFAULT_CONDITION_TRANSPARENCY_WEIGHT,
     HOME_LATITUDE,
     HOME_LONGITUDE,
     STIMER_OUTPUT,
     FORECAST_TYPE_DAILY,
     FORECAST_TYPE_HOURLY,
-    CONDITION_CLOUDCOVER_WEIGHT,
-    CONDITION_SEEING_WEIGHT,
-    CONDITION_TRANSPARENCY_WEIGHT,
 )
 from pyastroweatherio.dataclasses import (
     ForecastData,
@@ -44,6 +44,9 @@ class AstroWeather:
         latitude=HOME_LATITUDE,
         longitude=HOME_LONGITUDE,
         elevation=DEFAULT_ELEVATION,
+        cloudcover_weight=DEFAULT_CONDITION_CLOUDCOVER_WEIGHT,
+        seeing_weight=DEFAULT_CONDITION_SEEING_WEIGHT,
+        transparency_weight=DEFAULT_CONDITION_TRANSPARENCY_WEIGHT,
     ):
         self._session: ClientSession = session
         self._latitude = latitude
@@ -54,10 +57,9 @@ class AstroWeather:
         self._weather_data_timestamp = datetime.now() - timedelta(
             seconds=(DEFAULT_CACHE_TIMEOUT + 1)
         )
-        # In progress, make condition calculation customizable
-        self._cloudcover_weight = CONDITION_CLOUDCOVER_WEIGHT
-        self._seeing_weight = CONDITION_SEEING_WEIGHT
-        self._transparency_weight = CONDITION_TRANSPARENCY_WEIGHT
+        self._cloudcover_weight = cloudcover_weight
+        self._seeing_weight = seeing_weight
+        self._transparency_weight = transparency_weight
         self.req = session
 
     # Public functions
@@ -303,7 +305,7 @@ class AstroWeather:
         #   Clouds: 1-9
         #   Seeing: 1-8
         #   Transparency: 1-8
-        return int(
+        condition = int(
             100
             - (
                 self._cloudcover_weight * cloudcover
@@ -315,12 +317,25 @@ class AstroWeather:
             )
             * 100
             / (
-                43
+                self._cloudcover_weight * 9
+                + self._seeing_weight * 8
+                + self._transparency_weight * 8
                 - self._cloudcover_weight
                 - self._seeing_weight
                 - self._transparency_weight
             )
         )
+        _LOGGER.debug(
+            "Calc condition cloudcover: %d(%d), seeing %d(%d), transparency: %d(%d), condition %d",
+            cloudcover,
+            self._cloudcover_weight,
+            seeing,
+            self._seeing_weight,
+            transparency,
+            self._transparency_weight,
+            condition,
+        )
+        return condition
 
     async def retrieve_data(self):
         """Retrieves current data from 7timer"""

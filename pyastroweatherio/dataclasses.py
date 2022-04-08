@@ -213,7 +213,6 @@ class LocationData(BaseData):
     @property
     def condition_plain(self) -> str:
         """Return Current View Conditions."""
-        # return CONDITION[self._current_condition - 1].capitalize()
         if self.condition_percentage > 80:
             return CONDITION[0].capitalize()
         if self.condition_percentage > 60:
