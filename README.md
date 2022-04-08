@@ -53,6 +53,18 @@ This will return a handle to the AstroWeather class and open the connection.
 
 (int)(Required) The elevation above Earth's sea level of the geographic location in m.
 
+**cloudcover_weight**
+
+(int)(Optional) Cloud coverage weight for condition calculation, default=3
+
+**seeing_weight**
+
+(int)(Optional) Seeing weight for condition calculation, default=2
+
+**transparency_weight**
+
+(int)(Optional) Seeing weight for condition calculation, default=1
+
 ## Setup
 
 ```sh
