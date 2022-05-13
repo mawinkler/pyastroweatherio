@@ -105,19 +105,44 @@ class AstronomicalRoutines:
             self._sun_next_rising = self._sun_observer.next_rising(
                 ephem.Sun(), use_center=True
             ).datetime() + timedelta(hours=self._offset)
-        except AlwaysUpError:
-            self._sun_next_rising = "Always up"
-        except NeverUpError:
-            self._sun_next_rising = "Always down"
+        except (ephem.AlwaysUpError, ephem.NeverUpError):
+            # Search for the next rising
+            start = self._sun_observer.date.datetime()
+            end = self._sun_observer.date.datetime() + timedelta(days=365)
+            timestamp = start
+            while timestamp < end:
+                timestamp += timedelta(minutes=1440)
+                self._sun_observer.date = timestamp
+                try:
+                    self._sun_next_rising_astro = self._sun_observer.next_rising(
+                        ephem.Sun(), use_center=True
+                    ).datetime() + timedelta(hours=self._offset)
+                except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    continue
+                break
+
+        self._sun_observer.date = self._forecast_time - timedelta(hours=self._offset)
+        sun.compute(self._sun_observer)
 
         try:
             self._sun_next_setting = self._sun_observer.next_setting(
                 ephem.Sun(), use_center=True
             ).datetime() + timedelta(hours=self._offset)
-        except AlwaysUpError:
-            self._sun_next_setting = "Always up"
-        except NeverUpError:
-            self._sun_next_setting = "Always down"
+        except (ephem.AlwaysUpError, ephem.NeverUpError):
+            # Search for the next setting
+            start = self._sun_observer.date.datetime()
+            end = self._sun_observer.date.datetime() + timedelta(days=365)
+            timestamp = start
+            while timestamp < end:
+                timestamp += timedelta(minutes=1440)
+                self._sun_observer.date = timestamp
+                try:
+                    self._sun_next_setting_astro = self._sun_observer.next_setting(
+                        ephem.Sun(), use_center=True
+                    ).datetime() + timedelta(hours=self._offset)
+                except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    continue
+                break
 
         self._sun_observer_astro.date = self._forecast_time - timedelta(
             hours=self._offset
@@ -128,19 +153,46 @@ class AstronomicalRoutines:
             self._sun_next_rising_astro = self._sun_observer_astro.next_rising(
                 ephem.Sun(), use_center=True
             ).datetime() + timedelta(hours=self._offset)
-        except AlwaysUpError:
-            self._sun_next_rising_astro = "Always up"
-        except NeverUpError:
-            self._sun_next_rising_astro = "Always down"
+        except (ephem.AlwaysUpError, ephem.NeverUpError):
+            # Search for the next astronomical rising
+            start = self._sun_observer_astro.date.datetime()
+            end = self._sun_observer_astro.date.datetime() + timedelta(days=365)
+            timestamp = start
+            while timestamp < end:
+                timestamp += timedelta(minutes=1440)
+                self._sun_observer_astro.date = timestamp
+                try:
+                    self._sun_next_rising_astro = self._sun_observer_astro.next_rising(
+                        ephem.Sun(), use_center=True
+                    ).datetime() + timedelta(hours=self._offset)
+                except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    continue
+                break
+
+        self._sun_observer_astro.date = self._forecast_time - timedelta(
+            hours=self._offset
+        )
+        sun.compute(self._sun_observer_astro)
 
         try:
             self._sun_next_setting_astro = self._sun_observer_astro.next_setting(
                 ephem.Sun(), use_center=True
             ).datetime() + timedelta(hours=self._offset)
-        except AlwaysUpError:
-            self._sun_next_setting_astro = "Always up"
-        except NeverUpError:
-            self._sun_next_setting_astro = "Always down"
+        except (ephem.AlwaysUpError, ephem.NeverUpError):
+            # Search for the next astronomical setting
+            start = self._sun_observer_astro.date.datetime()
+            end = self._sun_observer_astro.date.datetime() + timedelta(days=365)
+            timestamp = start
+            while timestamp < end:
+                timestamp += timedelta(minutes=1440)
+                self._sun_observer_astro.date = timestamp
+                try:
+                    self._sun_next_setting_astro = self._sun_observer_astro.next_setting(
+                        ephem.Sun(), use_center=True
+                    ).datetime() + timedelta(hours=self._offset)
+                except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    continue
+                break
 
     def calculate_moon(self):
         """Calculates moon rising and setting"""
@@ -156,19 +208,23 @@ class AstronomicalRoutines:
             self._moon_next_rising = self._moon_observer.next_rising(
                 ephem.Moon(), use_center=True
             ).datetime() + timedelta(hours=self._offset)
-        except AlwaysUpError:
-            self._moon_next_rising = "Always up"
-        except NeverUpError:
-            self._moon_next_rising = "Always down"
+        except (ephem.AlwaysUpError, ephem.NeverUpError):
+            pass
+        # except AlwaysUpError:
+        #     self._moon_next_rising = "Always up"
+        # except NeverUpError:
+        #     self._moon_next_rising = "Always down"
 
         try:
             self._moon_next_setting = self._moon_observer.next_setting(
                 ephem.Moon(), use_center=True
             ).datetime() + timedelta(hours=self._offset)
-        except AlwaysUpError:
-            self._moon_next_setting = "Always up"
-        except NeverUpError:
-            self._moon_next_setting = "Always down"
+        except (ephem.AlwaysUpError, ephem.NeverUpError):
+            pass
+        # except AlwaysUpError:
+        #     self._moon_next_setting = "Always up"
+        # except NeverUpError:
+        #     self._moon_next_setting = "Always down"
 
     async def sun_next_rising(self) -> datetime:
         """Returns sun next rising"""

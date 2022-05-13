@@ -35,7 +35,7 @@ async def main() -> None:
 
     astroweather = AstroWeather(
         latitude=69.652,
-        longitude=18.962,
+        longitude=15.962,
         elevation=0,
         cloudcover_weight=3,
         seeing_weight=2,
