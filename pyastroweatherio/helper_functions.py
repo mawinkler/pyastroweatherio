@@ -172,27 +172,33 @@ class AstronomicalRoutines:
 
     async def sun_next_rising(self) -> datetime:
         """Returns sun next rising"""
-        return self._sun_next_rising
+        if self._sun_next_rising is not None:
+            return self._sun_next_rising
 
     async def sun_next_setting(self) -> datetime:
         """Returns sun next setting"""
-        return self._sun_next_setting
+        if self._sun_next_setting is not None:
+            return self._sun_next_setting
 
     async def sun_next_rising_astro(self) -> datetime:
         """Returns sun next astronomical rising"""
-        return self._sun_next_rising_astro
+        if self._sun_next_rising_astro is not None:
+            return self._sun_next_rising_astro
 
     async def sun_next_setting_astro(self) -> datetime:
         """Returns sun next astronomical setting"""
-        return self._sun_next_setting_astro
+        if self._sun_next_setting_astro is not None:
+            return self._sun_next_setting_astro
 
     async def moon_next_rising(self) -> datetime:
         """Returns moon next rising"""
-        return self._moon_next_rising
+        if self._moon_next_rising is not None:
+            return self._moon_next_rising
 
     async def moon_next_setting(self) -> datetime:
         """Returns moon next setting"""
-        return self._moon_next_setting
+        if self._moon_next_setting is not None:
+            return self._moon_next_setting
 
     async def moon_phase(self) -> float:
         """Returns the moon phase"""

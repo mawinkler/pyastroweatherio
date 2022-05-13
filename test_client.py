@@ -29,10 +29,14 @@ async def main() -> None:
     """Create the aiohttp session and run the example."""
     logging.basicConfig(level=logging.DEBUG)
 
+        # latitude=48.313,
+        # longitude=11.985,
+        # elevation=460,
+
     astroweather = AstroWeather(
-        latitude=48.313,
-        longitude=11.985,
-        elevation=460,
+        latitude=69.652,
+        longitude=18.962,
+        elevation=0,
         cloudcover_weight=3,
         seeing_weight=2,
         transparency_weight=1,

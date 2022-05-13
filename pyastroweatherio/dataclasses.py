@@ -226,32 +226,44 @@ class LocationData(BaseData):
     @property
     def sun_next_rising(self) -> datetime:
         """Return Sun Next Rising Civil."""
-        return self._sun_next_rising.replace(microsecond=0).isoformat()
+        if isinstance(self._sun_next_rising, datetime):
+            return self._sun_next_rising.replace(microsecond=0).isoformat()
+        return self._sun_next_rising
 
     @property
     def sun_next_rising_astro(self) -> datetime:
         """Return Sun Next Rising Astronomical."""
-        return self._sun_next_rising_astro.replace(microsecond=0).isoformat()
+        if isinstance(self._sun_next_rising_astro, datetime):
+            return self._sun_next_rising_astro.replace(microsecond=0).isoformat()
+        return self._sun_next_rising_astro
 
     @property
     def sun_next_setting(self) -> datetime:
         """Return Next Setting Civil."""
-        return self._sun_next_setting.replace(microsecond=0).isoformat()
+        if isinstance(self._sun_next_setting, datetime):
+            return self._sun_next_setting.replace(microsecond=0).isoformat()
+        return self._sun_next_setting
 
     @property
     def sun_next_setting_astro(self) -> datetime:
         """Return Sun Next Setting Astronomical."""
-        return self._sun_next_setting_astro.replace(microsecond=0).isoformat()
+        if isinstance(self._sun_next_setting_astro, datetime):
+            return self._sun_next_setting_astro.replace(microsecond=0).isoformat()
+        return self._sun_next_setting_astro
 
     @property
     def moon_next_rising(self) -> datetime:
         """Return Moon Next Rising."""
-        return self._moon_next_rising.replace(microsecond=0).isoformat()
+        if isinstance(self._moon_next_rising, datetime):
+            return self._moon_next_rising.replace(microsecond=0).isoformat()
+        return self._moon_next_rising
 
     @property
     def moon_next_setting(self) -> datetime:
         """Return Moon Next Setting."""
-        return self._moon_next_setting.replace(microsecond=0).isoformat()
+        if isinstance(self._moon_next_setting, datetime):
+            return self._moon_next_setting.replace(microsecond=0).isoformat()
+        return self._moon_next_setting
 
     @property
     def moon_phase(self) -> float:
