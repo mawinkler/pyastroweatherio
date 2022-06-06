@@ -133,9 +133,13 @@ class LocationData(BaseData):
         self._sun_next_rising_astro = data["sun_next_rising_astro"]
         self._sun_next_setting = data["sun_next_setting"]
         self._sun_next_setting_astro = data["sun_next_setting_astro"]
+        self._sun_altitude = data["sun_altitude"]
+        self._sun_azimuth = data["sun_azimuth"]
         self._moon_next_rising = data["moon_next_rising"]
         self._moon_next_setting = data["moon_next_setting"]
         self._moon_phase = data["moon_phase"]
+        self._moon_altitude = data["moon_altitude"]
+        self._moon_azimuth = data["moon_azimuth"]
         self._deepsky_forecast = data["deepsky_forecast"]
 
     @property
@@ -252,6 +256,16 @@ class LocationData(BaseData):
         # return self._sun_next_setting_astro
 
     @property
+    def sun_altitude(self) -> float:
+        """Return Sun Altitude."""
+        return round(self._sun_altitude, 3)
+
+    @property
+    def sun_azimuth(self) -> float:
+        """Return sun Azimuth."""
+        return round(self._sun_azimuth, 3)
+
+    @property
     def moon_next_rising(self) -> datetime:
         """Return Moon Next Rising."""
         if isinstance(self._moon_next_rising, datetime):
@@ -269,6 +283,16 @@ class LocationData(BaseData):
     def moon_phase(self) -> float:
         """Return Moon Phase."""
         return round(self._moon_phase, 1)
+
+    @property
+    def moon_altitude(self) -> float:
+        """Return Moon Altitude."""
+        return round(self._moon_altitude, 3)
+
+    @property
+    def moon_azimuth(self) -> float:
+        """Return Moon Azimuth."""
+        return round(self._moon_azimuth, 3)
 
     @property
     def deepsky_forecast(self):

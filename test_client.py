@@ -3,6 +3,7 @@ import asyncio
 import pprint
 import logging
 import time
+from datetime import datetime
 from pyastroweatherio import (
     AstroWeather,
     AstroWeatherError,
@@ -33,9 +34,19 @@ async def main() -> None:
         # longitude=11.985,
         # elevation=460,
 
+    print(
+        f"{esc(COLOR_BLUE)}--------------------------------------------------------"
+        + f"---------------------------------------------------------------{esc('0')}"
+    )
+    print(f"{esc(COLOR_RED)}Date & Time: {esc(COLOR_GREEN)}{str(datetime.now())}, ")
+    print(
+        f"{esc(COLOR_BLUE)}--------------------------------------------------------"
+        + f"---------------------------------------------------------------{esc('0')}"
+    )
+
     astroweather = AstroWeather(
-        latitude=69.652,
-        longitude=15.962,
+        latitude=48.313,
+        longitude=11.985,
         elevation=0,
         cloudcover_weight=3,
         seeing_weight=2,
@@ -43,6 +54,7 @@ async def main() -> None:
     )
 
     start = time.time()
+
 
     try:
         data = await astroweather.get_deepsky_forecast()
@@ -113,11 +125,17 @@ async def main() -> None:
             )
             print(
                 f"{esc(COLOR_RED)}View Condition: {esc(COLOR_GREEN)}{str(row.condition_percentage)}, "
-                + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.condition_plain)}{esc('0')}"
+                + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.condition_plain)}, "
+                + f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}Moon Phase: {esc(COLOR_GREEN)}{str(row.moon_phase)}, "
-                + f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}{esc('0')}"
+                + f"{esc(COLOR_RED)}Moon Altitude: {esc(COLOR_GREEN)}{str(row.moon_altitude)}, "
+                + f"{esc(COLOR_RED)}Moon Azimuth: {esc(COLOR_GREEN)}{str(row.moon_azimuth)}{esc('0')}"
+            )
+            print(
+                f"{esc(COLOR_RED)}Sun Altitude: {esc(COLOR_GREEN)}{str(row.sun_altitude)}, "
+                + f"{esc(COLOR_RED)}Sun Azimuth: {esc(COLOR_GREEN)}{str(row.sun_azimuth)}{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}Sun next Rising: {esc(COLOR_GREEN)}{str(row.sun_next_rising)}, "

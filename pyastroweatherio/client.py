@@ -118,6 +118,9 @@ class AstroWeather:
                 continue
 
             # Astro Routines
+            # astro_routines = AstronomicalRoutines(
+            #     self._latitude, self._longitude, self._elevation, forecast_time, offset
+            # )
             astro_routines = AstronomicalRoutines(
                 self._latitude, self._longitude, self._elevation, forecast_time, offset
             )
@@ -145,9 +148,13 @@ class AstroWeather:
                 "sun_next_rising_astro": await astro_routines.sun_next_rising_astro(),
                 "sun_next_setting": await astro_routines.sun_next_setting(),
                 "sun_next_setting_astro": await astro_routines.sun_next_setting_astro(),
+                "sun_altitude": await astro_routines.sun_altitude(),
+                "sun_azimuth": await astro_routines.sun_azimuth(),
                 "moon_next_rising": await astro_routines.moon_next_rising(),
                 "moon_next_setting": await astro_routines.moon_next_setting(),
                 "moon_phase": await astro_routines.moon_phase(),
+                "moon_altitude": await astro_routines.moon_altitude(),
+                "moon_azimuth": await astro_routines.moon_azimuth(),
                 "weather": row.get("weather", ""),
                 "deepsky_forecast": await self._deepsky_forecast(time_zone=0),
             }
