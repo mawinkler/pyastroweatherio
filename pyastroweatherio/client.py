@@ -122,7 +122,7 @@ class AstroWeather:
             #     self._latitude, self._longitude, self._elevation, forecast_time, offset
             # )
             astro_routines = AstronomicalRoutines(
-                self._latitude, self._longitude, self._elevation, forecast_time, offset
+                self._latitude, self._longitude, self._elevation, now, offset
             )
 
             item = {

@@ -50,8 +50,12 @@ class AstronomicalRoutines:
         self._sun_next_setting = None
         self._sun_next_rising_astro = None
         self._sun_next_setting_astro = None
+        self._sun_altitude = None
+        self._sun_azimuth = None
         self._moon_next_rising = None
         self._moon_next_setting = None
+        self._moon_altitude = None
+        self._moon_azimuth = None
         self._sun = None
         self._moon = None
 
@@ -100,7 +104,18 @@ class AstronomicalRoutines:
         if self._sun is None:
             self._sun = ephem.Sun()
 
+        _LOGGER.debug("Calculate Sun Forecast Time: %s", str(self._forecast_time))
+        _LOGGER.debug("Calculate Sun Offset: %s", str(self._offset))
+
+        # Alt / Az
         self._sun_observer.date = self._forecast_time - timedelta(hours=self._offset)
+        self._sun.compute(self._sun_observer)
+
+        self._sun_altitude = deg(float(self._sun.alt))
+        self._sun_azimuth = deg(float(self._sun.az))
+
+        # Rise and Setting (Civil)
+        self._sun_observer.date = self._forecast_time
         self._sun.compute(self._sun_observer)
 
         try:
@@ -123,7 +138,7 @@ class AstronomicalRoutines:
                     continue
                 break
 
-        self._sun_observer.date = self._forecast_time - timedelta(hours=self._offset)
+        self._sun_observer.date = self._forecast_time
         self._sun.compute(self._sun_observer)
 
         try:
@@ -146,9 +161,8 @@ class AstronomicalRoutines:
                     continue
                 break
 
-        self._sun_observer_astro.date = self._forecast_time - timedelta(
-            hours=self._offset
-        )
+        # Rise and Setting (Astronomical)
+        self._sun_observer_astro.date = self._forecast_time
         self._sun.compute(self._sun_observer_astro)
 
         try:
@@ -171,9 +185,7 @@ class AstronomicalRoutines:
                     continue
                 break
 
-        self._sun_observer_astro.date = self._forecast_time - timedelta(
-            hours=self._offset
-        )
+        self._sun_observer_astro.date = self._forecast_time
         self._sun.compute(self._sun_observer_astro)
 
         try:
@@ -196,6 +208,120 @@ class AstronomicalRoutines:
                     continue
                 break
 
+    # def calculate_sun(self):
+    #     """Calculates sun risings and settings"""
+    #     if self._sun_observer is None:
+    #         self.get_sun_observer()
+    #     if self._sun_observer_astro is None:
+    #         self.get_sun_observer_astro()
+    #     if self._sun is None:
+    #         self._sun = ephem.Sun()
+
+    #     # Alt / Az
+    #     self._sun_observer.date = self._forecast_time - timedelta(hours=self._offset)
+    #     self._sun.compute(self._sun_observer)
+
+    #     self._sun_altitude = deg(float(self._sun.alt))
+    #     self._sun_azimuth = deg(float(self._sun.az))
+
+    #     # Rise and Setting (Civil)
+    #     self._sun_observer.date = self._forecast_time - timedelta(hours=self._offset)
+    #     self._sun.compute(self._sun_observer)
+
+    #     try:
+    #         self._sun_next_rising = self._sun_observer.next_rising(
+    #             ephem.Sun(), use_center=True
+    #         ).datetime() + timedelta(hours=self._offset)
+    #     except (ephem.AlwaysUpError, ephem.NeverUpError):
+    #         # Search for the next rising
+    #         start = self._sun_observer.date.datetime()
+    #         end = self._sun_observer.date.datetime() + timedelta(days=365)
+    #         timestamp = start
+    #         while timestamp < end:
+    #             timestamp += timedelta(minutes=1440)
+    #             self._sun_observer.date = timestamp
+    #             try:
+    #                 self._sun_next_rising_astro = self._sun_observer.next_rising(
+    #                     ephem.Sun(), use_center=True
+    #                 ).datetime() + timedelta(hours=self._offset)
+    #             except (ephem.AlwaysUpError, ephem.NeverUpError):
+    #                 continue
+    #             break
+
+    #     self._sun_observer.date = self._forecast_time - timedelta(hours=self._offset)
+    #     self._sun.compute(self._sun_observer)
+
+    #     try:
+    #         self._sun_next_setting = self._sun_observer.next_setting(
+    #             ephem.Sun(), use_center=True
+    #         ).datetime() + timedelta(hours=self._offset)
+    #     except (ephem.AlwaysUpError, ephem.NeverUpError):
+    #         # Search for the next setting
+    #         start = self._sun_observer.date.datetime()
+    #         end = self._sun_observer.date.datetime() + timedelta(days=365)
+    #         timestamp = start
+    #         while timestamp < end:
+    #             timestamp += timedelta(minutes=1440)
+    #             self._sun_observer.date = timestamp
+    #             try:
+    #                 self._sun_next_setting_astro = self._sun_observer.next_setting(
+    #                     ephem.Sun(), use_center=True
+    #                 ).datetime() + timedelta(hours=self._offset)
+    #             except (ephem.AlwaysUpError, ephem.NeverUpError):
+    #                 continue
+    #             break
+
+    #     # Rise and Setting (Astronomical)
+    #     self._sun_observer_astro.date = self._forecast_time - timedelta(
+    #         hours=self._offset
+    #     )
+    #     self._sun.compute(self._sun_observer_astro)
+
+    #     try:
+    #         self._sun_next_rising_astro = self._sun_observer_astro.next_rising(
+    #             ephem.Sun(), use_center=True
+    #         ).datetime() + timedelta(hours=self._offset)
+    #     except (ephem.AlwaysUpError, ephem.NeverUpError):
+    #         # Search for the next astronomical rising
+    #         start = self._sun_observer_astro.date.datetime()
+    #         end = self._sun_observer_astro.date.datetime() + timedelta(days=365)
+    #         timestamp = start
+    #         while timestamp < end:
+    #             timestamp += timedelta(minutes=1440)
+    #             self._sun_observer_astro.date = timestamp
+    #             try:
+    #                 self._sun_next_rising_astro = self._sun_observer_astro.next_rising(
+    #                     ephem.Sun(), use_center=True
+    #                 ).datetime() + timedelta(hours=self._offset)
+    #             except (ephem.AlwaysUpError, ephem.NeverUpError):
+    #                 continue
+    #             break
+
+    #     self._sun_observer_astro.date = self._forecast_time - timedelta(
+    #         hours=self._offset
+    #     )
+    #     self._sun.compute(self._sun_observer_astro)
+
+    #     try:
+    #         self._sun_next_setting_astro = self._sun_observer_astro.next_setting(
+    #             ephem.Sun(), use_center=True
+    #         ).datetime() + timedelta(hours=self._offset)
+    #     except (ephem.AlwaysUpError, ephem.NeverUpError):
+    #         # Search for the next astronomical setting
+    #         start = self._sun_observer_astro.date.datetime()
+    #         end = self._sun_observer_astro.date.datetime() + timedelta(days=365)
+    #         timestamp = start
+    #         while timestamp < end:
+    #             timestamp += timedelta(minutes=1440)
+    #             self._sun_observer_astro.date = timestamp
+    #             try:
+    #                 self._sun_next_setting_astro = self._sun_observer_astro.next_setting(
+    #                     ephem.Sun(), use_center=True
+    #                 ).datetime() + timedelta(hours=self._offset)
+    #             except (ephem.AlwaysUpError, ephem.NeverUpError):
+    #                 continue
+    #             break
+
     def calculate_moon(self):
         """Calculates moon rising and setting"""
         if self._moon_observer is None:
@@ -203,7 +329,18 @@ class AstronomicalRoutines:
         if self._moon is None:
             self._moon = ephem.Moon()
 
+        _LOGGER.debug("Calculate Moon Forecast Time: %s", str(self._forecast_time))
+        _LOGGER.debug("Calculate Moon Offset: %s", str(self._offset))
+
+        # Alt / Az
         self._moon_observer.date = self._forecast_time - timedelta(hours=self._offset)
+        self._moon.compute(self._moon_observer)
+
+        self._moon_altitude = deg(float(self._moon.alt))
+        self._moon_azimuth = deg(float(self._moon.az))
+
+        # Rise and Setting
+        self._moon_observer.date = self._forecast_time
         self._moon.compute(self._moon_observer)
 
         try:
@@ -219,6 +356,38 @@ class AstronomicalRoutines:
             ).datetime() + timedelta(hours=self._offset)
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             pass
+
+    # def calculate_moon(self):
+    #     """Calculates moon rising and setting"""
+    #     if self._moon_observer is None:
+    #         self.get_moon_observer()
+    #     if self._moon is None:
+    #         self._moon = ephem.Moon()
+
+    #     # Alt / Az
+    #     self._moon_observer.date = self._forecast_time
+    #     self._moon.compute(self._moon_observer)
+
+    #     self._moon_altitude = deg(float(self._moon.alt))
+    #     self._moon_azimuth = deg(float(self._moon.az))
+
+    #     # Rise and Setting
+    #     self._moon_observer.date = self._forecast_time - timedelta(hours=self._offset)
+    #     self._moon.compute(self._moon_observer)
+
+    #     try:
+    #         self._moon_next_rising = self._moon_observer.next_rising(
+    #             ephem.Moon(), use_center=True
+    #         ).datetime() + timedelta(hours=self._offset)
+    #     except (ephem.AlwaysUpError, ephem.NeverUpError):
+    #         pass
+
+    #     try:
+    #         self._moon_next_setting = self._moon_observer.next_setting(
+    #             ephem.Moon(), use_center=True
+    #         ).datetime() + timedelta(hours=self._offset)
+    #     except (ephem.AlwaysUpError, ephem.NeverUpError):
+    #         pass
 
     async def sun_next_rising(self) -> datetime:
         """Returns sun next rising"""
@@ -242,11 +411,13 @@ class AstronomicalRoutines:
 
     async def sun_altitude(self) -> float:
         """Returns the sun altitude"""
-        return deg(float(self._sun.alt))
+        if self._sun_altitude is not None:
+            return self._sun_altitude
 
     async def sun_azimuth(self) -> float:
         """Returns the sun azimuth"""
-        return deg(float(self._sun.az))
+        if self._sun_azimuth is not None:
+            return self._sun_azimuth
 
     async def moon_next_rising(self) -> datetime:
         """Returns moon next rising"""
@@ -264,8 +435,10 @@ class AstronomicalRoutines:
 
     async def moon_altitude(self) -> float:
         """Returns the moon altitude"""
-        return deg(float(self._moon.alt))
+        if self._moon_altitude is not None:
+            return self._moon_altitude
 
     async def moon_azimuth(self) -> float:
         """Returns the moon azimuth"""
-        return deg(float(self._moon.az))
+        if self._moon_azimuth is not None:
+            return self._moon_azimuth
