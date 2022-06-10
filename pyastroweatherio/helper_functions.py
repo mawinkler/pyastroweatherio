@@ -4,8 +4,11 @@ import logging
 import ephem
 from ephem import degree
 from math import degrees as deg
+import pytz
+from timezonefinder import TimezoneFinder
 from pyastroweatherio.const import (
     DEFAULT_ELEVATION,
+    DEFAULT_TIMEZONE,
     HOME_LATITUDE,
     HOME_LONGITUDE,
     ASTRONOMICAL_TWILIGHT,
@@ -34,14 +37,18 @@ class AstronomicalRoutines:
         latitude=HOME_LATITUDE,
         longitude=HOME_LONGITUDE,
         elevation=DEFAULT_ELEVATION,
-        forecast_time=datetime.now(),
-        offset=0,
+        forecast_time=datetime.utcnow(),
+        # offset=0,
     ):
         self._latitude = latitude
         self._longitude = longitude
         self._elevation = elevation
+        # self._timezone_info = timezone_info
+        tz_find = TimezoneFinder()
+        self._timezone_info = tz_find.timezone_at(lng=longitude, lat=latitude)
+        _LOGGER.debug("Timezone: %s", self._timezone_info)
         self._forecast_time = forecast_time
-        self._offset = offset
+        # self._offset = offset
 
         self._sun_observer = None
         self._sun_observer_astro = None
@@ -61,6 +68,17 @@ class AstronomicalRoutines:
 
         self.calculate_sun()
         self.calculate_moon()
+
+    def utc_to_local(self, utc_dt):
+        """Localizes the datetime"""
+        local_tz = pytz.timezone(self._timezone_info)
+        local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
+        return local_tz.normalize(local_dt)
+
+    def utc_to_local_diff(self):
+        """returns the UTC Offset"""
+        local = self.utc_to_local(datetime.now())
+        return local.utcoffset().seconds // 3600
 
     def get_sun_observer(self) -> ephem.Observer:
         """Retrieves the ephem sun observer for the current location"""
@@ -104,24 +122,23 @@ class AstronomicalRoutines:
         if self._sun is None:
             self._sun = ephem.Sun()
 
-        _LOGGER.debug("Calculate Sun Forecast Time: %s", str(self._forecast_time))
-        _LOGGER.debug("Calculate Sun Offset: %s", str(self._offset))
-
         # Alt / Az
-        self._sun_observer.date = self._forecast_time - timedelta(hours=self._offset)
+        self._sun_observer.date = self.utc_to_local(self._forecast_time)
+        #  - timedelta(hours=self._offset)
         self._sun.compute(self._sun_observer)
 
         self._sun_altitude = deg(float(self._sun.alt))
         self._sun_azimuth = deg(float(self._sun.az))
 
         # Rise and Setting (Civil)
-        self._sun_observer.date = self._forecast_time
-        self._sun.compute(self._sun_observer)
+        # self._sun_observer.date = self.utc_to_local(self._forecast_time)
+        # self._sun.compute(self._sun_observer)
 
         try:
-            self._sun_next_rising = self._sun_observer.next_rising(
+            self._sun_next_rising = self.utc_to_local(self._sun_observer.next_rising(
                 ephem.Sun(), use_center=True
-            ).datetime() + timedelta(hours=self._offset)
+            ).datetime())
+            #  + timedelta(hours=self._offset)
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the next rising
             start = self._sun_observer.date.datetime()
@@ -131,20 +148,22 @@ class AstronomicalRoutines:
                 timestamp += timedelta(minutes=1440)
                 self._sun_observer.date = timestamp
                 try:
-                    self._sun_next_rising_astro = self._sun_observer.next_rising(
+                    self._sun_next_rising_astro = self.utc_to_local(self._sun_observer.next_rising(
                         ephem.Sun(), use_center=True
-                    ).datetime() + timedelta(hours=self._offset)
+                    ).datetime())
+                    #  + timedelta(hours=self._offset)
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
                     continue
                 break
 
-        self._sun_observer.date = self._forecast_time
-        self._sun.compute(self._sun_observer)
+        # self._sun_observer.date = self.utc_to_local(self._forecast_time)
+        # self._sun.compute(self._sun_observer)
 
         try:
-            self._sun_next_setting = self._sun_observer.next_setting(
+            self._sun_next_setting = self.utc_to_local(self._sun_observer.next_setting(
                 ephem.Sun(), use_center=True
-            ).datetime() + timedelta(hours=self._offset)
+            ).datetime())
+            #  + timedelta(hours=self._offset)
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the next setting
             start = self._sun_observer.date.datetime()
@@ -154,21 +173,23 @@ class AstronomicalRoutines:
                 timestamp += timedelta(minutes=1440)
                 self._sun_observer.date = timestamp
                 try:
-                    self._sun_next_setting_astro = self._sun_observer.next_setting(
+                    self._sun_next_setting_astro = self.utc_to_local(self._sun_observer.next_setting(
                         ephem.Sun(), use_center=True
-                    ).datetime() + timedelta(hours=self._offset)
+                    ).datetime())
+                    #  + timedelta(hours=self._offset)
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
                     continue
                 break
 
         # Rise and Setting (Astronomical)
-        self._sun_observer_astro.date = self._forecast_time
+        self._sun_observer_astro.date = self.utc_to_local(self._forecast_time)
         self._sun.compute(self._sun_observer_astro)
 
         try:
-            self._sun_next_rising_astro = self._sun_observer_astro.next_rising(
+            self._sun_next_rising_astro = self.utc_to_local(self._sun_observer_astro.next_rising(
                 ephem.Sun(), use_center=True
-            ).datetime() + timedelta(hours=self._offset)
+            ).datetime())
+            #  + timedelta(hours=self._offset)
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the next astronomical rising
             start = self._sun_observer_astro.date.datetime()
@@ -178,20 +199,22 @@ class AstronomicalRoutines:
                 timestamp += timedelta(minutes=1440)
                 self._sun_observer_astro.date = timestamp
                 try:
-                    self._sun_next_rising_astro = self._sun_observer_astro.next_rising(
+                    self._sun_next_rising_astro = self.utc_to_local(self._sun_observer_astro.next_rising(
                         ephem.Sun(), use_center=True
-                    ).datetime() + timedelta(hours=self._offset)
+                    ).datetime())
+                    #  + timedelta(hours=self._offset)
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
                     continue
                 break
 
-        self._sun_observer_astro.date = self._forecast_time
-        self._sun.compute(self._sun_observer_astro)
+        # self._sun_observer_astro.date = self.utc_to_local(self._forecast_time)
+        # self._sun.compute(self._sun_observer_astro)
 
         try:
-            self._sun_next_setting_astro = self._sun_observer_astro.next_setting(
+            self._sun_next_setting_astro = self.utc_to_local(self._sun_observer_astro.next_setting(
                 ephem.Sun(), use_center=True
-            ).datetime() + timedelta(hours=self._offset)
+            ).datetime())
+            #  + timedelta(hours=self._offset)
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the next astronomical setting
             start = self._sun_observer_astro.date.datetime()
@@ -201,9 +224,10 @@ class AstronomicalRoutines:
                 timestamp += timedelta(minutes=1440)
                 self._sun_observer_astro.date = timestamp
                 try:
-                    self._sun_next_setting_astro = self._sun_observer_astro.next_setting(
+                    self._sun_next_setting_astro = self.utc_to_local(self._sun_observer_astro.next_setting(
                         ephem.Sun(), use_center=True
-                    ).datetime() + timedelta(hours=self._offset)
+                    ).datetime())
+                    #  + timedelta(hours=self._offset)
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
                     continue
                 break
@@ -329,11 +353,9 @@ class AstronomicalRoutines:
         if self._moon is None:
             self._moon = ephem.Moon()
 
-        _LOGGER.debug("Calculate Moon Forecast Time: %s", str(self._forecast_time))
-        _LOGGER.debug("Calculate Moon Offset: %s", str(self._offset))
-
         # Alt / Az
-        self._moon_observer.date = self._forecast_time - timedelta(hours=self._offset)
+        self._moon_observer.date = self.utc_to_local(self._forecast_time)
+        # - timedelta(hours=self._offset)
         self._moon.compute(self._moon_observer)
 
         self._moon_altitude = deg(float(self._moon.alt))
@@ -344,16 +366,18 @@ class AstronomicalRoutines:
         self._moon.compute(self._moon_observer)
 
         try:
-            self._moon_next_rising = self._moon_observer.next_rising(
+            self._moon_next_rising = self.utc_to_local(self._moon_observer.next_rising(
                 ephem.Moon(), use_center=True
-            ).datetime() + timedelta(hours=self._offset)
+            ).datetime())
+            # + timedelta(hours=self._offset)
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             pass
 
         try:
-            self._moon_next_setting = self._moon_observer.next_setting(
+            self._moon_next_setting = self.utc_to_local(self._moon_observer.next_setting(
                 ephem.Moon(), use_center=True
-            ).datetime() + timedelta(hours=self._offset)
+            ).datetime())
+            # + timedelta(hours=self._offset)
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             pass
 

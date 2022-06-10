@@ -2,9 +2,6 @@
 import asyncio
 import json
 import logging
-import time
-import ephem
-from ephem import AlwaysUpError, NeverUpError
 from datetime import datetime, timedelta
 from typing import Optional
 from aiohttp import ClientSession, ClientTimeout
@@ -31,6 +28,7 @@ from pyastroweatherio.dataclasses import (
 )
 from pyastroweatherio.errors import RequestError
 from pyastroweatherio.helper_functions import ConversionFunctions, AstronomicalRoutines
+
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -65,49 +63,39 @@ class AstroWeather:
     # Public functions
     async def get_location_data(
         self,
-        time_zone=0,
-        hours_to_show=24,
     ) -> None:
         """Returns station Weather Forecast."""
-        _LOGGER.debug("get_location_data called")
         return await self._get_location_data()
 
-    # async def get_forecast(self, forecast_type=FORECAST_TYPE_DAILY, hours_to_show=24, time_zone=0) -> None:
+    # async def get_forecast(self, forecast_type=FORECAST_TYPE_DAILY, hours_to_show=24) -> None:
     #     """Returns station Weather Forecast."""
     #     _LOGGER.debug("get_forecast called")
-    #     return await self._forecast_data(forecast_type, hours_to_show, time_zone)
+    #     return await self._forecast_data(forecast_type, hours_to_show)
 
-    async def get_daily_forecast(self) -> None:
-        """Returns daily Weather Forecast."""
-        return await self._forecast_data(FORECAST_TYPE_DAILY, 72, time_zone=0)
+    # async def get_daily_forecast(self) -> None:
+    #     """Returns daily Weather Forecast."""
+    #     return await self._forecast_data(FORECAST_TYPE_DAILY, 72)
 
     async def get_hourly_forecast(self) -> None:
         """Returns hourly Weather Forecast."""
-        return await self._forecast_data(FORECAST_TYPE_HOURLY, 72, time_zone=0)
+        return await self._forecast_data(FORECAST_TYPE_HOURLY, 72)
 
     async def get_deepsky_forecast(self) -> None:
         """Returns Deep Sky Forecast."""
-        return await self._deepsky_forecast(time_zone=0)
+        return await self._deepsky_forecast()
 
     # Private functions
     async def _get_location_data(self) -> None:
-        """Return Forecast data for the Station."""
-
-        # Timezone Offset is currently calculated based on system time
-        offset = time.timezone if (time.localtime().tm_isdst == 0) else time.altzone
-        offset = offset / 60 / 60 * (-1)
+        """Return Forecast data"""
 
         cnv = ConversionFunctions()
         items = []
 
-        _LOGGER.debug("Timezone offset: %s", str(offset))
         await self.retrieve_data()
-        now = datetime.now()
+        now = datetime.utcnow()
 
-        # Anchor timestamp of forecast considering offset
-        init_ts = (await cnv.anchor_timestamp(self._weather_data_init)) + timedelta(
-            hours=offset
-        )
+        # Anchor timestamp
+        init_ts = await cnv.anchor_timestamp(self._weather_data_init)
 
         forecast_skipped = 0
         for row in self._weather_data:
@@ -118,11 +106,8 @@ class AstroWeather:
                 continue
 
             # Astro Routines
-            # astro_routines = AstronomicalRoutines(
-            #     self._latitude, self._longitude, self._elevation, forecast_time, offset
-            # )
             astro_routines = AstronomicalRoutines(
-                self._latitude, self._longitude, self._elevation, now, offset
+                self._latitude, self._longitude, self._elevation, now
             )
 
             item = {
@@ -156,35 +141,34 @@ class AstroWeather:
                 "moon_altitude": await astro_routines.moon_altitude(),
                 "moon_azimuth": await astro_routines.moon_azimuth(),
                 "weather": row.get("weather", ""),
-                "deepsky_forecast": await self._deepsky_forecast(time_zone=0),
+                "deepsky_forecast": await self._deepsky_forecast(),
             }
             items.append(LocationData(item))
             break
 
         return items
 
-    async def _forecast_data(self, forecast_type, hours_to_show, time_zone) -> None:
+    async def _forecast_data(self, forecast_type, hours_to_show) -> None:
         """Return Forecast data for the Station."""
-
-        # Timezone Offset is currently calculated based on system time
-        offset = time.timezone if (time.localtime().tm_isdst == 0) else time.altzone
-        offset = offset / 60 / 60 * (-1)
 
         cnv = ConversionFunctions()
         items = []
 
-        _LOGGER.debug("Timezone offset: %s", str(offset))
         await self.retrieve_data()
-        now = datetime.now()
+        now = datetime.utcnow()
 
         # Create items
         cnt = 0
 
-        # Anchor timestamp of forecast considering offset
-        init_ts = (await cnv.anchor_timestamp(self._weather_data_init)) + timedelta(
-            hours=offset
-        )
+        # Anchor timestamp
+        init_ts = await cnv.anchor_timestamp(self._weather_data_init)
 
+        # Astro Routines
+        astro_routines = AstronomicalRoutines(
+            self._latitude, self._longitude, self._elevation, now
+        )
+        utc_to_local_diff = astro_routines.utc_to_local_diff()
+        _LOGGER.debug("UTC to local diff: %s", str(utc_to_local_diff))
         _LOGGER.debug("Forecast length: %s", str(len(self._weather_data)))
 
         for row in self._weather_data:
@@ -193,7 +177,8 @@ class AstroWeather:
             if now > forecast_time:
                 continue
 
-            hour_of_day = forecast_time.hour % 24
+            # Hour of day needs to be in local time
+            hour_of_day = (forecast_time.hour + utc_to_local_diff) % 24
 
             cloudcover = row["cloudcover"]
             seeing = row["seeing"]
@@ -202,7 +187,7 @@ class AstroWeather:
             item = {
                 "init": init_ts,
                 "timepoint": row["timepoint"],
-                "timestamp": forecast_time,
+                "timestamp": astro_routines.utc_to_local(forecast_time),
                 "hour": hour_of_day,
                 "cloudcover": cloudcover,
                 "seeing": seeing,
@@ -225,26 +210,23 @@ class AstroWeather:
 
         return items
 
-    async def _deepsky_forecast(self, time_zone):
-        # Timezone Offset is currently calculated based on system time
-        offset = time.timezone if (time.localtime().tm_isdst == 0) else time.altzone
-        offset = offset / 60 / 60 * (-1)
+    async def _deepsky_forecast(self):
+        """Return Deepsky Forecast data"""
 
         cnv = ConversionFunctions()
         items = []
 
         await self.retrieve_data()
-        now = datetime.now()
-        # Anchor timestamp of forecast considering offset
-        init_ts = (await cnv.anchor_timestamp(self._weather_data_init)) + timedelta(
-            hours=offset
-        )
-        _LOGGER.debug(
-            "Init Timestamp: %s, Timezone offset: %s", str(init_ts), str(offset)
-        )
+        now = datetime.utcnow()
 
-        # Calc time difference in between init timestamp and 9pm
-        # init_night_diff = 21 - init_ts.hour
+        # Anchor timestamp
+        init_ts = await cnv.anchor_timestamp(self._weather_data_init)
+
+        # Astro Routines
+        astro_routines = AstronomicalRoutines(
+            self._latitude, self._longitude, self._elevation, now
+        )
+        utc_to_local_diff = astro_routines.utc_to_local_diff()
 
         # Create forecast
         forecast_dayname = ""
@@ -258,7 +240,8 @@ class AstroWeather:
             if now > forecast_time:
                 continue
 
-            hour_of_day = forecast_time.hour % 24
+            # Hour of day needs to be in local time
+            hour_of_day = (forecast_time.hour + utc_to_local_diff) % 24
 
             # Skip daytime, we're only interested in the forecasts in
             # between 9pm to 3am.
@@ -354,7 +337,7 @@ class AstroWeather:
             _LOGGER.debug("Updating data")
 
             # Testing
-            # json_data_astro = {"init": "2022031612"}
+            # json_data_astro = {"init": "2022060906"}
             # with open("astro.json") as json_file:
             #     astro_dataseries = json.load(json_file).get("dataseries", {})
             # with open("civil.json") as json_file:

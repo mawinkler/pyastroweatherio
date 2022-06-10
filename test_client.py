@@ -166,7 +166,7 @@ async def main() -> None:
                 f"{esc(COLOR_RED)}Description: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_desc)}{esc('0')}"
             )
 
-        data = await astroweather.get_daily_forecast()
+        data = await astroweather.get_hourly_forecast()
         print(f"Forecast Length: {str(len(data))}")
         for row in data:
             print(
