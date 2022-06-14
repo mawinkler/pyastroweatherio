@@ -130,8 +130,10 @@ class LocationData(BaseData):
         self._longitude = data["longitude"]
         self._elevation = data["elevation"]
         self._sun_next_rising = data["sun_next_rising"]
+        self._sun_next_rising_nautical = data["sun_next_rising_nautical"]
         self._sun_next_rising_astro = data["sun_next_rising_astro"]
         self._sun_next_setting = data["sun_next_setting"]
+        self._sun_next_setting_nautical = data["sun_next_setting_nautical"]
         self._sun_next_setting_astro = data["sun_next_setting_astro"]
         self._sun_altitude = data["sun_altitude"]
         self._sun_azimuth = data["sun_azimuth"]
@@ -235,6 +237,13 @@ class LocationData(BaseData):
         # return self._sun_next_rising
 
     @property
+    def sun_next_rising_nautical(self) -> datetime:
+        """Return Sun Next Rising Nautical."""
+        if isinstance(self._sun_next_rising_nautical, datetime):
+            return self._sun_next_rising_nautical.replace(microsecond=0).isoformat()
+        # return self._sun_next_rising_nautical
+
+    @property
     def sun_next_rising_astro(self) -> datetime:
         """Return Sun Next Rising Astronomical."""
         if isinstance(self._sun_next_rising_astro, datetime):
@@ -247,6 +256,13 @@ class LocationData(BaseData):
         if isinstance(self._sun_next_setting, datetime):
             return self._sun_next_setting.replace(microsecond=0).isoformat()
         # return self._sun_next_setting
+
+    @property
+    def sun_next_setting_nautical(self) -> datetime:
+        """Return Sun Next Setting Nautical."""
+        if isinstance(self._sun_next_setting_nautical, datetime):
+            return self._sun_next_setting_nautical.replace(microsecond=0).isoformat()
+        # return self._sun_next_setting_nautical
 
     @property
     def sun_next_setting_astro(self) -> datetime:
