@@ -31,6 +31,7 @@ class BaseData:
         self._rh2m = data["rh2m"]
         self._wind10m = data["wind10m"]
         self._temp2m = data["temp2m"]
+        self._dewpoint2m = data["dewpoint2m"]
         self._prec_type = data["prec_type"]
         self._weather = data["weather"]
 
@@ -108,6 +109,11 @@ class BaseData:
     def temp2m(self) -> int:
         """Return 2m Temperature."""
         return self._temp2m
+
+    @property
+    def dewpoint2m(self) -> float:
+        """Return 2m Dew Point."""
+        return  self._dewpoint2m
 
     @property
     def prec_type(self) -> str:

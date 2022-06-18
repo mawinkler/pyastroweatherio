@@ -18,6 +18,9 @@ NAUTICAL_DUSK_DAWN = -12
 ASTRONOMICAL_TWILIGHT = -12
 ASTRONOMICAL_DUSK_DAWN = -18
 
+MAGNUS_COEFFICIENT_A = 17.625
+MAGNUS_COEFFICIENT_B = 243.04
+
 DEEP_SKY_THRESHOLD = 75
 HOME_LATITUDE = 0.0
 HOME_LONGITUDE = 0.0
@@ -136,6 +139,10 @@ MAP_WEATHER_TYPE = {
     "snownight": "Precipitation rate over 4mm/hr",
     "rainsnowday": "Precipitation type to be ice pellets or freezing rain",
     "rainsnownight": "Precipitation type to be ice pellets or freezing rain",
+    "tsday": "Lifted Index less than -5 with precipitation rate below 4mm/hr",
+    "tsnight": "Lifted Index less than -5 with precipitation rate below 4mm/hr",
+    "tsrainday": "Lifted Index less than -5 with precipitation rate over 4mm/hr",
+    "tsrainnight": "Lifted Index less than -5 with precipitation rate over 4mm/hr",
 }
 
 CONDITION = ["excellent", "good", "fair", "poor", "bad"]

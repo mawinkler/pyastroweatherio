@@ -111,22 +111,21 @@ async def main() -> None:
                 + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.lifted_index_plain)}{esc('0')}"
             )
             print(
-                f"{esc(COLOR_RED)}Rel. Humidity: {esc(COLOR_GREEN)}{str(row.rh2m)}, {esc('0')}"
-            )
-            print(
                 f"{esc(COLOR_RED)}Wind Direction: {esc(COLOR_GREEN)}{str(row.wind10m_direction)}, "
                 + f"{esc(COLOR_RED)}Speed: {esc(COLOR_GREEN)}{str(row.wind10m_speed)}, "
                 + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.wind10m_speed_plain)}{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}Temperature: {esc(COLOR_GREEN)}{str(row.temp2m)}, "
-                + f"{esc(COLOR_RED)}Prec Type: {esc(COLOR_GREEN)}{str(row.prec_type)}, "
-                + f"{esc(COLOR_RED)}Deep Sky View: {esc(COLOR_GREEN)}{str(row.deep_sky_view)}{esc('0')}"
+                + f"{esc(COLOR_RED)}Rel Humidity: {esc(COLOR_GREEN)}{str(row.rh2m)}, "
+                + f"{esc(COLOR_RED)}Dew Point: {esc(COLOR_GREEN)}{str(row.dewpoint2m)}, "
+                + f"{esc(COLOR_RED)}Prec Type: {esc(COLOR_GREEN)}{str(row.prec_type)}{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}View Condition: {esc(COLOR_GREEN)}{str(row.condition_percentage)}, "
                 + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.condition_plain)}, "
-                + f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}{esc('0')}"
+                + f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}, "
+                + f"{esc(COLOR_RED)}Deep Sky View: {esc(COLOR_GREEN)}{str(row.deep_sky_view)}{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}Moon Phase: {esc(COLOR_GREEN)}{str(row.moon_phase)}, "
@@ -196,10 +195,9 @@ async def main() -> None:
                 + f"{esc(COLOR_RED)}Speed: {esc(COLOR_GREEN)}{str(row.wind10m_speed)}{esc('0')}"
             )
             print(
-                f"{esc(COLOR_RED)}Rel Humidity: {esc(COLOR_GREEN)}{str(row.rh2m)}{esc('0')}"
-            )
-            print(
                 f"{esc(COLOR_RED)}Temperature: {esc(COLOR_GREEN)}{str(row.temp2m)}, "
+                + f"{esc(COLOR_RED)}Rel Humidity: {esc(COLOR_GREEN)}{str(row.rh2m)}, "
+                + f"{esc(COLOR_RED)}Dew Point: {esc(COLOR_GREEN)}{str(row.dewpoint2m)}, "
                 + f"{esc(COLOR_RED)}Prec Type: {esc(COLOR_GREEN)}{str(row.prec_type)}{esc('0')}"
             )
             print(

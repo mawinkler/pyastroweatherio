@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 from aiohttp import ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ClientError
+from numpy import log as ln
+import math
 
 from pyastroweatherio.const import (
     BASE_URL,
@@ -20,6 +22,8 @@ from pyastroweatherio.const import (
     STIMER_OUTPUT,
     FORECAST_TYPE_DAILY,
     FORECAST_TYPE_HOURLY,
+    MAGNUS_COEFFICIENT_A,
+    MAGNUS_COEFFICIENT_B,
 )
 from pyastroweatherio.dataclasses import (
     ForecastData,
@@ -128,6 +132,7 @@ class AstroWeather:
                 "rh2m": row["rh2m"],
                 "wind10m": row["wind10m"],
                 "temp2m": row["temp2m"],
+                "dewpoint2m": await self.calc_dewpoint2m(row["rh2m"], row["temp2m"]),
                 "prec_type": row["prec_type"],
                 "sun_next_rising": await astro_routines.sun_next_rising(),
                 "sun_next_rising_nautical": await astro_routines.sun_next_rising_nautical(),
@@ -201,6 +206,7 @@ class AstroWeather:
                 "rh2m": row["rh2m"],
                 "wind10m": row["wind10m"],
                 "temp2m": row["temp2m"],
+                "dewpoint2m": await self.calc_dewpoint2m(row["rh2m"], row["temp2m"]),
                 "prec_type": row["prec_type"],
                 "weather": row.get("weather", ""),
             }
@@ -328,6 +334,15 @@ class AstroWeather:
             condition,
         )
         return condition
+
+    async def calc_dewpoint2m(self, rh2m, temp2m):
+        """Calculate 2m Dew Point."""
+        # α(T,RH) = ln(RH/100) + aT/(b+T)
+        # Ts = (b × α(T,RH)) / (a - α(T,RH))
+        alpha = ln(rh2m / 100) + MAGNUS_COEFFICIENT_A * temp2m / (MAGNUS_COEFFICIENT_B + temp2m)
+        dewpoint = (MAGNUS_COEFFICIENT_B * alpha) / (MAGNUS_COEFFICIENT_A - alpha)
+
+        return dewpoint
 
     async def retrieve_data(self):
         """Retrieves current data from 7timer"""
