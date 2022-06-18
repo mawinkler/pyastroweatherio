@@ -1,5 +1,5 @@
 """Defines the Data Classes used."""
-from datetime import datetime, timedelta
+from datetime import datetime
 import math
 
 from pyastroweatherio.const import (
@@ -113,7 +113,7 @@ class BaseData:
     @property
     def dewpoint2m(self) -> float:
         """Return 2m Dew Point."""
-        return  self._dewpoint2m
+        return  round(self._dewpoint2m, 1)
 
     @property
     def prec_type(self) -> str:
