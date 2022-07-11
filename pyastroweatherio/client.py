@@ -6,8 +6,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from aiohttp import ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ClientError
-from numpy import log as ln
-import math
+from decimal import Decimal
 
 from pyastroweatherio.const import (
     BASE_URL,
@@ -339,7 +338,9 @@ class AstroWeather:
         """Calculate 2m Dew Point."""
         # α(T,RH) = ln(RH/100) + aT/(b+T)
         # Ts = (b × α(T,RH)) / (a - α(T,RH))
-        alpha = ln(rh2m / 100) + MAGNUS_COEFFICIENT_A * temp2m / (MAGNUS_COEFFICIENT_B + temp2m)
+        alpha = float(Decimal(str(rh2m / 100)).ln()) + MAGNUS_COEFFICIENT_A * temp2m / (
+            MAGNUS_COEFFICIENT_B + temp2m
+        )
         dewpoint = (MAGNUS_COEFFICIENT_B * alpha) / (MAGNUS_COEFFICIENT_A - alpha)
 
         return dewpoint
