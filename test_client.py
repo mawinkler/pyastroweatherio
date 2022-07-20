@@ -48,6 +48,7 @@ async def main() -> None:
         latitude=48.313,
         longitude=11.985,
         elevation=0,
+        timezone_info="Europe/Berlin",
         cloudcover_weight=3,
         seeing_weight=2,
         transparency_weight=1,

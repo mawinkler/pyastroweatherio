@@ -13,6 +13,7 @@ from pyastroweatherio.const import (
     DEFAULT_TIMEOUT,
     DEFAULT_CACHE_TIMEOUT,
     DEFAULT_ELEVATION,
+    DEFAULT_TIMEZONE,
     DEFAULT_CONDITION_CLOUDCOVER_WEIGHT,
     DEFAULT_CONDITION_SEEING_WEIGHT,
     DEFAULT_CONDITION_TRANSPARENCY_WEIGHT,
@@ -45,6 +46,7 @@ class AstroWeather:
         latitude=HOME_LATITUDE,
         longitude=HOME_LONGITUDE,
         elevation=DEFAULT_ELEVATION,
+        timezone_info=DEFAULT_TIMEZONE,
         cloudcover_weight=DEFAULT_CONDITION_CLOUDCOVER_WEIGHT,
         seeing_weight=DEFAULT_CONDITION_SEEING_WEIGHT,
         transparency_weight=DEFAULT_CONDITION_TRANSPARENCY_WEIGHT,
@@ -53,6 +55,7 @@ class AstroWeather:
         self._latitude = latitude
         self._longitude = longitude
         self._elevation = elevation
+        self._timezone_info = timezone_info
         self._weather_data = []
         self._weather_data_init = ""
         self._weather_data_timestamp = datetime.now() - timedelta(
@@ -110,7 +113,11 @@ class AstroWeather:
 
             # Astro Routines
             astro_routines = AstronomicalRoutines(
-                self._latitude, self._longitude, self._elevation, now
+                self._latitude,
+                self._longitude,
+                self._elevation,
+                self._timezone_info,
+                now,
             )
 
             item = {
@@ -171,7 +178,7 @@ class AstroWeather:
 
         # Astro Routines
         astro_routines = AstronomicalRoutines(
-            self._latitude, self._longitude, self._elevation, now
+            self._latitude, self._longitude, self._elevation, self._timezone_info, now
         )
         utc_to_local_diff = astro_routines.utc_to_local_diff()
         _LOGGER.debug("UTC to local diff: %s", str(utc_to_local_diff))
@@ -231,7 +238,7 @@ class AstroWeather:
 
         # Astro Routines
         astro_routines = AstronomicalRoutines(
-            self._latitude, self._longitude, self._elevation, now
+            self._latitude, self._longitude, self._elevation, self._timezone_info, now
         )
         utc_to_local_diff = astro_routines.utc_to_local_diff()
 

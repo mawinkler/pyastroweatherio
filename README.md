@@ -1,6 +1,6 @@
 # pyAstroWeatherIO
 
-Wrapper for the 7Timer AstroWeather REST API. Designed to work with Home Assistant.
+Wrapper for the 7Timer AstroWeather REST API. Designed to work with Home Assistant and the custom [AstroWeather](https://github.com/mawinkler/astroweather) integration.
 
 This module communicates with the API endpoint of 7Timer ([documentation](http://www.7timer.info/doc.php)). It retrieves current weather data for astronomical observations:
 

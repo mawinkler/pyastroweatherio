@@ -113,7 +113,7 @@ class BaseData:
     @property
     def dewpoint2m(self) -> float:
         """Return 2m Dew Point."""
-        return  round(self._dewpoint2m, 1)
+        return round(self._dewpoint2m, 1)
 
     @property
     def prec_type(self) -> str:
