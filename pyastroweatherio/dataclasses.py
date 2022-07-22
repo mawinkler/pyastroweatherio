@@ -1,5 +1,5 @@
 """Defines the Data Classes used."""
-from datetime import datetime
+from datetime import datetime, timezone
 import math
 
 from pyastroweatherio.const import (
@@ -38,7 +38,7 @@ class BaseData:
     @property
     def init(self) -> datetime:
         """Return Forecast Anchor."""
-        return self._init.replace(microsecond=0).isoformat()
+        return self._init.replace(microsecond=0, tzinfo=timezone.utc)
 
     @property
     def timepoint(self) -> int:
@@ -48,7 +48,7 @@ class BaseData:
     @property
     def timestamp(self) -> datetime:
         """Return Forecast Timestamp."""
-        return self._timestamp.replace(microsecond=0).isoformat()
+        return self._timestamp.replace(microsecond=0, tzinfo=timezone.utc)
 
     @property
     def condition_percentage(self) -> int:
@@ -239,42 +239,42 @@ class LocationData(BaseData):
     def sun_next_rising(self) -> datetime:
         """Return Sun Next Rising Civil."""
         if isinstance(self._sun_next_rising, datetime):
-            return self._sun_next_rising.replace(microsecond=0).isoformat()
+            return self._sun_next_rising
         # return self._sun_next_rising
 
     @property
     def sun_next_rising_nautical(self) -> datetime:
         """Return Sun Next Rising Nautical."""
         if isinstance(self._sun_next_rising_nautical, datetime):
-            return self._sun_next_rising_nautical.replace(microsecond=0).isoformat()
+            return self._sun_next_rising_nautical
         # return self._sun_next_rising_nautical
 
     @property
     def sun_next_rising_astro(self) -> datetime:
         """Return Sun Next Rising Astronomical."""
         if isinstance(self._sun_next_rising_astro, datetime):
-            return self._sun_next_rising_astro.replace(microsecond=0).isoformat()
+            return self._sun_next_rising_astro
         # return self._sun_next_rising_astro
 
     @property
     def sun_next_setting(self) -> datetime:
         """Return Next Setting Civil."""
         if isinstance(self._sun_next_setting, datetime):
-            return self._sun_next_setting.replace(microsecond=0).isoformat()
+            return self._sun_next_setting
         # return self._sun_next_setting
 
     @property
     def sun_next_setting_nautical(self) -> datetime:
         """Return Sun Next Setting Nautical."""
         if isinstance(self._sun_next_setting_nautical, datetime):
-            return self._sun_next_setting_nautical.replace(microsecond=0).isoformat()
+            return self._sun_next_setting_nautical
         # return self._sun_next_setting_nautical
 
     @property
     def sun_next_setting_astro(self) -> datetime:
         """Return Sun Next Setting Astronomical."""
         if isinstance(self._sun_next_setting_astro, datetime):
-            return self._sun_next_setting_astro.replace(microsecond=0).isoformat()
+            return self._sun_next_setting_astro
         # return self._sun_next_setting_astro
 
     @property
@@ -291,14 +291,14 @@ class LocationData(BaseData):
     def moon_next_rising(self) -> datetime:
         """Return Moon Next Rising."""
         if isinstance(self._moon_next_rising, datetime):
-            return self._moon_next_rising.replace(microsecond=0).isoformat()
+            return self._moon_next_rising
         # return self._moon_next_rising
 
     @property
     def moon_next_setting(self) -> datetime:
         """Return Moon Next Setting."""
         if isinstance(self._moon_next_setting, datetime):
-            return self._moon_next_setting.replace(microsecond=0).isoformat()
+            return self._moon_next_setting
         # return self._moon_next_setting
 
     @property
@@ -476,7 +476,7 @@ class NightlyConditionsData:
     @property
     def init(self) -> datetime:
         """Return Forecast Anchor."""
-        return self._init.replace(microsecond=0).isoformat()
+        return self._init
 
     @property
     def dayname(self) -> str:

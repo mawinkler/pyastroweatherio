@@ -200,7 +200,8 @@ class AstroWeather:
             item = {
                 "init": init_ts,
                 "timepoint": row["timepoint"],
-                "timestamp": astro_routines.utc_to_local(forecast_time),
+                "timestamp": forecast_time,
+                # "timestamp": astro_routines.utc_to_local(forecast_time),
                 "hour": hour_of_day,
                 "cloudcover": cloudcover,
                 "seeing": seeing,
