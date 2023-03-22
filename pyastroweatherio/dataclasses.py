@@ -7,11 +7,11 @@ from pyastroweatherio.const import (
     CONDITION,
     DEEP_SKY_THRESHOLD,
     LIFTED_INDEX_PLAIN,
-    # RH2M_PLAIN,
     SEEING_PLAIN,
     TRANSPARENCY_PLAIN,
     WIND10M_SPEED_PLAIN,
     WIND10M_SPEED,
+    WIND10M_DIRECTON,
     MAP_WEATHER_TYPE,
 )
 
@@ -103,7 +103,11 @@ class BaseData:
     @property
     def wind10m_speed(self) -> float:
         """Return 10m Wind Speed."""
-        return float(WIND10M_SPEED[self._wind10m.get("speed", 0)])
+        speed = self._wind10m.get("speed", 0)
+        if speed >= 1 and speed <= 8:
+            return float(WIND10M_SPEED[self._wind10m.get("speed", 0)])
+        # return float(0)
+        return None
 
     @property
     def temp2m(self) -> int:
@@ -173,17 +177,26 @@ class LocationData(BaseData):
     @property
     def cloudcover_plain(self) -> str:
         """Return Cloud Coverage."""
-        return CLOUDCOVER_PLAIN[self._cloudcover - 1]
+        cover = self._cloudcover
+        if cover >= 1 and cover <= 9:
+            return CLOUDCOVER_PLAIN[cover - 1]
+        return None
 
     @property
     def seeing_plain(self) -> str:
         """Return Seeing."""
-        return SEEING_PLAIN[self._seeing - 1]
+        seeing = self._seeing
+        if seeing >= 1 and seeing <= 8:
+            return SEEING_PLAIN[seeing - 1]
+        return None
 
     @property
     def transparency_plain(self) -> str:
         """Return Transparency."""
-        return TRANSPARENCY_PLAIN[self._transparency - 1]
+        transparency = self._transparency
+        if transparency >= 1 and transparency <= 8:
+            return TRANSPARENCY_PLAIN[self._transparency - 1]
+        return None
 
     @property
     def lifted_index_plain(self) -> str:
@@ -199,21 +212,27 @@ class LocationData(BaseData):
             10: LIFTED_INDEX_PLAIN[6],
             15: LIFTED_INDEX_PLAIN[7],
         }
-        return trans.get(self._lifted_index, "")
+        lifted_index = self._lifted_index
+        if lifted_index in trans:
+            return trans.get(self._lifted_index, "")
+        return None
 
     @property
     def wind10m_direction(self) -> str:
         """Return 10m Wind Direction."""
-        return self._wind10m.get("direction", "O").upper()
+        direction = self._wind10m.get("direction", "O")
+        if direction in WIND10M_DIRECTON:
+            return direction.upper()
+        return None
 
     @property
     def wind10m_speed_plain(self) -> str:
         """Return 10m Wind Speed."""
-        speed = self._wind10m.get("speed", -1)
-        if speed < 8:
-            return WIND10M_SPEED_PLAIN[self._wind10m.get("speed", 0)].capitalize()
-        else:
-            return WIND10M_SPEED_PLAIN[8].capitalize()
+        speed = self._wind10m.get("speed", 0)
+        if speed >= 1 and speed <= 8:
+            return WIND10M_SPEED_PLAIN[speed].capitalize()
+        # return WIND10M_SPEED_PLAIN[0].capitalize()
+        return None
 
     @property
     def deep_sky_view(self) -> bool:
@@ -453,7 +472,10 @@ class ForecastData(BaseData):
     @property
     def wind10m_direction(self) -> str:
         """Return 10m Wind Direction."""
-        return self._wind10m.get("direction", "O").upper()
+        direction = self._wind10m.get("direction", "O")
+        if direction in WIND10M_DIRECTON:
+            return direction.upper()
+        return None
 
     @property
     def deep_sky_view(self) -> bool:

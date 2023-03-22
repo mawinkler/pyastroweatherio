@@ -82,6 +82,8 @@ WIND10M_SPEED_PLAIN = [
     "hurricane",
 ]
 
+WIND10M_DIRECTON = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+
 WIND10M_SPEED = [
     0,
     0.3,
