@@ -178,3 +178,7 @@ cython_debug/
 # Support for Project snippet scope
 
 # End of https://www.toptal.com/developers/gitignore/api/python,visualstudiocode
+pyastroweatherio/.dccache
+archive
+forecast_7timer.txt
+forecast_metno.txt

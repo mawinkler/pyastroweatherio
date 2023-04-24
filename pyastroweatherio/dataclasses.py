@@ -24,6 +24,10 @@ class BaseData:
         self._timepoint = data["timepoint"]
         self._timestamp = data["timestamp"]
         self._cloudcover = data["cloudcover"]
+        self._cloud_area_fraction = data["cloud_area_fraction"]
+        self._cloud_area_fraction_high = data["cloud_area_fraction_high"]
+        self._cloud_area_fraction_low = data["cloud_area_fraction_low"]
+        self._cloud_area_fraction_medium = data["cloud_area_fraction_medium"]
         self._seeing = data["seeing"]
         self._transparency = data["transparency"]
         self._condition_percentage = data["condition_percentage"]
@@ -69,6 +73,26 @@ class BaseData:
     def cloudless_percentage(self) -> int:
         """Return Cloudless Percentage."""
         return int(100 + 100 * (1 - self._cloudcover) / 8)
+
+    @property
+    def cloud_area_fraction_percentage(self) -> int:
+        """Return Cloud Cover Percentage."""
+        return self._cloud_area_fraction
+
+    @property
+    def cloud_area_fraction_high_percentage(self) -> int:
+        """Return Cloud Cover Percentage."""
+        return self._cloud_area_fraction_high
+
+    @property
+    def cloud_area_fraction_low_percentage(self) -> int:
+        """Return Cloud Cover Percentage."""
+        return self._cloud_area_fraction_low
+
+    @property
+    def cloud_area_fraction_medium_percentage(self) -> int:
+        """Return Cloud Cover Percentage."""
+        return self._cloud_area_fraction_medium
 
     @property
     def seeing(self) -> int:
@@ -372,21 +396,9 @@ class LocationData(BaseData):
         if len(self._deepsky_forecast) > 0:
             nightly_conditions = self._deepsky_forecast[0]
             out = ""
-            out += (
-                CONDITION[
-                    4 - math.floor(nightly_conditions.nightly_conditions[0] / 20)
-                ].capitalize()
-                + "-"
-            )
-            out += (
-                CONDITION[
-                    4 - math.floor(nightly_conditions.nightly_conditions[1] / 20)
-                ].capitalize()
-                + "-"
-            )
-            out += CONDITION[
-                4 - math.floor(nightly_conditions.nightly_conditions[2] / 20)
-            ].capitalize()
+            out += CONDITION[4 - math.floor(nightly_conditions.nightly_conditions[0] / 20)].capitalize() + "-"
+            out += CONDITION[4 - math.floor(nightly_conditions.nightly_conditions[1] / 20)].capitalize() + "-"
+            out += CONDITION[4 - math.floor(nightly_conditions.nightly_conditions[2] / 20)].capitalize()
             return out
         return None
 
@@ -430,21 +442,9 @@ class LocationData(BaseData):
         if len(self._deepsky_forecast) > 1:
             nightly_conditions = self._deepsky_forecast[1]
             out = ""
-            out += (
-                CONDITION[
-                    4 - math.floor(nightly_conditions.nightly_conditions[0] / 20)
-                ].capitalize()
-                + "-"
-            )
-            out += (
-                CONDITION[
-                    4 - math.floor(nightly_conditions.nightly_conditions[1] / 20)
-                ].capitalize()
-                + "-"
-            )
-            out += CONDITION[
-                4 - math.floor(nightly_conditions.nightly_conditions[2] / 20)
-            ].capitalize()
+            out += CONDITION[4 - math.floor(nightly_conditions.nightly_conditions[0] / 20)].capitalize() + "-"
+            out += CONDITION[4 - math.floor(nightly_conditions.nightly_conditions[1] / 20)].capitalize() + "-"
+            out += CONDITION[4 - math.floor(nightly_conditions.nightly_conditions[2] / 20)].capitalize()
             return out
         return None
 

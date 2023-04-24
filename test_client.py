@@ -30,9 +30,9 @@ async def main() -> None:
     """Create the aiohttp session and run the example."""
     logging.basicConfig(level=logging.DEBUG)
 
-        # latitude=48.313,
-        # longitude=11.985,
-        # elevation=460,
+    # latitude=48.313,
+    # longitude=11.985,
+    # elevation=460,
 
     print(
         f"{esc(COLOR_BLUE)}--------------------------------------------------------"
@@ -47,15 +47,15 @@ async def main() -> None:
     astroweather = AstroWeather(
         latitude=48.313,
         longitude=11.985,
-        elevation=0,
+        elevation=462,
         timezone_info="Europe/Berlin",
         cloudcover_weight=3,
         seeing_weight=2,
         transparency_weight=1,
+        metno_enabled=True,
     )
 
     start = time.time()
-
 
     try:
         data = await astroweather.get_deepsky_forecast()
@@ -98,6 +98,12 @@ async def main() -> None:
                 f"{esc(COLOR_RED)}Cloudcover: {esc(COLOR_GREEN)}{str(row.cloudcover_percentage)}, "
                 + f"{esc(COLOR_RED)}Cloudless: {esc(COLOR_GREEN)}{str(row.cloudless_percentage)}, "
                 + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.cloudcover_plain)}{esc('0')}"
+            )
+            print(
+                f"{esc(COLOR_RED)}Cloud Area Fraction: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_percentage)}, "
+                + f"{esc(COLOR_RED)}Cloud Area Fraction High: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_high_percentage)}, "
+                + f"{esc(COLOR_RED)}Cloud Area Fraction Low: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_low_percentage)}, "
+                + f"{esc(COLOR_RED)}Cloud Area Fraction Medium: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_medium_percentage)}{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}Seeing: {esc(COLOR_GREEN)}{str(row.seeing_percentage)}, "
@@ -156,20 +162,15 @@ async def main() -> None:
                 + f"{esc(COLOR_RED)}Forecast Today Dayname: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_dayname)}, "
                 + f"{esc(COLOR_RED)}Forecast Today: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_plain)}{esc('0')}"
             )
-            print(
-                f"{esc(COLOR_RED)}Description: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_desc)}{esc('0')}"
-            )
+            print(f"{esc(COLOR_RED)}Description: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_desc)}{esc('0')}")
             print(
                 f"{esc(COLOR_RED)}Forecast Tomorrow: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow)}, "
                 + f"{esc(COLOR_RED)}Forecast Tomorrow Dayname: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_dayname)}, "
                 + f"{esc(COLOR_RED)}Forecast Tomorrow: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_plain)}{esc('0')}"
             )
-            print(
-                f"{esc(COLOR_RED)}Description: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_desc)}{esc('0')}"
-            )
+            print(f"{esc(COLOR_RED)}Description: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_desc)}{esc('0')}")
 
         data = await astroweather.get_hourly_forecast()
-        print(f"Forecast Length: {str(len(data))}")
         for row in data:
             print(
                 f"{esc(COLOR_BLUE)}--------------------------------------------------------"
@@ -189,8 +190,12 @@ async def main() -> None:
                 + f"{esc(COLOR_RED)}Liftet Index: {esc(COLOR_GREEN)}{str(row.lifted_index)}{esc('0')}"
             )
             print(
-                f"{esc(COLOR_RED)}View Condition: {esc(COLOR_GREEN)}{str(row.condition_percentage)}{esc('0')}"
+                f"{esc(COLOR_RED)}Cloud Area Fraction: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_percentage)}, "
+                + f"{esc(COLOR_RED)}Cloud Area Fraction High: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_high_percentage)}, "
+                + f"{esc(COLOR_RED)}Cloud Area Fraction Low: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_low_percentage)}, "
+                + f"{esc(COLOR_RED)}Cloud Area Fraction Medium: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_medium_percentage)}{esc('0')}"
             )
+            print(f"{esc(COLOR_RED)}View Condition: {esc(COLOR_GREEN)}{str(row.condition_percentage)}{esc('0')}")
             print(
                 f"{esc(COLOR_RED)}Wind Direction: {esc(COLOR_GREEN)}{str(row.wind10m_direction)}, "
                 + f"{esc(COLOR_RED)}Speed: {esc(COLOR_GREEN)}{str(row.wind10m_speed)}{esc('0')}"
@@ -201,9 +206,7 @@ async def main() -> None:
                 + f"{esc(COLOR_RED)}Dew Point: {esc(COLOR_GREEN)}{str(row.dewpoint2m)}, "
                 + f"{esc(COLOR_RED)}Prec Type: {esc(COLOR_GREEN)}{str(row.prec_type)}{esc('0')}"
             )
-            print(
-                f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}{esc('0')}"
-            )
+            print(f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}{esc('0')}")
 
     except AstroWeatherError as err:
         print(err)

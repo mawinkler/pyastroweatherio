@@ -146,9 +146,7 @@ class AstronomicalRoutines:
                 self._sun_observer.date = timestamp
                 try:
                     self._sun_next_rising_astro = self.utc_to_local(
-                        self._sun_observer.next_rising(
-                            ephem.Sun(), use_center=True
-                        ).datetime()
+                        self._sun_observer.next_rising(ephem.Sun(), use_center=True).datetime()
                     )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
                     continue
@@ -168,9 +166,7 @@ class AstronomicalRoutines:
                 self._sun_observer.date = timestamp
                 try:
                     self._sun_next_setting_astro = self.utc_to_local(
-                        self._sun_observer.next_setting(
-                            ephem.Sun(), use_center=True
-                        ).datetime()
+                        self._sun_observer.next_setting(ephem.Sun(), use_center=True).datetime()
                     )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
                     continue
@@ -182,9 +178,7 @@ class AstronomicalRoutines:
 
         try:
             self._sun_next_rising_nautical = self.utc_to_local(
-                self._sun_observer_nautical.next_rising(
-                    ephem.Sun(), use_center=True
-                ).datetime()
+                self._sun_observer_nautical.next_rising(ephem.Sun(), use_center=True).datetime()
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the next astronomical rising
@@ -196,9 +190,7 @@ class AstronomicalRoutines:
                 self._sun_observer_nautical.date = timestamp
                 try:
                     self._sun_next_rising_nautical = self.utc_to_local(
-                        self._sun_observer_nautical.next_rising(
-                            ephem.Sun(), use_center=True
-                        ).datetime()
+                        self._sun_observer_nautical.next_rising(ephem.Sun(), use_center=True).datetime()
                     )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
                     continue
@@ -206,9 +198,7 @@ class AstronomicalRoutines:
 
         try:
             self._sun_next_setting_nautical = self.utc_to_local(
-                self._sun_observer_nautical.next_setting(
-                    ephem.Sun(), use_center=True
-                ).datetime()
+                self._sun_observer_nautical.next_setting(ephem.Sun(), use_center=True).datetime()
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the next astronomical setting
@@ -220,9 +210,7 @@ class AstronomicalRoutines:
                 self._sun_observer_nautical.date = timestamp
                 try:
                     self._sun_next_setting_nautical = self.utc_to_local(
-                        self._sun_observer_nautical.next_setting(
-                            ephem.Sun(), use_center=True
-                        ).datetime()
+                        self._sun_observer_nautical.next_setting(ephem.Sun(), use_center=True).datetime()
                     )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
                     continue
@@ -234,9 +222,7 @@ class AstronomicalRoutines:
 
         try:
             self._sun_next_rising_astro = self.utc_to_local(
-                self._sun_observer_astro.next_rising(
-                    ephem.Sun(), use_center=True
-                ).datetime()
+                self._sun_observer_astro.next_rising(ephem.Sun(), use_center=True).datetime()
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the next astronomical rising
@@ -248,9 +234,7 @@ class AstronomicalRoutines:
                 self._sun_observer_astro.date = timestamp
                 try:
                     self._sun_next_rising_astro = self.utc_to_local(
-                        self._sun_observer_astro.next_rising(
-                            ephem.Sun(), use_center=True
-                        ).datetime()
+                        self._sun_observer_astro.next_rising(ephem.Sun(), use_center=True).datetime()
                     )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
                     continue
@@ -258,9 +242,7 @@ class AstronomicalRoutines:
 
         try:
             self._sun_next_setting_astro = self.utc_to_local(
-                self._sun_observer_astro.next_setting(
-                    ephem.Sun(), use_center=True
-                ).datetime()
+                self._sun_observer_astro.next_setting(ephem.Sun(), use_center=True).datetime()
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the next astronomical setting
@@ -272,9 +254,7 @@ class AstronomicalRoutines:
                 self._sun_observer_astro.date = timestamp
                 try:
                     self._sun_next_setting_astro = self.utc_to_local(
-                        self._sun_observer_astro.next_setting(
-                            ephem.Sun(), use_center=True
-                        ).datetime()
+                        self._sun_observer_astro.next_setting(ephem.Sun(), use_center=True).datetime()
                     )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
                     continue
@@ -300,18 +280,14 @@ class AstronomicalRoutines:
 
         try:
             self._moon_next_rising = self.utc_to_local(
-                self._moon_observer.next_rising(
-                    ephem.Moon(), use_center=True
-                ).datetime()
+                self._moon_observer.next_rising(ephem.Moon(), use_center=True).datetime()
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             pass
 
         try:
             self._moon_next_setting = self.utc_to_local(
-                self._moon_observer.next_setting(
-                    ephem.Moon(), use_center=True
-                ).datetime()
+                self._moon_observer.next_setting(ephem.Moon(), use_center=True).datetime()
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             pass

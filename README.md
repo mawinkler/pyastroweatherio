@@ -1,8 +1,10 @@
 # pyAstroWeatherIO
 
-Wrapper for the 7Timer AstroWeather REST API. Designed to work with Home Assistant and the custom [AstroWeather](https://github.com/mawinkler/astroweather) integration.
+Wrapper for the ***7Timer*** and ***MET Norway Weather*** REST API. Designed to work with Home Assistant and the custom [AstroWeather](https://github.com/mawinkler/astroweather) integration.
 
-This module communicates with the API endpoint of 7Timer ([documentation](http://www.7timer.info/doc.php)). It retrieves current weather data for astronomical observations:
+This module communicates with the API endpoint of ***7Timer*** ([documentation](http://www.7timer.info/doc.php)) and ***MET Norway Weather*** ([documentation](https://api.met.no/weatherapi/locationforecast/2.0/documentation)). It retrieves current weather data for astronomical observations:
+
+***7Timer***
 
 Observation | Range | Meaning
 ----------- | ----- | -------
@@ -30,6 +32,17 @@ Observation | Range | Meaning
 || rainsnowday, rainsnownight | Precipitation type to be ice pellets or freezing rain
 
 For astronimical observations, the lower the values are the better it is (besides 2m temperature).
+
+***MET Norway Weather***
+
+Observation | Range
+----------- | -----
+**Cloud Area Fraction** | 0% to 100%
+**Cloud Area Fraction High** | 0% to 100%
+**Cloud Area Fraction Medium** | 0% to 100%
+**Cloud Area Fraction Low** | 0% to 100%
+
+The Cloud Area Fraction of Met Norway supersedes Cloud Cover of 7Timer currently.
 
 In addition to the weather data, some calculations for the astronomical twilight and Moon setting, rising and phase are implemented. They indicate the darkness you can expect the upcoming night.
 
@@ -68,5 +81,5 @@ This will return a handle to the AstroWeather class and open the connection.
 ## Setup
 
 ```sh
-pip3 install . --user
+pip3 install .
 ```
