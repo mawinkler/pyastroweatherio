@@ -533,7 +533,7 @@ class AstroWeather:
                 timeout=ClientTimeout(total=DEFAULT_TIMEOUT),
             )
 
-        # BASE_URL_SEVENTIMER = "http://www.7timer.info/bin/api.pl?lon=XX.XX&lat=YY.YY&product=astro&output=json"
+        # BASE_URL_SEVENTIMER = "https://www.7timer.info/bin/api.pl?lon=XX.XX&lat=YY.YY&product=astro&output=json"
         # STIMER_OUTPUT = "json"
         url = (
             str(f"{BASE_URL_SEVENTIMER}")

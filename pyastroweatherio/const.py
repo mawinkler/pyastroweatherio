@@ -1,6 +1,6 @@
 """Constant Definitions for AstroWeather."""
 
-BASE_URL_SEVENTIMER = "http://www.7timer.info/bin/api.pl"
+BASE_URL_SEVENTIMER = "https://www.7timer.info/bin/api.pl"
 BASE_URL_MET = "https://api.met.no/weatherapi/locationforecast/2.0/complete"
 STIMER_OUTPUT = "json"
 
