@@ -271,9 +271,6 @@ class AstroWeather:
                 "cloudcover": cloudcover,
                 "seeing": seeing,
                 "transparency": transparency,
-                # "condition_percentage": await self.calc_condition_percentage(
-                #     row["cloudcover"], row["seeing"], row["transparency"]
-                # ),
                 "lifted_index": row["lifted_index"],
                 "rh2m": row["rh2m"],
                 "wind10m": row["wind10m"],
@@ -292,22 +289,29 @@ class AstroWeather:
                 == forecast_time
             ):
                 # _LOGGER.debug("Met.no Cloud Area Fraction timestamp match: %s", str(forecast_time))
-                datails = (
-                    self._weather_data_metno[metno_index + cnt].get("data", {}).get("instant", {}).get("details", {})
-                )
-                # Overwrite cloudcover
-                item["cloudcover"] = int(datails.get("cloud_area_fraction", -1) / 12.5 + 1)
+                # Continue hourly and overwrite cloudcover while leaving the rest from 7timer
+                for i in range(0, 3):
+                    datails = (
+                        self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("instant", {}).get("details", {})
+                    )
+                    # Overwrite cloudcover
+                    item["cloudcover"] = int(datails.get("cloud_area_fraction", -1) / 12.5 + 1)
 
-                item["cloud_area_fraction"] = datails.get("cloud_area_fraction", -1)
-                item["cloud_area_fraction_high"] = datails.get("cloud_area_fraction_high", -1)
-                item["cloud_area_fraction_low"] = datails.get("cloud_area_fraction_low", -1)
-                item["cloud_area_fraction_medium"] = datails.get("cloud_area_fraction_medium", -1)
+                    item["cloud_area_fraction"] = datails.get("cloud_area_fraction", -1)
+                    item["cloud_area_fraction_high"] = datails.get("cloud_area_fraction_high", -1)
+                    item["cloud_area_fraction_low"] = datails.get("cloud_area_fraction_low", -1)
+                    item["cloud_area_fraction_medium"] = datails.get("cloud_area_fraction_medium", -1)
 
-                item["condition_percentage"] = await self.calc_condition_percentage(
-                    item["cloud_area_fraction"] / 12.5 + 1,
-                    row["seeing"],
-                    row["transparency"],
-                )
+                    item["condition_percentage"] = await self.calc_condition_percentage(
+                        item["cloud_area_fraction"] / 12.5 + 1,
+                        row["seeing"],
+                        row["transparency"],
+                    )
+                    items.append(ForecastData(item))
+                
+                    item["timepoint"] = item["timepoint"] + 1
+                    item["timestamp"] = item["timestamp"] + timedelta(hours=1)
+                    item["hour"] = item["hour"] + 1
             else:
                 # _LOGGER.debug("Met.no no Cloud Area Fraction for: %s", str(forecast_time))
                 item["cloud_area_fraction"] = None
@@ -318,7 +322,7 @@ class AstroWeather:
                 item["condition_percentage"] = await self.calc_condition_percentage(
                     row["cloudcover"], row["seeing"], row["transparency"]
                 )
-            items.append(ForecastData(item))
+                items.append(ForecastData(item))
 
             # Limit number of Hours
             cnt += 3
