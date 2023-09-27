@@ -67,6 +67,9 @@ class AstroWeather:
         self._seeing_weight = seeing_weight
         self._transparency_weight = transparency_weight
         self._metno_enabled = metno_enabled
+
+        self._forecast_data = None
+
         self.req = session
 
     # Public functions
@@ -79,19 +82,19 @@ class AstroWeather:
     # async def get_forecast(self, forecast_type=FORECAST_TYPE_DAILY, hours_to_show=24) -> None:
     #     """Returns station Weather Forecast."""
     #     _LOGGER.debug("get_forecast called")
-    #     return await self._forecast_data(forecast_type, hours_to_show)
+    #     return await self._get_forecast_data(forecast_type, hours_to_show)
 
     # async def get_daily_forecast(self) -> None:
     #     """Returns daily Weather Forecast."""
-    #     return await self._forecast_data(FORECAST_TYPE_DAILY, 72)
+    #     return await self._get_forecast_data(FORECAST_TYPE_DAILY, 72)
 
     async def get_hourly_forecast(self) -> None:
         """Returns hourly Weather Forecast."""
-        return await self._forecast_data(FORECAST_TYPE_HOURLY, 72)
+        return await self._get_forecast_data(FORECAST_TYPE_HOURLY, 72)
 
     async def get_deepsky_forecast(self) -> None:
         """Returns Deep Sky Forecast."""
-        return await self._deepsky_forecast()
+        return await self._get_deepsky_forecast()
 
     # Private functions
     async def _get_location_data(self) -> None:
@@ -171,7 +174,7 @@ class AstroWeather:
                 "moon_altitude": await astro_routines.moon_altitude(),
                 "moon_azimuth": await astro_routines.moon_azimuth(),
                 "weather": row.get("weather", ""),
-                "deepsky_forecast": await self._deepsky_forecast(),
+                "deepsky_forecast": await self._get_deepsky_forecast(),
             }
             # Met.no
             if (
@@ -183,26 +186,34 @@ class AstroWeather:
                 == forecast_time
             ):
                 # _LOGGER.debug("Met.no Cloud Area Fraction timestamp match: %s", str(forecast_time))
-                datails = self._weather_data_metno[metno_index].get("data", {}).get("instant", {}).get("details", {})
+                details = self._weather_data_metno[metno_index].get("data", {}).get("instant", {}).get("details", {})
                 # Overwrite cloudcover
-                item["cloudcover"] = int(datails.get("cloud_area_fraction", -1) / 12.5 + 1)
+                item["cloudcover"] = int(details.get("cloud_area_fraction", -1) / 12.5 + 1)
 
-                item["cloud_area_fraction"] = datails.get("cloud_area_fraction", -1)
-                item["cloud_area_fraction_high"] = datails.get("cloud_area_fraction_high", -1)
-                item["cloud_area_fraction_low"] = datails.get("cloud_area_fraction_low", -1)
-                item["cloud_area_fraction_medium"] = datails.get("cloud_area_fraction_medium", -1)
+                item["cloud_area_fraction"] = details.get("cloud_area_fraction", -1)
+                item["cloud_area_fraction_high"] = details.get("cloud_area_fraction_high", -1)
+                item["cloud_area_fraction_low"] = details.get("cloud_area_fraction_low", -1)
+                item["cloud_area_fraction_medium"] = details.get("cloud_area_fraction_medium", -1)
+                item["fog_area_fraction"] = details.get("fog_area_fraction", -1)
 
                 item["condition_percentage"] = await self.calc_condition_percentage(
                     item["cloud_area_fraction"] / 12.5 + 1,
                     row["seeing"],
                     row["transparency"],
                 )
+
+                # item["wind10m"] = {
+                #     "speed": details.get("wind_speed", -1),
+                #     "direction": details.get("wind_from_direction", -1),
+                # }
+
             else:
                 # _LOGGER.debug("Met.no no Cloud Area Fraction for: %s", str(forecast_time))
                 item["cloud_area_fraction"] = None
                 item["cloud_area_fraction_high"] = None
                 item["cloud_area_fraction_low"] = None
                 item["cloud_area_fraction_medium"] = None
+                item["fog_area_fraction"] = None
 
                 item["condition_percentage"] = await self.calc_condition_percentage(
                     row["cloudcover"], row["seeing"], row["transparency"]
@@ -213,7 +224,7 @@ class AstroWeather:
 
         return items
 
-    async def _forecast_data(self, forecast_type, hours_to_show) -> None:
+    async def _get_forecast_data(self, forecast_type, hours_to_show) -> None:
         """Return Forecast data for the Station."""
 
         cnv = ConversionFunctions()
@@ -291,16 +302,20 @@ class AstroWeather:
                 # _LOGGER.debug("Met.no Cloud Area Fraction timestamp match: %s", str(forecast_time))
                 # Continue hourly and overwrite cloudcover while leaving the rest from 7timer
                 for i in range(0, 3):
-                    datails = (
-                        self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("instant", {}).get("details", {})
+                    details = (
+                        self._weather_data_metno[metno_index + cnt + i]
+                        .get("data", {})
+                        .get("instant", {})
+                        .get("details", {})
                     )
                     # Overwrite cloudcover
-                    item["cloudcover"] = int(datails.get("cloud_area_fraction", -1) / 12.5 + 1)
+                    item["cloudcover"] = int(details.get("cloud_area_fraction", -1) / 12.5 + 1)
 
-                    item["cloud_area_fraction"] = datails.get("cloud_area_fraction", -1)
-                    item["cloud_area_fraction_high"] = datails.get("cloud_area_fraction_high", -1)
-                    item["cloud_area_fraction_low"] = datails.get("cloud_area_fraction_low", -1)
-                    item["cloud_area_fraction_medium"] = datails.get("cloud_area_fraction_medium", -1)
+                    item["cloud_area_fraction"] = details.get("cloud_area_fraction", -1)
+                    item["cloud_area_fraction_high"] = details.get("cloud_area_fraction_high", -1)
+                    item["cloud_area_fraction_low"] = details.get("cloud_area_fraction_low", -1)
+                    item["cloud_area_fraction_medium"] = details.get("cloud_area_fraction_medium", -1)
+                    item["fog_area_fraction"] = details.get("fog_area_fraction", -1)
 
                     item["condition_percentage"] = await self.calc_condition_percentage(
                         item["cloud_area_fraction"] / 12.5 + 1,
@@ -308,7 +323,7 @@ class AstroWeather:
                         row["transparency"],
                     )
                     items.append(ForecastData(item))
-                
+
                     item["timepoint"] = item["timepoint"] + 1
                     item["timestamp"] = item["timestamp"] + timedelta(hours=1)
                     item["hour"] = item["hour"] + 1
@@ -318,32 +333,30 @@ class AstroWeather:
                 item["cloud_area_fraction_high"] = None
                 item["cloud_area_fraction_low"] = None
                 item["cloud_area_fraction_medium"] = None
+                item["fog_area_fraction"] = None
 
                 item["condition_percentage"] = await self.calc_condition_percentage(
                     row["cloudcover"], row["seeing"], row["transparency"]
                 )
                 items.append(ForecastData(item))
-
             # Limit number of Hours
             cnt += 3
             if cnt >= hours_to_show:
                 break
 
+        self._forecast_data = items
+
         return items
 
-    async def _deepsky_forecast(self):
+    async def _get_deepsky_forecast(self):
         """Return Deepsky Forecast data"""
 
         cnv = ConversionFunctions()
         items = []
 
-        await self.retrieve_data_seventimer()
-        if self._metno_enabled:
-            await self.retrieve_data_metno()
+        if self._forecast_data == None:
+            await self._get_forecast_data(FORECAST_TYPE_HOURLY, 72)
         now = datetime.utcnow()
-
-        # Create items
-        cnt = 0
 
         # Anchor timestamp
         init_ts = await cnv.anchor_timestamp(self._weather_data_seventimer_init)
@@ -360,65 +373,38 @@ class AstroWeather:
         start_weather = ""
         interval_points = []
 
-        # Met.no
-        metno_index = -1
-        for row in self._weather_data_seventimer:
-            # Skip over past forecasts
-            forecast_time = init_ts + timedelta(hours=row["timepoint"])
-            if now > forecast_time:
-                continue
+        sun_next_setting_astro = await astro_routines.sun_next_setting_astro()
+        sun_next_rising_astro = await astro_routines.sun_next_rising_astro()
 
-            # Met.no
-            if self._metno_enabled:
-                if metno_index == -1:
-                    for datapoint in self._weather_data_metno:
-                        metno_index += 1
-                        if forecast_time == datetime.strptime(datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ"):
-                            break
-
+        _LOGGER.debug(
+            "sun_next_setting_astro: %s, sun_next_rising_astro: %s",
+            str(sun_next_setting_astro),
+            str(sun_next_rising_astro),
+        )
+        for row in self._forecast_data:
             # Hour of day needs to be in local time
-            hour_of_day = (forecast_time.hour + utc_to_local_diff) % 24
+            hour_of_day = (row.timestamp.hour + utc_to_local_diff) % 24
 
-            # Skip daytime, we're only interested in the forecasts in
-            # between 9pm to 3am.
-            # Possible timestamps within the data:
-            # 15 18 (21 00 03) 06 09 12
-            # 16 (19 22 01) 04 07 10 13
-            # 17 (20 23 02) 05 08 11 14
-            # Relevant ones in brackets
-            if hour_of_day < 19 and hour_of_day > 3:
+            # Skip daytime, we're only interested in the forecasts at
+            # darkness.
+            if hour_of_day < sun_next_setting_astro.hour and hour_of_day > sun_next_rising_astro.hour:
                 start_forecast_hour = 0
                 start_weather = ""
                 interval_points = []
-                cnt += 3
                 continue
-
-            cloudcover = row["cloudcover"]
-            seeing = row["seeing"]
-            transparency = row["transparency"]
+            cloudcover = row.cloudcover
+            seeing = row.seeing
+            transparency = row.transparency
             cloud_area_fraction = 0
+
             # Met.no
-            if (
-                self._metno_enabled
-                and datetime.strptime(
-                    self._weather_data_metno[metno_index + cnt].get("time"),
-                    "%Y-%m-%dT%H:%M:%SZ",
-                )
-                == forecast_time
-            ):
-                # Met.no
-                # _LOGGER.debug("Cloud Area Fraction timestamp match: %s", str(forecast_time))
-                datails = (
-                    self._weather_data_metno[metno_index + cnt].get("data", {}).get("instant", {}).get("details", {})
-                )
-                cloud_area_fraction = datails.get("cloud_area_fraction") / 12.5 + 1
-            # else:
-            #     _LOGGER.debug("No Cloud Area Fraction for: %s", str(forecast_time))
+            if self._metno_enabled:
+                cloud_area_fraction = row.cloud_area_fraction_percentage / 12.5 + 1
 
             if len(interval_points) == 0:
-                forecast_dayname = forecast_time.strftime("%A")
+                forecast_dayname = row.timestamp.strftime("%A")
                 start_forecast_hour = hour_of_day
-                start_weather = row.get("weather", "")
+                start_weather = row.weather
 
             # Calculate Condition
             if self._metno_enabled and cloud_area_fraction > 0:
@@ -426,7 +412,7 @@ class AstroWeather:
             else:
                 interval_points.append(await self.calc_condition_percentage(cloudcover, seeing, transparency))
 
-            if len(interval_points) == 3:
+            if hour_of_day == sun_next_rising_astro.hour:
                 item = {
                     "init": init_ts,
                     "dayname": forecast_dayname,
@@ -435,13 +421,20 @@ class AstroWeather:
                     "weather": start_weather,
                 }
                 items.append(NightlyConditionsData(item))
+
+                conditions_numeric = ""
+                for condition in interval_points:
+                    conditions_numeric += str(condition) + ", "
                 _LOGGER.debug(
-                    "Nightly conditions day: %s, start hour: %s, condition percentages: %s",
+                    "Nightly conditions day: %s, start hour: %s, nightly conditions: %s, weather: %s, conditions numeric: %s",
                     str(forecast_dayname),
                     str(start_forecast_hour),
-                    str(interval_points),
+                    str(len(interval_points)),
+                    str(start_weather),
+                    conditions_numeric,
                 )
-            cnt += 3
+
+            # Forecast for two nights only
             if len(items) == 2:
                 break
 

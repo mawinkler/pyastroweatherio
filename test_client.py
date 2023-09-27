@@ -58,20 +58,6 @@ async def main() -> None:
     start = time.time()
 
     try:
-        data = await astroweather.get_deepsky_forecast()
-        for row in data:
-            print(
-                f"{esc(COLOR_BLUE)}--------------------------------------------------------"
-                + f"---------------------------------------------------------------{esc('0')}"
-            )
-            print(
-                f"{esc(COLOR_RED)}Init: {esc(COLOR_GREEN)}{str(row.init)}, "
-                + f"{esc(COLOR_RED)}Hour of day: {esc(COLOR_GREEN)}{str(row.hour)}{esc('0')}"
-            )
-            print(
-                f"{esc(COLOR_RED)}Nightly conditions: {esc(COLOR_GREEN)}{str(row.nightly_conditions)}, "
-                + f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}{esc('0')}"
-            )
 
         data = await astroweather.get_location_data()
         for row in data:
@@ -207,6 +193,22 @@ async def main() -> None:
                 + f"{esc(COLOR_RED)}Prec Type: {esc(COLOR_GREEN)}{str(row.prec_type)}{esc('0')}"
             )
             print(f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}{esc('0')}")
+
+        data = await astroweather.get_deepsky_forecast()
+        for row in data:
+            print(
+                f"{esc(COLOR_BLUE)}--------------------------------------------------------"
+                + f"---------------------------------------------------------------{esc('0')}"
+            )
+            print(
+                f"{esc(COLOR_RED)}Init: {esc(COLOR_GREEN)}{str(row.init)}, "
+                + f"{esc(COLOR_RED)}Hour of day: {esc(COLOR_GREEN)}{str(row.hour)}{esc('0')}"
+            )
+            print(
+                f"{esc(COLOR_RED)}Nightly conditions: {esc(COLOR_GREEN)}{str(row.nightly_conditions)}, "
+                + f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}{esc('0')}"
+            )
+
 
     except AstroWeatherError as err:
         print(err)

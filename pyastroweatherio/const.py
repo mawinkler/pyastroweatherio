@@ -148,7 +148,10 @@ MAP_WEATHER_TYPE = {
     "tsrainnight": "Lifted Index less than -5 with precipitation rate over 4mm/hr",
 }
 
-CONDITION = ["excellent", "good", "fair", "poor", "bad"]
+# CONDITION = ["excellent", "good", "fair", "poor", "bad"]
+# CONDITION = ["↑", "↗", "→", "↘", "↓"]
+# CONDITION = ["😁", "😀", "😐", "😕", "😞"]
+CONDITION = ["█", "▆", "▄", "▂", "▁"]
 
 FORECAST_TYPE_DAILY = "daily"
 FORECAST_TYPE_HOURLY = "hourly"
