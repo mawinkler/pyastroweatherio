@@ -63,8 +63,8 @@ class AstronomicalRoutines:
         self._sun_observer_nautical = None
         self._sun_observer_astro = None
         self._moon_observer = None
-        self._sun_next_rising = None
-        self._sun_next_setting = None
+        self._sun_next_rising_civil = None
+        self._sun_next_setting_civil = None
         self._sun_next_rising_nautical = None
         self._sun_next_setting_nautical = None
         self._sun_next_rising_astro = None
@@ -78,8 +78,8 @@ class AstronomicalRoutines:
         self._sun = None
         self._moon = None
 
-        self.calculate_sun()
-        self.calculate_moon()
+        # self.calculate_sun()
+        # self.calculate_moon()
 
     def utc_to_local(self, utc_dt):
         """Localizes the datetime"""
@@ -125,15 +125,15 @@ class AstronomicalRoutines:
         if self._sun is None:
             self._sun = ephem.Sun()
 
-        # Alt / Az
-        self._sun_observer.date = self.utc_to_local(self._forecast_time)
-        self._sun.compute(self._sun_observer)
+        # # Alt / Az
+        # self._sun_observer.date = self.utc_to_local(self._forecast_time)
+        # self._sun.compute(self._sun_observer)
 
-        self._sun_altitude = deg(float(self._sun.alt))
-        self._sun_azimuth = deg(float(self._sun.az))
+        # self._sun_altitude = deg(float(self._sun.alt))
+        # self._sun_azimuth = deg(float(self._sun.az))
 
         try:
-            self._sun_next_rising = self.utc_to_local(
+            self._sun_next_rising_civil = self.utc_to_local(
                 self._sun_observer.next_rising(ephem.Sun(), use_center=True).datetime()
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
@@ -153,7 +153,7 @@ class AstronomicalRoutines:
                 break
 
         try:
-            self._sun_next_setting = self.utc_to_local(
+            self._sun_next_setting_civil = self.utc_to_local(
                 self._sun_observer.next_setting(ephem.Sun(), use_center=True).datetime()
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
@@ -260,6 +260,20 @@ class AstronomicalRoutines:
                     continue
                 break
 
+    def calculate_sun_altaz(self):
+        """Calculates sun altitude and azimuth"""
+        if self._sun_observer is None:
+            self._sun_observer = self.get_sun_observer(CIVIL_DUSK_DAWN)
+        if self._sun is None:
+            self._sun = ephem.Sun()
+
+        # Alt / Az
+        self._sun_observer.date = self.utc_to_local(self._forecast_time)
+        self._sun.compute(self._sun_observer)
+
+        self._sun_altitude = deg(float(self._sun.alt))
+        self._sun_azimuth = deg(float(self._sun.az))
+        
     def calculate_moon(self):
         """Calculates moon rising and setting"""
         if self._moon_observer is None:
@@ -268,11 +282,11 @@ class AstronomicalRoutines:
             self._moon = ephem.Moon()
 
         # Alt / Az
-        self._moon_observer.date = self.utc_to_local(self._forecast_time)
-        self._moon.compute(self._moon_observer)
+        # self._moon_observer.date = self.utc_to_local(self._forecast_time)
+        # self._moon.compute(self._moon_observer)
 
-        self._moon_altitude = deg(float(self._moon.alt))
-        self._moon_azimuth = deg(float(self._moon.az))
+        # self._moon_altitude = deg(float(self._moon.alt))
+        # self._moon_azimuth = deg(float(self._moon.az))
 
         # Rise and Setting
         self._moon_observer.date = self._forecast_time
@@ -292,66 +306,266 @@ class AstronomicalRoutines:
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             pass
 
+    def calculate_moon_altaz(self):
+        """Calculates moon altitude and azimuth"""
+        if self._moon_observer is None:
+            self._moon_observer = self.get_moon_observer()
+        if self._moon is None:
+            self._moon = ephem.Moon()
+
+        # Alt / Az
+        self._moon_observer.date = self.utc_to_local(self._forecast_time)
+        self._moon.compute(self._moon_observer)
+
+        self._moon_altitude = deg(float(self._moon.alt))
+        self._moon_azimuth = deg(float(self._moon.az))
+        
+    async def need_update(self):
+        self._forecast_time = datetime.utcnow()
+        self.calculate_sun_altaz()
+        self.calculate_moon_altaz()
+
+        localtime = self.utc_to_local(datetime.utcnow())
+        if (
+            self._sun_next_setting_civil is None
+            or self._sun_next_setting_nautical is None
+            or self._sun_next_setting_astro is None
+            or self._sun_next_rising_astro is None
+            or self._sun_next_rising_nautical is None
+            or self._sun_next_rising_civil is None
+            or self._moon_next_rising is None
+            or self._moon_next_setting is None
+            or localtime > self._sun_next_setting_civil
+            or localtime > self._sun_next_setting_nautical
+            or localtime > self._sun_next_setting_astro
+            or localtime > self._sun_next_rising_astro
+            or localtime > self._sun_next_rising_nautical
+            or localtime > self._sun_next_rising_civil
+            or localtime > self._moon_next_rising
+            or localtime > self._moon_next_setting
+        ):
+            _LOGGER.debug("Astronomical calculations updating")
+            self.calculate_sun()
+            self.calculate_moon()
+        # else:
+        #     _LOGGER.debug("Astronomical calculations are up to date")
+        #     _LOGGER.debug("time %s", str(localtime))
+        #     _LOGGER.debug("set  %s, %s, %s", str(self._sun_next_setting_civil), str(self._sun_next_setting_nautical), str(self._sun_next_setting_astro))
+        #     _LOGGER.debug("rise %s, %s, %s", str(self._sun_next_rising_astro), str(self._sun_next_rising_nautical), str(self._sun_next_rising_civil))
+        #     _LOGGER.debug("moon %s, %s", str(self._moon_next_rising), str(self._moon_next_setting))
+            
+    # Return Sun setting and rising
     async def sun_next_rising(self) -> datetime:
         """Returns sun next rising"""
-        if self._sun_next_rising is not None:
-            return self._sun_next_rising
+        localtime = self.utc_to_local(datetime.utcnow())
+        if (
+            self._sun_next_rising_astro is None
+            or self._sun_next_rising_nautical is None
+            or self._sun_next_rising_civil is None
+            or localtime > self._sun_next_rising_astro
+            or localtime > self._sun_next_rising_nautical
+            or localtime > self._sun_next_rising_civil
+        ):
+            _LOGGER.debug("Astronomical calculations updating sun_next_rising")
+            self._forecast_time = datetime.utcnow()
+            self.calculate_sun()
+
+        if self._sun_next_rising_astro is not None:
+            return self._sun_next_rising_astro
+        if self._sun_next_rising_nautical is not None:
+            return self._sun_next_rising_nautical
+        if self._sun_next_rising_civil is not None:
+            return self._sun_next_rising_civil
+        
+    async def sun_next_rising_civil(self) -> datetime:
+        """Returns sun next rising"""
+        localtime = self.utc_to_local(datetime.utcnow())
+        if (
+            self._sun_next_setting_civil is None
+            or localtime > self._sun_next_setting_civil
+        ):
+            _LOGGER.debug("Astronomical calculations updating sun_next_rising_civil")
+            self._forecast_time = datetime.utcnow()
+            self.calculate_sun()
+        else:
+            _LOGGER.debug("Astronomical calculations sun_next_rising_civil in %s", str(self._sun_next_setting_civil - localtime))
+            
+        self._forecast_time = datetime.utcnow()
+        if self._sun_next_rising_civil is not None:
+            return self._sun_next_rising_civil
 
     async def sun_next_rising_nautical(self) -> datetime:
         """Returns sun next nautical rising"""
+        localtime = self.utc_to_local(datetime.utcnow())
+        if (
+            self._sun_next_rising_nautical is None
+            or localtime > self._sun_next_rising_nautical
+        ):
+            _LOGGER.debug("Astronomical calculations updating sun_next_rising_nautical")
+            self._forecast_time = datetime.utcnow()
+            self.calculate_sun()
+        else:
+            _LOGGER.debug("Astronomical calculations sun_next_rising_nautical in %s", str(self._sun_next_rising_nautical - localtime))
+            
         if self._sun_next_rising_nautical is not None:
             return self._sun_next_rising_nautical
 
     async def sun_next_rising_astro(self) -> datetime:
         """Returns sun next astronomical rising"""
+        localtime = self.utc_to_local(datetime.utcnow())
+        if (
+            self._sun_next_rising_astro is None
+            or localtime > self._sun_next_rising_astro
+        ):
+            _LOGGER.debug("Astronomical calculations updating sun_next_rising_astro")
+            self._forecast_time = datetime.utcnow()
+            self.calculate_sun()
+        else:
+            _LOGGER.debug("Astronomical calculations sun_next_rising_astro in %s", str(self._sun_next_rising_astro - localtime))
+            
         if self._sun_next_rising_astro is not None:
             return self._sun_next_rising_astro
 
     async def sun_next_setting(self) -> datetime:
         """Returns sun next setting"""
-        if self._sun_next_setting is not None:
-            return self._sun_next_setting
+        localtime = self.utc_to_local(datetime.utcnow())
+        if (
+            self._sun_next_setting_civil is None
+            or self._sun_next_setting_nautical is None
+            or self._sun_next_setting_astro is None
+            or localtime > self._sun_next_setting_civil
+            or localtime > self._sun_next_setting_nautical
+            or localtime > self._sun_next_setting_astro
+        ):
+            _LOGGER.debug("Astronomical calculations updating sun_next_setting")
+            self._forecast_time = datetime.utcnow()
+            self.calculate_sun()
+
+        if self._sun_next_setting_astro is not None:
+            return self._sun_next_setting_astro
+        if self._sun_next_setting_nautical is not None:
+            return self._sun_next_setting_nautical
+        if self._sun_next_setting_civil is not None:
+            return self._sun_next_setting_civil
+        
+    async def sun_next_setting_civil(self) -> datetime:
+        """Returns sun next setting"""
+        localtime = self.utc_to_local(datetime.utcnow())
+        if (
+            self._sun_next_setting_civil is None
+            or localtime > self._sun_next_setting_civil
+        ):
+            _LOGGER.debug("Astronomical calculations updating sun_next_setting_civil")
+            self._forecast_time = datetime.utcnow()
+            self.calculate_sun()
+        else:
+            _LOGGER.debug("Astronomical calculations sun_next_setting_civil in %s", str(self._sun_next_setting_civil - localtime))
+            
+        if self._sun_next_setting_civil is not None:
+            return self._sun_next_setting_civil
 
     async def sun_next_setting_nautical(self) -> datetime:
         """Returns sun next nautical setting"""
+        localtime = self.utc_to_local(datetime.utcnow())
+        if (
+            self._sun_next_setting_nautical is None
+            or localtime > self._sun_next_setting_nautical
+        ):
+            _LOGGER.debug("Astronomical calculations updating sun_next_setting_nautical")
+            self._forecast_time = datetime.utcnow()
+            self.calculate_sun()
+        else:
+            _LOGGER.debug("Astronomical calculations sun_next_setting_nautical in %s", str(self._sun_next_setting_nautical - localtime))
+            
         if self._sun_next_setting_nautical is not None:
             return self._sun_next_setting_nautical
 
     async def sun_next_setting_astro(self) -> datetime:
         """Returns sun next astronomical setting"""
+        localtime = self.utc_to_local(datetime.utcnow())
+        if (
+            self._sun_next_setting_astro is None
+            or localtime > self._sun_next_setting_astro
+        ):
+            _LOGGER.debug("Astronomical calculations updating sun_next_setting_astro")
+            self._forecast_time = datetime.utcnow()
+            self.calculate_sun()
+        else:
+            _LOGGER.debug("Astronomical calculations sun_next_setting_astro in %s", str(self._sun_next_setting_astro - localtime))
+            
         if self._sun_next_setting_astro is not None:
             return self._sun_next_setting_astro
 
-    async def sun_altitude(self) -> float:
-        """Returns the sun altitude"""
-        if self._sun_altitude is not None:
-            return self._sun_altitude
 
-    async def sun_azimuth(self) -> float:
-        """Returns the sun azimuth"""
-        if self._sun_azimuth is not None:
-            return self._sun_azimuth
-
+    # Return Moon setting and rising
     async def moon_next_rising(self) -> datetime:
+        localtime = self.utc_to_local(datetime.utcnow())
+        if (
+            self._moon_next_rising is None
+            or localtime > self._moon_next_rising
+        ):
+            _LOGGER.debug("Astronomical calculations updating moon_next_rising")
+            self.calculate_sun()
+        else:
+            _LOGGER.debug("Astronomical calculations moon_next_rising in %s", str(self._moon_next_rising - localtime))
+            
         """Returns moon next rising"""
         if self._moon_next_rising is not None:
             return self._moon_next_rising
 
     async def moon_next_setting(self) -> datetime:
+        localtime = self.utc_to_local(datetime.utcnow())
+        if (
+            self._moon_next_setting is None
+            or localtime > self._moon_next_setting
+        ):
+            _LOGGER.debug("Astronomical calculations updating moon_next_setting")
+            self.calculate_sun()
+        else:
+            _LOGGER.debug("Astronomical calculations moon_next_setting in %s", str(self._moon_next_setting - localtime))
+            
         """Returns moon next setting"""
         if self._moon_next_setting is not None:
             return self._moon_next_setting
 
     async def moon_phase(self) -> float:
         """Returns the moon phase"""
-        return self._moon.phase
+        self._forecast_time = datetime.utcnow()
+        self.calculate_moon()
+
+        if self._moon.phase is not None:
+            return self._moon.phase
+
+
+    # Return Alt Azimuth of Sun and Moon
+    async def sun_altitude(self) -> float:
+        """Returns the sun altitude"""
+        self._forecast_time = datetime.utcnow()
+        self.calculate_sun_altaz()
+
+        if self._sun_altitude is not None:
+            return self._sun_altitude
+
+    async def sun_azimuth(self) -> float:
+        """Returns the sun azimuth"""
+        self._forecast_time = datetime.utcnow()
+        self.calculate_sun_altaz()
+
+        if self._sun_azimuth is not None:
+            return self._sun_azimuth
 
     async def moon_altitude(self) -> float:
         """Returns the moon altitude"""
+        self._forecast_time = datetime.utcnow()
+        self.calculate_moon_altaz()
+
         if self._moon_altitude is not None:
             return self._moon_altitude
 
     async def moon_azimuth(self) -> float:
         """Returns the moon azimuth"""
+        self._forecast_time = datetime.utcnow()
+        self.calculate_moon_altaz()
+
         if self._moon_azimuth is not None:
             return self._moon_azimuth

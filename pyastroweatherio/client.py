@@ -71,6 +71,18 @@ class AstroWeather:
         self._forecast_data = None
 
         self.req = session
+        
+        # Astro Routines
+        self._astro_routines = AstronomicalRoutines(
+            self._latitude,
+            self._longitude,
+            self._elevation,
+            self._timezone_info
+        )
+        
+        # Testing
+        self.test_mode = False
+        self.dump_json = False
 
     # Public functions
     async def get_location_data(
@@ -111,6 +123,18 @@ class AstroWeather:
         # Anchor timestamp
         init_ts = await cnv.anchor_timestamp(self._weather_data_seventimer_init)
 
+        # # Astro Routines
+        # astro_routines = AstronomicalRoutines(
+        #     self._latitude,
+        #     self._longitude,
+        #     self._elevation,
+        #     self._timezone_info,
+        #     now,
+        # )
+
+        await self._astro_routines.need_update()
+
+
         # Met.no
         metno_index = -1
         forecast_skipped = 0
@@ -131,15 +155,6 @@ class AstroWeather:
                         break
                 _LOGGER.debug("Met.no start index: %s", str(metno_index))
 
-            # Astro Routines
-            astro_routines = AstronomicalRoutines(
-                self._latitude,
-                self._longitude,
-                self._elevation,
-                self._timezone_info,
-                now,
-            )
-
             item = {
                 "init": init_ts,
                 "timepoint": row["timepoint"],
@@ -151,28 +166,25 @@ class AstroWeather:
                 "cloudcover": row["cloudcover"],
                 "seeing": row["seeing"],
                 "transparency": row["transparency"],
-                # "condition_percentage": await self.calc_condition_percentage(
-                #     row["cloudcover"], row["seeing"], row["transparency"]
-                # ),
                 "lifted_index": row["lifted_index"],
                 "rh2m": row["rh2m"],
                 "wind10m": row["wind10m"],
                 "temp2m": row["temp2m"],
                 "dewpoint2m": await self.calc_dewpoint2m(row["rh2m"], row["temp2m"]),
                 "prec_type": row["prec_type"],
-                "sun_next_rising": await astro_routines.sun_next_rising(),
-                "sun_next_rising_nautical": await astro_routines.sun_next_rising_nautical(),
-                "sun_next_rising_astro": await astro_routines.sun_next_rising_astro(),
-                "sun_next_setting": await astro_routines.sun_next_setting(),
-                "sun_next_setting_nautical": await astro_routines.sun_next_setting_nautical(),
-                "sun_next_setting_astro": await astro_routines.sun_next_setting_astro(),
-                "sun_altitude": await astro_routines.sun_altitude(),
-                "sun_azimuth": await astro_routines.sun_azimuth(),
-                "moon_next_rising": await astro_routines.moon_next_rising(),
-                "moon_next_setting": await astro_routines.moon_next_setting(),
-                "moon_phase": await astro_routines.moon_phase(),
-                "moon_altitude": await astro_routines.moon_altitude(),
-                "moon_azimuth": await astro_routines.moon_azimuth(),
+                "sun_next_rising": await self._astro_routines.sun_next_rising_civil(),
+                "sun_next_rising_nautical": await self._astro_routines.sun_next_rising_nautical(),
+                "sun_next_rising_astro": await self._astro_routines.sun_next_rising_astro(),
+                "sun_next_setting": await self._astro_routines.sun_next_setting_civil(),
+                "sun_next_setting_nautical": await self._astro_routines.sun_next_setting_nautical(),
+                "sun_next_setting_astro": await self._astro_routines.sun_next_setting_astro(),
+                "sun_altitude": await self._astro_routines.sun_altitude(),
+                "sun_azimuth": await self._astro_routines.sun_azimuth(),
+                "moon_next_rising": await self._astro_routines.moon_next_rising(),
+                "moon_next_setting": await self._astro_routines.moon_next_setting(),
+                "moon_phase": await self._astro_routines.moon_phase(),
+                "moon_altitude": await self._astro_routines.moon_altitude(),
+                "moon_azimuth": await self._astro_routines.moon_azimuth(),
                 "weather": row.get("weather", ""),
                 "deepsky_forecast": await self._get_deepsky_forecast(),
             }
@@ -242,10 +254,12 @@ class AstroWeather:
         init_ts = await cnv.anchor_timestamp(self._weather_data_seventimer_init)
 
         # Astro Routines
-        astro_routines = AstronomicalRoutines(
-            self._latitude, self._longitude, self._elevation, self._timezone_info, now
-        )
-        utc_to_local_diff = astro_routines.utc_to_local_diff()
+        # astro_routines = AstronomicalRoutines(
+        #     self._latitude, self._longitude, self._elevation, self._timezone_info, now
+        # )
+        # await self._astro_routines.need_update()
+
+        utc_to_local_diff = self._astro_routines.utc_to_local_diff()
         _LOGGER.debug("UTC to local diff: %s", str(utc_to_local_diff))
         _LOGGER.debug("Forecast length: %s", str(len(self._weather_data_seventimer)))
 
@@ -277,7 +291,7 @@ class AstroWeather:
                 "init": init_ts,
                 "timepoint": row["timepoint"],
                 "timestamp": forecast_time,
-                # "timestamp": astro_routines.utc_to_local(forecast_time),
+                # "timestamp": self._astro_routines.utc_to_local(forecast_time),
                 "hour": hour_of_day,
                 "cloudcover": cloudcover,
                 "seeing": seeing,
@@ -362,10 +376,12 @@ class AstroWeather:
         init_ts = await cnv.anchor_timestamp(self._weather_data_seventimer_init)
 
         # Astro Routines
-        astro_routines = AstronomicalRoutines(
-            self._latitude, self._longitude, self._elevation, self._timezone_info, now
-        )
-        utc_to_local_diff = astro_routines.utc_to_local_diff()
+        # astro_routines = AstronomicalRoutines(
+        #     self._latitude, self._longitude, self._elevation, self._timezone_info, now
+        # )
+        # await self._astro_routines.need_update()
+
+        utc_to_local_diff = self._astro_routines.utc_to_local_diff()
 
         # Create forecast
         forecast_dayname = ""
@@ -373,13 +389,13 @@ class AstroWeather:
         start_weather = ""
         interval_points = []
 
-        sun_next_setting_astro = await astro_routines.sun_next_setting_astro()
-        sun_next_rising_astro = await astro_routines.sun_next_rising_astro()
+        sun_next_setting = await self._astro_routines.sun_next_setting()
+        sun_next_rising = await self._astro_routines.sun_next_rising()
 
         _LOGGER.debug(
-            "sun_next_setting_astro: %s, sun_next_rising_astro: %s",
-            str(sun_next_setting_astro),
-            str(sun_next_rising_astro),
+            "sun_next_setting: %s, sun_next_rising: %s",
+            str(sun_next_setting),
+            str(sun_next_rising),
         )
         for row in self._forecast_data:
             # Hour of day needs to be in local time
@@ -387,7 +403,7 @@ class AstroWeather:
 
             # Skip daytime, we're only interested in the forecasts at
             # darkness.
-            if hour_of_day < sun_next_setting_astro.hour and hour_of_day > sun_next_rising_astro.hour:
+            if hour_of_day < sun_next_setting.hour and hour_of_day > sun_next_rising.hour:
                 start_forecast_hour = 0
                 start_weather = ""
                 interval_points = []
@@ -412,7 +428,7 @@ class AstroWeather:
             else:
                 interval_points.append(await self.calc_condition_percentage(cloudcover, seeing, transparency))
 
-            if hour_of_day == sun_next_rising_astro.hour:
+            if hour_of_day == sun_next_rising.hour:
                 item = {
                     "init": init_ts,
                     "dayname": forecast_dayname,
@@ -494,19 +510,23 @@ class AstroWeather:
             self._weather_data_seventimer_timestamp = datetime.now()
             _LOGGER.debug("Updating data from 7Timer")
 
-            # Testing
-            # json_data_astro = {"init": "2022060906"}
-            # with open("astro.json") as json_file:
-            #     astro_dataseries = json.load(json_file).get("dataseries", {})
-            # with open("civil.json") as json_file:
-            #     civil_dataseries = json.load(json_file).get("dataseries", {})
-            # -Testing
-            json_data_astro = await self.async_request_seventimer("astro", "get")
-            json_data_civil = await self.async_request_seventimer("civil", "get")
+            astro_dataseries = None
+            civil_dataseries = None
 
-            astro_dataseries = json_data_astro.get("dataseries", {})
-            civil_dataseries = json_data_civil.get("dataseries", {})
-            # /Testing
+            # Testing
+            if self.test_mode:
+                with open("astro.json") as json_file:
+                    astro_dataseries_json = json.load(json_file)
+                    astro_dataseries = astro_dataseries_json.get("dataseries", {})
+                    json_data_astro = { "init": astro_dataseries_json.get("init")}
+                with open("civil.json") as json_file:
+                    civil_dataseries = json.load(json_file).get("dataseries", {})
+            else:
+                json_data_astro = await self.async_request_seventimer("astro", "get")
+                json_data_civil = await self.async_request_seventimer("civil", "get")
+
+                astro_dataseries = json_data_astro.get("dataseries", {})
+                civil_dataseries = json_data_civil.get("dataseries", {})
 
             for astro, civil in zip(astro_dataseries, civil_dataseries):
                 if astro["timepoint"] == civil["timepoint"]:
@@ -550,11 +570,10 @@ class AstroWeather:
                 plain = str(await resp.text()).replace("\n", " ")
                 data = json.loads(plain)
 
-                # Testing
-                # json_string = json.dumps(data)
-                # with open(product + ".json", "w") as outfile:
-                #     outfile.write(json_string)
-                # /Testing
+                if self.dump_json:
+                    json_string = json.dumps(data)
+                    with open(product + ".json", "w") as outfile:
+                        outfile.write(json_string)
 
                 return data
         except asyncio.TimeoutError as tex:
@@ -573,17 +592,16 @@ class AstroWeather:
             self._weather_data_metno_timestamp = datetime.now()
             _LOGGER.debug("Updating data from Met.no")
 
-            # Testing
-            # json_data_astro = {"init": "2022060906"}
-            # with open("astro.json") as json_file:
-            #     astro_dataseries = json.load(json_file).get("dataseries", {})
-            # with open("civil.json") as json_file:
-            #     civil_dataseries = json.load(json_file).get("dataseries", {})
-            # -Testing
-            json_data_metno = await self.async_request_met("met", "get")
+            dataseries = None
 
-            dataseries = json_data_metno.get("properties", {}).get("timeseries", [])
-            # /Testing
+            # Testing
+            if self.test_mode:
+                with open("met.json") as json_file:
+                    dataseries = json.load(json_file).get("properties", {}).get("timeseries", [])
+            else:
+                json_data_metno = await self.async_request_met("met", "get")
+
+                dataseries = json_data_metno.get("properties", {}).get("timeseries", [])
 
             self._weather_data_metno = dataseries
             self._weather_data_metno_init = dataseries[0].get("time", None)
@@ -620,11 +638,10 @@ class AstroWeather:
                 # data = json.loads(plain)
                 data = await resp.json()
 
-                # Testing
-                # json_string = json.dumps(data)
-                # with open(product + ".json", "w") as outfile:
-                #     outfile.write(json_string)
-                # /Testing
+                if self.dump_json:
+                    json_string = json.dumps(data)
+                    with open(product + ".json", "w") as outfile:
+                        outfile.write(json_string)
 
                 return data
         except asyncio.TimeoutError as tex:
