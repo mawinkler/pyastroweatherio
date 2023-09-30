@@ -71,15 +71,12 @@ class AstroWeather:
         self._forecast_data = None
 
         self.req = session
-        
+
         # Astro Routines
         self._astro_routines = AstronomicalRoutines(
-            self._latitude,
-            self._longitude,
-            self._elevation,
-            self._timezone_info
+            self._latitude, self._longitude, self._elevation, self._timezone_info
         )
-        
+
         # Testing
         self.test_mode = False
         self.dump_json = False
@@ -123,17 +120,7 @@ class AstroWeather:
         # Anchor timestamp
         init_ts = await cnv.anchor_timestamp(self._weather_data_seventimer_init)
 
-        # # Astro Routines
-        # astro_routines = AstronomicalRoutines(
-        #     self._latitude,
-        #     self._longitude,
-        #     self._elevation,
-        #     self._timezone_info,
-        #     now,
-        # )
-
         await self._astro_routines.need_update()
-
 
         # Met.no
         metno_index = -1
@@ -254,12 +241,6 @@ class AstroWeather:
         # Anchor timestamp
         init_ts = await cnv.anchor_timestamp(self._weather_data_seventimer_init)
 
-        # Astro Routines
-        # astro_routines = AstronomicalRoutines(
-        #     self._latitude, self._longitude, self._elevation, self._timezone_info, now
-        # )
-        # await self._astro_routines.need_update()
-
         utc_to_local_diff = self._astro_routines.utc_to_local_diff()
         _LOGGER.debug("UTC to local diff: %s", str(utc_to_local_diff))
         _LOGGER.debug("Forecast length: %s", str(len(self._weather_data_seventimer)))
@@ -375,12 +356,6 @@ class AstroWeather:
 
         # Anchor timestamp
         init_ts = await cnv.anchor_timestamp(self._weather_data_seventimer_init)
-
-        # Astro Routines
-        # astro_routines = AstronomicalRoutines(
-        #     self._latitude, self._longitude, self._elevation, self._timezone_info, now
-        # )
-        # await self._astro_routines.need_update()
 
         utc_to_local_diff = self._astro_routines.utc_to_local_diff()
 
@@ -519,7 +494,7 @@ class AstroWeather:
                 with open("astro.json") as json_file:
                     astro_dataseries_json = json.load(json_file)
                     astro_dataseries = astro_dataseries_json.get("dataseries", {})
-                    json_data_astro = { "init": astro_dataseries_json.get("init")}
+                    json_data_astro = {"init": astro_dataseries_json.get("init")}
                 with open("civil.json") as json_file:
                     civil_dataseries = json.load(json_file).get("dataseries", {})
             else:
