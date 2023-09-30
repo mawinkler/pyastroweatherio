@@ -51,8 +51,7 @@ async def main() -> None:
         timezone_info="Europe/Berlin",
         cloudcover_weight=3,
         seeing_weight=2,
-        transparency_weight=1,
-        metno_enabled=True,
+        transparency_weight=1
     )
 
     start = time.time()
@@ -105,14 +104,12 @@ async def main() -> None:
             )
             print(
                 f"{esc(COLOR_RED)}Wind Direction: {esc(COLOR_GREEN)}{str(row.wind10m_direction)}, "
-                + f"{esc(COLOR_RED)}Speed: {esc(COLOR_GREEN)}{str(row.wind10m_speed)}, "
-                + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.wind10m_speed_plain)}{esc('0')}"
+                + f"{esc(COLOR_RED)}Speed: {esc(COLOR_GREEN)}{str(row.wind10m_speed)}{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}Temperature: {esc(COLOR_GREEN)}{str(row.temp2m)}, "
                 + f"{esc(COLOR_RED)}Rel Humidity: {esc(COLOR_GREEN)}{str(row.rh2m)}, "
-                + f"{esc(COLOR_RED)}Dew Point: {esc(COLOR_GREEN)}{str(row.dewpoint2m)}, "
-                + f"{esc(COLOR_RED)}Prec Type: {esc(COLOR_GREEN)}{str(row.prec_type)}{esc('0')}"
+                + f"{esc(COLOR_RED)}Dew Point: {esc(COLOR_GREEN)}{str(row.dewpoint2m)}{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}View Condition: {esc(COLOR_GREEN)}{str(row.condition_percentage)}, "
@@ -149,13 +146,11 @@ async def main() -> None:
                 + f"{esc(COLOR_RED)}Forecast Today Dayname: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_dayname)}, "
                 + f"{esc(COLOR_RED)}Forecast Today: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_plain)}{esc('0')}"
             )
-            print(f"{esc(COLOR_RED)}Description: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_desc)}{esc('0')}")
             print(
                 f"{esc(COLOR_RED)}Forecast Tomorrow: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow)}, "
                 + f"{esc(COLOR_RED)}Forecast Tomorrow Dayname: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_dayname)}, "
                 + f"{esc(COLOR_RED)}Forecast Tomorrow: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_plain)}{esc('0')}"
             )
-            print(f"{esc(COLOR_RED)}Description: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_desc)}{esc('0')}")
 
         data = await astroweather.get_hourly_forecast()
         for row in data:
@@ -190,8 +185,7 @@ async def main() -> None:
             print(
                 f"{esc(COLOR_RED)}Temperature: {esc(COLOR_GREEN)}{str(row.temp2m)}, "
                 + f"{esc(COLOR_RED)}Rel Humidity: {esc(COLOR_GREEN)}{str(row.rh2m)}, "
-                + f"{esc(COLOR_RED)}Dew Point: {esc(COLOR_GREEN)}{str(row.dewpoint2m)}, "
-                + f"{esc(COLOR_RED)}Prec Type: {esc(COLOR_GREEN)}{str(row.prec_type)}{esc('0')}"
+                + f"{esc(COLOR_RED)}Dew Point: {esc(COLOR_GREEN)}{str(row.dewpoint2m)}{esc('0')}"
             )
             print(f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}{esc('0')}")
 

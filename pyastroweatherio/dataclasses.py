@@ -9,10 +9,10 @@ from pyastroweatherio.const import (
     LIFTED_INDEX_PLAIN,
     SEEING_PLAIN,
     TRANSPARENCY_PLAIN,
-    WIND10M_SPEED_PLAIN,
-    WIND10M_SPEED,
+    # WIND10M_SPEED_PLAIN,
+    # WIND10M_SPEED,
     WIND10M_DIRECTON,
-    MAP_WEATHER_TYPE,
+    # MAP_WEATHER_TYPE,
 )
 
 
@@ -34,10 +34,11 @@ class BaseData:
         self._condition_percentage = data["condition_percentage"]
         self._lifted_index = data["lifted_index"]
         self._rh2m = data["rh2m"]
-        self._wind10m = data["wind10m"]
+        self._wind_speed = data["wind_speed"]
+        self._wind_from_direction = data["wind_from_direction"]
         self._temp2m = data["temp2m"]
         self._dewpoint2m = data["dewpoint2m"]
-        self._prec_type = data["prec_type"]
+        # self._prec_type = data["prec_type"]
         self._weather = data["weather"]
 
     @property
@@ -133,12 +134,19 @@ class BaseData:
     @property
     def wind10m_speed(self) -> float:
         """Return 10m Wind Speed."""
-        speed = self._wind10m.get("speed", 0)
-        if speed >= 1 and speed <= 8:
-            return float(WIND10M_SPEED[self._wind10m.get("speed", 0)])
-        # return float(0)
-        return None
+        return self._wind_speed
 
+    @property
+    def wind10m_direction(self) -> str:
+        """Return 10m Wind Direction."""
+        direction = self._wind_from_direction
+        
+        # points = ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+        direction += 22.5
+        direction = direction % 360
+        direction = int(direction / 45) # values 0 to 7
+        return WIND10M_DIRECTON[direction]
+    
     @property
     def temp2m(self) -> int:
         """Return 2m Temperature."""
@@ -149,15 +157,15 @@ class BaseData:
         """Return 2m Dew Point."""
         return round(self._dewpoint2m, 1)
 
-    @property
-    def prec_type(self) -> str:
-        """Return Precipitation Type."""
-        return self._prec_type.capitalize()
+    # @property
+    # def prec_type(self) -> str:
+    #     """Return Precipitation Type."""
+    #     return self._prec_type.capitalize()
 
     @property
     def weather(self) -> str:
         """Return Current Weather."""
-        return self._weather
+        return self._weather.replace('_', ' ').capitalize()
 
 
 class LocationData(BaseData):
@@ -248,22 +256,14 @@ class LocationData(BaseData):
             return trans.get(self._lifted_index, "")
         return None
 
-    @property
-    def wind10m_direction(self) -> str:
-        """Return 10m Wind Direction."""
-        direction = self._wind10m.get("direction", "O")
-        if direction in WIND10M_DIRECTON:
-            return direction.upper()
-        return None
-
-    @property
-    def wind10m_speed_plain(self) -> str:
-        """Return 10m Wind Speed."""
-        speed = self._wind10m.get("speed", 0)
-        if speed >= 1 and speed <= 8:
-            return WIND10M_SPEED_PLAIN[speed].capitalize()
-        # return WIND10M_SPEED_PLAIN[0].capitalize()
-        return None
+    # @property
+    # def wind10m_speed_plain(self) -> str:
+    #     """Return 10m Wind Speed."""
+    #     speed = self._wind10m.get("speed", 0)
+    #     if speed >= 1 and speed <= 8:
+    #         return WIND10M_SPEED_PLAIN[speed].capitalize()
+    #     # return WIND10M_SPEED_PLAIN[0].capitalize()
+    #     return None
 
     @property
     def deep_sky_view(self) -> bool:
@@ -428,7 +428,7 @@ class LocationData(BaseData):
         """Return Forecast Today Description."""
         if len(self._deepsky_forecast) > 0:
             nightly_conditions = self._deepsky_forecast[0]
-            return MAP_WEATHER_TYPE[nightly_conditions.weather]
+            return nightly_conditions.weather.replace('_', ' ').capitalize()
         return None
 
     @property
@@ -489,7 +489,7 @@ class LocationData(BaseData):
         """Return Forecast Tomorrow Description."""
         if len(self._deepsky_forecast) > 1:
             nightly_conditions = self._deepsky_forecast[1]
-            return MAP_WEATHER_TYPE[nightly_conditions.weather]
+            return nightly_conditions.weather.replace('_', ' ').capitalize()
         return None
 
 
@@ -504,14 +504,6 @@ class ForecastData(BaseData):
     def hour(self) -> int:
         """Return Forecast Hour of the day."""
         return self._hour
-
-    @property
-    def wind10m_direction(self) -> str:
-        """Return 10m Wind Direction."""
-        direction = self._wind10m.get("direction", "O")
-        if direction in WIND10M_DIRECTON:
-            return direction.upper()
-        return None
 
     @property
     def deep_sky_view(self) -> bool:
@@ -559,4 +551,4 @@ class NightlyConditionsData:
     @property
     def weather(self) -> str:
         """Return Current Weather."""
-        return self._weather
+        return self._weather.replace('_', ' ').capitalize()

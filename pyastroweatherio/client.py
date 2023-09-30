@@ -50,7 +50,6 @@ class AstroWeather:
         cloudcover_weight=DEFAULT_CONDITION_CLOUDCOVER_WEIGHT,
         seeing_weight=DEFAULT_CONDITION_SEEING_WEIGHT,
         transparency_weight=DEFAULT_CONDITION_TRANSPARENCY_WEIGHT,
-        metno_enabled=True,
     ):
         self._session: ClientSession = session
         self._latitude = latitude
@@ -66,7 +65,8 @@ class AstroWeather:
         self._cloudcover_weight = cloudcover_weight
         self._seeing_weight = seeing_weight
         self._transparency_weight = transparency_weight
-        self._metno_enabled = metno_enabled
+
+        self._metno_enabled = True
 
         self._forecast_data = None
 
@@ -150,15 +150,15 @@ class AstroWeather:
                 "latitude": self._latitude,
                 "longitude": self._longitude,
                 "elevation": self._elevation,
-                "cloudcover": row["cloudcover"],
+                # "cloudcover": row["cloudcover"],  # overwritten
                 "seeing": row["seeing"],
                 "transparency": row["transparency"],
                 "lifted_index": row["lifted_index"],
-                "rh2m": row["rh2m"],
-                "wind10m": row["wind10m"],
-                "temp2m": row["temp2m"],
-                "dewpoint2m": await self.calc_dewpoint2m(row["rh2m"], row["temp2m"]),
-                "prec_type": row["prec_type"],
+                # "rh2m": row["rh2m"],  # overwritten
+                # "wind10m": row["wind10m"],  # overwritten
+                # "temp2m": row["temp2m"],  # overwritten
+                # "dewpoint2m": await self.calc_dewpoint2m(row["rh2m"], row["temp2m"]),  # overwritten
+                # "prec_type": row["prec_type"],
                 "sun_next_rising": await self._astro_routines.sun_next_rising_civil(),
                 "sun_next_rising_nautical": await self._astro_routines.sun_next_rising_nautical(),
                 "sun_next_rising_astro": await self._astro_routines.sun_next_rising_astro(),
@@ -173,7 +173,7 @@ class AstroWeather:
                 "moon_next_new_moon": await self._astro_routines.moon_next_new_moon(),
                 "moon_altitude": await self._astro_routines.moon_altitude(),
                 "moon_azimuth": await self._astro_routines.moon_azimuth(),
-                "weather": row.get("weather", ""),
+                # "weather": row.get("weather", ""),
                 "deepsky_forecast": await self._get_deepsky_forecast(),
             }
             # Met.no
@@ -202,10 +202,12 @@ class AstroWeather:
                     row["transparency"],
                 )
 
-                # item["wind10m"] = {
-                #     "speed": details.get("wind_speed", -1),
-                #     "direction": details.get("wind_from_direction", -1),
-                # }
+                item["rh2m"] = details.get("relative_humidity", -1)
+                item["wind_speed"] = details.get("wind_speed", -1)
+                item["wind_from_direction"] = details.get("wind_from_direction", -1)
+                item["temp2m"] = details.get("air_temperature", -1)
+                item["dewpoint2m"] = details.get("dew_point_temperature", -1)
+                item["weather"] = self._weather_data_metno[metno_index].get("data", {}).get("next_1_hours", {}).get("summary", {}).get("symbol_code", "")
 
             else:
                 # _LOGGER.debug("Met.no no Cloud Area Fraction for: %s", str(forecast_time))
@@ -275,16 +277,16 @@ class AstroWeather:
                 "timestamp": forecast_time,
                 # "timestamp": self._astro_routines.utc_to_local(forecast_time),
                 "hour": hour_of_day,
-                "cloudcover": cloudcover,
+                # "cloudcover": cloudcover,
                 "seeing": seeing,
                 "transparency": transparency,
                 "lifted_index": row["lifted_index"],
-                "rh2m": row["rh2m"],
-                "wind10m": row["wind10m"],
-                "temp2m": row["temp2m"],
-                "dewpoint2m": await self.calc_dewpoint2m(row["rh2m"], row["temp2m"]),
-                "prec_type": row["prec_type"],
-                "weather": row.get("weather", ""),
+                # "rh2m": row["rh2m"],
+                # "wind10m": row["wind10m"],
+                # "temp2m": row["temp2m"],
+                # "dewpoint2m": await self.calc_dewpoint2m(row["rh2m"], row["temp2m"]),
+                # "prec_type": row["prec_type"],
+                # "weather": row.get("weather", ""),
             }
             # Met.no
             if (
@@ -305,6 +307,8 @@ class AstroWeather:
                         .get("details", {})
                     )
                     # Overwrite cloudcover
+                    if details.get("cloud_area_fraction") is None:
+                        break
                     item["cloudcover"] = int(details.get("cloud_area_fraction", -1) / 12.5 + 1)
 
                     item["cloud_area_fraction"] = details.get("cloud_area_fraction", -1)
@@ -318,12 +322,20 @@ class AstroWeather:
                         row["seeing"],
                         row["transparency"],
                     )
+                    item["rh2m"] = details.get("relative_humidity", -1)
+                    item["wind_speed"] = details.get("wind_speed", -1)
+                    item["wind_from_direction"] = details.get("wind_from_direction", -1)
+                    item["temp2m"] = details.get("air_temperature", -1)
+                    item["dewpoint2m"] = details.get("dew_point_temperature", -1)
+                    item["weather"] = self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("next_1_hours", {}).get("summary", {}).get("symbol_code", "")
+                
                     items.append(ForecastData(item))
 
                     item["timepoint"] = item["timepoint"] + 1
                     item["timestamp"] = item["timestamp"] + timedelta(hours=1)
                     item["hour"] = item["hour"] + 1
             else:
+                break
                 # _LOGGER.debug("Met.no no Cloud Area Fraction for: %s", str(forecast_time))
                 item["cloud_area_fraction"] = None
                 item["cloud_area_fraction_high"] = None
@@ -487,7 +499,7 @@ class AstroWeather:
             _LOGGER.debug("Updating data from 7Timer")
 
             astro_dataseries = None
-            civil_dataseries = None
+            # civil_dataseries = None
 
             # Testing
             if self.test_mode:
@@ -495,19 +507,19 @@ class AstroWeather:
                     astro_dataseries_json = json.load(json_file)
                     astro_dataseries = astro_dataseries_json.get("dataseries", {})
                     json_data_astro = {"init": astro_dataseries_json.get("init")}
-                with open("civil.json") as json_file:
-                    civil_dataseries = json.load(json_file).get("dataseries", {})
+                # with open("civil.json") as json_file:
+                #     civil_dataseries = json.load(json_file).get("dataseries", {})
             else:
                 json_data_astro = await self.async_request_seventimer("astro", "get")
-                json_data_civil = await self.async_request_seventimer("civil", "get")
+                # json_data_civil = await self.async_request_seventimer("civil", "get")
 
                 astro_dataseries = json_data_astro.get("dataseries", {})
-                civil_dataseries = json_data_civil.get("dataseries", {})
+                # civil_dataseries = json_data_civil.get("dataseries", {})
 
-            for astro, civil in zip(astro_dataseries, civil_dataseries):
-                if astro["timepoint"] == civil["timepoint"]:
-                    astro["weather"] = civil["weather"]
-                    astro["rh2m"] = int(civil["rh2m"].replace("%", ""))
+            # for astro, civil in zip(astro_dataseries, civil_dataseries):
+            #     if astro["timepoint"] == civil["timepoint"]:
+            #         # astro["weather"] = civil["weather"]
+            #         astro["rh2m"] = int(civil["rh2m"].replace("%", ""))
 
             self._weather_data_seventimer = astro_dataseries
             self._weather_data_seventimer_init = json_data_astro.get("init")
