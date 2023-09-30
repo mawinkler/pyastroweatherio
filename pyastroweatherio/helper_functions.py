@@ -533,9 +533,13 @@ class AstronomicalRoutines:
         self._forecast_time = datetime.utcnow()
         self.calculate_moon()
 
-        if self._moon.phase is not None:
+        if self._moon is not None:
             return self._moon.phase
 
+    async def moon_next_new_moon(self) -> float:
+        """Returns the moon phase"""
+        self._forecast_time = datetime.utcnow()
+        return self.utc_to_local(ephem.next_new_moon(self._forecast_time).datetime())
 
     # Return Alt Azimuth of Sun and Moon
     async def sun_altitude(self) -> float:

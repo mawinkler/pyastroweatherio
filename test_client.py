@@ -141,7 +141,8 @@ async def main() -> None:
             )
             print(
                 f"{esc(COLOR_RED)}Moon next Rising: {esc(COLOR_GREEN)}{str(row.moon_next_rising)}, "
-                + f"{esc(COLOR_RED)}Moon next Setting: {esc(COLOR_GREEN)}{str(row.moon_next_setting)}{esc('0')}"
+                + f"{esc(COLOR_RED)}Moon next Setting: {esc(COLOR_GREEN)}{str(row.moon_next_setting)}, "
+                + f"{esc(COLOR_RED)}Moon next new Moon: {esc(COLOR_GREEN)}{str(row.moon_next_new_moon)}{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}Forecast Today: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today)}, "
