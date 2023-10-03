@@ -187,7 +187,9 @@ async def main() -> None:
                 + f"{esc(COLOR_RED)}Rel Humidity: {esc(COLOR_GREEN)}{str(row.rh2m)}, "
                 + f"{esc(COLOR_RED)}Dew Point: {esc(COLOR_GREEN)}{str(row.dewpoint2m)}{esc('0')}"
             )
-            print(f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}{esc('0')}")
+            print(f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}, "
+                + f"{esc(COLOR_RED)}Weather 6: {esc(COLOR_GREEN)}{str(row.weather6)}, "
+                + f"{esc(COLOR_RED)}Precipitation amount: {esc(COLOR_GREEN)}{str(row.precipitation_amount)}{esc('0')}")
 
         data = await astroweather.get_deepsky_forecast()
         for row in data:

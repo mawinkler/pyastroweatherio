@@ -40,6 +40,8 @@ class BaseData:
         self._dewpoint2m = data["dewpoint2m"]
         # self._prec_type = data["prec_type"]
         self._weather = data["weather"]
+        self._weather6 = data["weather6"]
+        self._precipitation_amount = data["precipitation_amount"]
 
     @property
     def init(self) -> datetime:
@@ -166,6 +168,16 @@ class BaseData:
     def weather(self) -> str:
         """Return Current Weather."""
         return self._weather.replace('_', ' ').capitalize()
+
+    @property
+    def weather6(self) -> str:
+        """Return Current Weather."""
+        return self._weather6.replace('_', ' ').capitalize()
+
+    @property
+    def precipitation_amount(self) -> float:
+        """Return Current Weather."""
+        return self._precipitation_amount
 
 
 class LocationData(BaseData):

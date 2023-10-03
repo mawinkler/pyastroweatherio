@@ -66,8 +66,6 @@ class AstroWeather:
         self._seeing_weight = seeing_weight
         self._transparency_weight = transparency_weight
 
-        self._metno_enabled = True
-
         self._forecast_data = None
 
         self.req = session
@@ -113,8 +111,7 @@ class AstroWeather:
         items = []
 
         await self.retrieve_data_seventimer()
-        if self._metno_enabled:
-            await self.retrieve_data_metno()
+        await self.retrieve_data_metno()
         now = datetime.utcnow()
 
         # Anchor timestamp
@@ -135,12 +132,11 @@ class AstroWeather:
             _LOGGER.debug("7Timer forecast time: %s", str(forecast_time))
 
             # Met.no: Search for 7Timer forecast time
-            if self._metno_enabled:
-                for datapoint in self._weather_data_metno:
-                    metno_index += 1
-                    if forecast_time == datetime.strptime(datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ"):
-                        break
-                _LOGGER.debug("Met.no start index: %s", str(metno_index))
+            for datapoint in self._weather_data_metno:
+                metno_index += 1
+                if forecast_time == datetime.strptime(datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ"):
+                    break
+            _LOGGER.debug("Met.no start index: %s", str(metno_index))
 
             item = {
                 "init": init_ts,
@@ -150,15 +146,9 @@ class AstroWeather:
                 "latitude": self._latitude,
                 "longitude": self._longitude,
                 "elevation": self._elevation,
-                # "cloudcover": row["cloudcover"],  # overwritten
                 "seeing": row["seeing"],
                 "transparency": row["transparency"],
                 "lifted_index": row["lifted_index"],
-                # "rh2m": row["rh2m"],  # overwritten
-                # "wind10m": row["wind10m"],  # overwritten
-                # "temp2m": row["temp2m"],  # overwritten
-                # "dewpoint2m": await self.calc_dewpoint2m(row["rh2m"], row["temp2m"]),  # overwritten
-                # "prec_type": row["prec_type"],
                 "sun_next_rising": await self._astro_routines.sun_next_rising_civil(),
                 "sun_next_rising_nautical": await self._astro_routines.sun_next_rising_nautical(),
                 "sun_next_rising_astro": await self._astro_routines.sun_next_rising_astro(),
@@ -173,13 +163,11 @@ class AstroWeather:
                 "moon_next_new_moon": await self._astro_routines.moon_next_new_moon(),
                 "moon_altitude": await self._astro_routines.moon_altitude(),
                 "moon_azimuth": await self._astro_routines.moon_azimuth(),
-                # "weather": row.get("weather", ""),
                 "deepsky_forecast": await self._get_deepsky_forecast(),
             }
             # Met.no
             if (
-                self._metno_enabled
-                and datetime.strptime(
+                datetime.strptime(
                     self._weather_data_metno[metno_index].get("time"),
                     "%Y-%m-%dT%H:%M:%SZ",
                 )
@@ -208,18 +196,11 @@ class AstroWeather:
                 item["temp2m"] = details.get("air_temperature", -1)
                 item["dewpoint2m"] = details.get("dew_point_temperature", -1)
                 item["weather"] = self._weather_data_metno[metno_index].get("data", {}).get("next_1_hours", {}).get("summary", {}).get("symbol_code", "")
+                item["weather6"] = self._weather_data_metno[metno_index].get("data", {}).get("next_6_hours", {}).get("summary", {}).get("symbol_code", "")
+                item["precipitation_amount"] = self._weather_data_metno[metno_index].get("data", {}).get("next_1_hours", {}).get("details", {}).get("precipitation_amount", "")
 
             else:
-                # _LOGGER.debug("Met.no no Cloud Area Fraction for: %s", str(forecast_time))
-                item["cloud_area_fraction"] = None
-                item["cloud_area_fraction_high"] = None
-                item["cloud_area_fraction_low"] = None
-                item["cloud_area_fraction_medium"] = None
-                item["fog_area_fraction"] = None
-
-                item["condition_percentage"] = await self.calc_condition_percentage(
-                    row["cloudcover"], row["seeing"], row["transparency"]
-                )
+                break
 
             items.append(LocationData(item))
             break
@@ -233,8 +214,7 @@ class AstroWeather:
         items = []
 
         await self.retrieve_data_seventimer()
-        if self._metno_enabled:
-            await self.retrieve_data_metno()
+        await self.retrieve_data_metno()
         now = datetime.utcnow()
 
         # Create items
@@ -256,13 +236,12 @@ class AstroWeather:
                 continue
 
             # Met.no: Search for 7Timer forecast time
-            if self._metno_enabled:
-                if metno_index == -1:
-                    for datapoint in self._weather_data_metno:
-                        metno_index += 1
-                        if forecast_time == datetime.strptime(datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ"):
-                            break
-                    _LOGGER.debug("Met.no start index: %s", str(metno_index))
+            if metno_index == -1:
+                for datapoint in self._weather_data_metno:
+                    metno_index += 1
+                    if forecast_time == datetime.strptime(datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ"):
+                        break
+                _LOGGER.debug("Met.no start index: %s", str(metno_index))
 
             # Hour of day needs to be in local time
             hour_of_day = (forecast_time.hour + utc_to_local_diff) % 24
@@ -275,23 +254,14 @@ class AstroWeather:
                 "init": init_ts,
                 "timepoint": row["timepoint"],
                 "timestamp": forecast_time,
-                # "timestamp": self._astro_routines.utc_to_local(forecast_time),
                 "hour": hour_of_day,
-                # "cloudcover": cloudcover,
                 "seeing": seeing,
                 "transparency": transparency,
                 "lifted_index": row["lifted_index"],
-                # "rh2m": row["rh2m"],
-                # "wind10m": row["wind10m"],
-                # "temp2m": row["temp2m"],
-                # "dewpoint2m": await self.calc_dewpoint2m(row["rh2m"], row["temp2m"]),
-                # "prec_type": row["prec_type"],
-                # "weather": row.get("weather", ""),
             }
             # Met.no
             if (
-                self._metno_enabled
-                and datetime.strptime(
+                datetime.strptime(
                     self._weather_data_metno[metno_index + cnt].get("time"),
                     "%Y-%m-%dT%H:%M:%SZ",
                 )
@@ -327,8 +297,16 @@ class AstroWeather:
                     item["wind_from_direction"] = details.get("wind_from_direction", -1)
                     item["temp2m"] = details.get("air_temperature", -1)
                     item["dewpoint2m"] = details.get("dew_point_temperature", -1)
+                    if self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("next_1_hours", {}) == {}:
+                        # No more hourly data
+                        break
+                    if self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("next_6_hours", {}) == {}:
+                        # No more 6-hourly data
+                        break
                     item["weather"] = self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("next_1_hours", {}).get("summary", {}).get("symbol_code", "")
-                
+                    item["weather6"] = self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("next_6_hours", {}).get("summary", {}).get("symbol_code", "")
+                    item["precipitation_amount"] = self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("next_1_hours", {}).get("details", {}).get("precipitation_amount", "")
+
                     items.append(ForecastData(item))
 
                     item["timepoint"] = item["timepoint"] + 1
@@ -336,17 +314,7 @@ class AstroWeather:
                     item["hour"] = item["hour"] + 1
             else:
                 break
-                # _LOGGER.debug("Met.no no Cloud Area Fraction for: %s", str(forecast_time))
-                item["cloud_area_fraction"] = None
-                item["cloud_area_fraction_high"] = None
-                item["cloud_area_fraction_low"] = None
-                item["cloud_area_fraction_medium"] = None
-                item["fog_area_fraction"] = None
 
-                item["condition_percentage"] = await self.calc_condition_percentage(
-                    row["cloudcover"], row["seeing"], row["transparency"]
-                )
-                items.append(ForecastData(item))
             # Limit number of Hours
             cnt += 3
             if cnt >= hours_to_show:
@@ -396,25 +364,21 @@ class AstroWeather:
                 start_weather = ""
                 interval_points = []
                 continue
-            cloudcover = row.cloudcover
+            # cloudcover = row.cloudcover
             seeing = row.seeing
             transparency = row.transparency
             cloud_area_fraction = 0
 
             # Met.no
-            if self._metno_enabled:
-                cloud_area_fraction = row.cloud_area_fraction_percentage / 12.5 + 1
+            cloud_area_fraction = row.cloud_area_fraction_percentage / 12.5 + 1
 
             if len(interval_points) == 0:
                 forecast_dayname = row.timestamp.strftime("%A")
                 start_forecast_hour = hour_of_day
-                start_weather = row.weather
+                start_weather = row.weather6
 
             # Calculate Condition
-            if self._metno_enabled and cloud_area_fraction > 0:
-                interval_points.append(await self.calc_condition_percentage(cloud_area_fraction, seeing, transparency))
-            else:
-                interval_points.append(await self.calc_condition_percentage(cloudcover, seeing, transparency))
+            interval_points.append(await self.calc_condition_percentage(cloud_area_fraction, seeing, transparency))
 
             if hour_of_day == sun_next_rising.hour:
                 item = {
