@@ -175,7 +175,6 @@ class AstroWeather:
             ):
                 # _LOGGER.debug("Met.no Cloud Area Fraction timestamp match: %s", str(forecast_time))
                 details = self._weather_data_metno[metno_index].get("data", {}).get("instant", {}).get("details", {})
-                # Overwrite cloudcover
                 item["cloudcover"] = int(details.get("cloud_area_fraction", -1) / 12.5 + 1)
 
                 item["cloud_area_fraction"] = details.get("cloud_area_fraction", -1)
@@ -268,7 +267,7 @@ class AstroWeather:
                 == forecast_time
             ):
                 # _LOGGER.debug("Met.no Cloud Area Fraction timestamp match: %s", str(forecast_time))
-                # Continue hourly and overwrite cloudcover while leaving the rest from 7timer
+                # Continue hourly
                 for i in range(0, 3):
                     details = (
                         self._weather_data_metno[metno_index + cnt + i]
@@ -475,15 +474,7 @@ class AstroWeather:
                 #     civil_dataseries = json.load(json_file).get("dataseries", {})
             else:
                 json_data_astro = await self.async_request_seventimer("astro", "get")
-                # json_data_civil = await self.async_request_seventimer("civil", "get")
-
                 astro_dataseries = json_data_astro.get("dataseries", {})
-                # civil_dataseries = json_data_civil.get("dataseries", {})
-
-            # for astro, civil in zip(astro_dataseries, civil_dataseries):
-            #     if astro["timepoint"] == civil["timepoint"]:
-            #         # astro["weather"] = civil["weather"]
-            #         astro["rh2m"] = int(civil["rh2m"].replace("%", ""))
 
             self._weather_data_seventimer = astro_dataseries
             self._weather_data_seventimer_init = json_data_astro.get("init")
