@@ -163,6 +163,11 @@ class AstroWeather:
                 "moon_next_new_moon": await self._astro_routines.moon_next_new_moon(),
                 "moon_altitude": await self._astro_routines.moon_altitude(),
                 "moon_azimuth": await self._astro_routines.moon_azimuth(),
+                "night_duration_astronomical": await self._astro_routines.night_duration_astronomical(),
+                "deep_sky_darkness_moon_rises": await self._astro_routines.deep_sky_darkness_moon_rises(),
+                "deep_sky_darkness_moon_sets": await self._astro_routines.deep_sky_darkness_moon_sets(),
+                "deep_sky_darkness_moon_always_up": await self._astro_routines.deep_sky_darkness_moon_always_up(),
+                "deep_sky_darkness": await self._astro_routines.deep_sky_darkness(),
                 "deepsky_forecast": await self._get_deepsky_forecast(),
             }
             # Met.no
@@ -194,9 +199,27 @@ class AstroWeather:
                 item["wind_from_direction"] = details.get("wind_from_direction", -1)
                 item["temp2m"] = details.get("air_temperature", -1)
                 item["dewpoint2m"] = details.get("dew_point_temperature", -1)
-                item["weather"] = self._weather_data_metno[metno_index].get("data", {}).get("next_1_hours", {}).get("summary", {}).get("symbol_code", "")
-                item["weather6"] = self._weather_data_metno[metno_index].get("data", {}).get("next_6_hours", {}).get("summary", {}).get("symbol_code", "")
-                item["precipitation_amount"] = self._weather_data_metno[metno_index].get("data", {}).get("next_1_hours", {}).get("details", {}).get("precipitation_amount", "")
+                item["weather"] = (
+                    self._weather_data_metno[metno_index]
+                    .get("data", {})
+                    .get("next_1_hours", {})
+                    .get("summary", {})
+                    .get("symbol_code", "")
+                )
+                item["weather6"] = (
+                    self._weather_data_metno[metno_index]
+                    .get("data", {})
+                    .get("next_6_hours", {})
+                    .get("summary", {})
+                    .get("symbol_code", "")
+                )
+                item["precipitation_amount"] = (
+                    self._weather_data_metno[metno_index]
+                    .get("data", {})
+                    .get("next_1_hours", {})
+                    .get("details", {})
+                    .get("precipitation_amount", "")
+                )
 
             else:
                 break
@@ -302,9 +325,27 @@ class AstroWeather:
                     if self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("next_6_hours", {}) == {}:
                         # No more 6-hourly data
                         break
-                    item["weather"] = self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("next_1_hours", {}).get("summary", {}).get("symbol_code", "")
-                    item["weather6"] = self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("next_6_hours", {}).get("summary", {}).get("symbol_code", "")
-                    item["precipitation_amount"] = self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("next_1_hours", {}).get("details", {}).get("precipitation_amount", "")
+                    item["weather"] = (
+                        self._weather_data_metno[metno_index + cnt + i]
+                        .get("data", {})
+                        .get("next_1_hours", {})
+                        .get("summary", {})
+                        .get("symbol_code", "")
+                    )
+                    item["weather6"] = (
+                        self._weather_data_metno[metno_index + cnt + i]
+                        .get("data", {})
+                        .get("next_6_hours", {})
+                        .get("summary", {})
+                        .get("symbol_code", "")
+                    )
+                    item["precipitation_amount"] = (
+                        self._weather_data_metno[metno_index + cnt + i]
+                        .get("data", {})
+                        .get("next_1_hours", {})
+                        .get("details", {})
+                        .get("precipitation_amount", "")
+                    )
 
                     items.append(ForecastData(item))
 

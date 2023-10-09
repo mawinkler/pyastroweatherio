@@ -101,7 +101,7 @@ class BaseData:
     def fog_area_fraction_percentage(self) -> int:
         """Return Fog Area Percentage."""
         return self._fog_area_fraction
-    
+
     @property
     def seeing(self) -> int:
         """Return Seeing."""
@@ -143,9 +143,9 @@ class BaseData:
         direction = self._wind_from_direction
         direction += 22.5
         direction = direction % 360
-        direction = int(direction / 45) # values 0 to 7
+        direction = int(direction / 45)  # values 0 to 7
         return WIND10M_DIRECTON[direction]
-    
+
     @property
     def temp2m(self) -> int:
         """Return 2m Temperature."""
@@ -159,12 +159,12 @@ class BaseData:
     @property
     def weather(self) -> str:
         """Return Current Weather."""
-        return self._weather.replace('_', ' ').capitalize()
+        return self._weather.replace("_", " ").capitalize()
 
     @property
     def weather6(self) -> str:
         """Return Current Weather."""
-        return self._weather6.replace('_', ' ').capitalize()
+        return self._weather6.replace("_", " ").capitalize()
 
     @property
     def precipitation_amount(self) -> float:
@@ -195,6 +195,11 @@ class LocationData(BaseData):
         self._moon_next_new_moon = data["moon_next_new_moon"]
         self._moon_altitude = data["moon_altitude"]
         self._moon_azimuth = data["moon_azimuth"]
+        self._night_duration_astronomical = data["night_duration_astronomical"]
+        self._deep_sky_darkness_moon_rises = data["deep_sky_darkness_moon_rises"]
+        self._deep_sky_darkness_moon_sets = data["deep_sky_darkness_moon_sets"]
+        self._deep_sky_darkness_moon_always_up = data["deep_sky_darkness_moon_always_up"]
+        self._deep_sky_darkness = data["deep_sky_darkness"]
         self._deepsky_forecast = data["deepsky_forecast"]
 
     @property
@@ -348,7 +353,7 @@ class LocationData(BaseData):
         """Return Moon Next New Moon."""
         if isinstance(self._moon_next_new_moon, datetime):
             return self._moon_next_new_moon
-        
+
     @property
     def moon_altitude(self) -> float:
         """Return Moon Altitude."""
@@ -358,6 +363,31 @@ class LocationData(BaseData):
     def moon_azimuth(self) -> float:
         """Return Moon Azimuth."""
         return round(self._moon_azimuth, 3)
+
+    @property
+    def night_duration_astronomical(self) -> float:
+        """Returns the remaining timespan of astronomical darkness."""
+        return self._night_duration_astronomical
+
+    @property
+    def deep_sky_darkness_moon_rises(self) -> bool:
+        """Returns true if moon rises during astronomical night."""
+        return self._deep_sky_darkness_moon_rises
+
+    @property
+    def deep_sky_darkness_moon_sets(self) -> bool:
+        """Returns true if moon sets during astronomical night."""
+        return self._deep_sky_darkness_moon_sets
+
+    @property
+    def deep_sky_darkness_moon_always_up(self) -> bool:
+        """Returns true if moon is up during astronomical night."""
+        return self._deep_sky_darkness_moon_always_up
+
+    @property
+    def deep_sky_darkness(self) -> float:
+        """Returns the remaining timespan of deep sky darkness."""
+        return self._deep_sky_darkness
 
     @property
     def deepsky_forecast(self):
@@ -370,12 +400,7 @@ class LocationData(BaseData):
         nightly_condition_sum = 0
         for nightly_condition in self._deepsky_forecast[0].nightly_conditions:
             nightly_condition_sum += nightly_condition
-        return int(
-            round(
-                nightly_condition_sum
-                / len(self._deepsky_forecast[0].nightly_conditions)
-            )
-        )
+        return int(round(nightly_condition_sum / len(self._deepsky_forecast[0].nightly_conditions)))
 
     @property
     def deepsky_forecast_today_dayname(self):
@@ -398,7 +423,7 @@ class LocationData(BaseData):
         """Return Forecast Today Description."""
         if len(self._deepsky_forecast) > 0:
             nightly_conditions = self._deepsky_forecast[0]
-            return nightly_conditions.weather.replace('_', ' ').capitalize()
+            return nightly_conditions.weather.replace("_", " ").capitalize()
         return None
 
     @property
@@ -407,12 +432,7 @@ class LocationData(BaseData):
         nightly_condition_sum = 0
         for nightly_condition in self._deepsky_forecast[1].nightly_conditions:
             nightly_condition_sum += nightly_condition
-        return int(
-            round(
-                nightly_condition_sum
-                / len(self._deepsky_forecast[0].nightly_conditions)
-            )
-        )
+        return int(round(nightly_condition_sum / len(self._deepsky_forecast[0].nightly_conditions)))
 
     @property
     def deepsky_forecast_tomorrow_dayname(self):
@@ -435,7 +455,7 @@ class LocationData(BaseData):
         """Return Forecast Tomorrow Description."""
         if len(self._deepsky_forecast) > 1:
             nightly_conditions = self._deepsky_forecast[1]
-            return nightly_conditions.weather.replace('_', ' ').capitalize()
+            return nightly_conditions.weather.replace("_", " ").capitalize()
         return None
 
 
@@ -457,6 +477,7 @@ class ForecastData(BaseData):
         if self.condition_percentage <= DEEP_SKY_THRESHOLD:
             return True
         return False
+
 
 class NightlyConditionsData:
     """A representation of nights Sky Quality Data."""
@@ -491,4 +512,4 @@ class NightlyConditionsData:
     @property
     def weather(self) -> str:
         """Return Current Weather."""
-        return self._weather.replace('_', ' ').capitalize()
+        return self._weather.replace("_", " ").capitalize()

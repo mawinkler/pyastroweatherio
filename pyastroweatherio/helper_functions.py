@@ -558,3 +558,87 @@ class AstronomicalRoutines:
 
         if self._moon_azimuth is not None:
             return self._moon_azimuth
+
+    async def night_duration_astronomical(self) -> float:
+        """Returns the remaining timespan of astronomical darkness"""
+
+        start_timestamp = None
+
+        # Are we already in darkness?
+        if self._sun_next_setting_astro > self._sun_next_rising_astro:
+            start_timestamp = self.utc_to_local(datetime.utcnow())
+        else:
+            start_timestamp = self._sun_next_setting_astro
+
+        astroduration = self._sun_next_rising_astro - start_timestamp
+
+        return astroduration.total_seconds()
+
+    async def deep_sky_darkness_moon_rises(self) -> bool:
+        """Returns true if moon rises during astronomical night"""
+
+        if (
+            self._moon_next_rising > self._sun_next_setting_astro
+            and self._moon_next_rising < self._sun_next_rising_astro
+        ):
+            return True
+        return False
+
+    async def deep_sky_darkness_moon_sets(self) -> bool:
+        """Returns true if moon sets during astronomical night"""
+
+        if (
+            self._moon_next_setting < self._sun_next_rising_astro
+            and self._moon_next_setting > self._sun_next_setting_astro
+        ):
+            return True
+        return False
+
+    async def deep_sky_darkness_moon_always_up(self) -> bool:
+        """Returns true if moon is up during astronomical night"""
+
+        if (
+            self._moon_next_rising < self._sun_next_setting_astro
+            and self._moon_next_setting > self._sun_next_rising_astro
+        ):
+            return True
+        return False
+
+    async def deep_sky_darkness(self) -> float:
+        """Returns the remaining timespan of deep sky darkness"""
+
+        start_timestamp = None
+
+        # Are we already in darkness?
+        if self._sun_next_setting_astro > self._sun_next_rising_astro:
+            start_timestamp = self.utc_to_local(datetime.utcnow())
+        else:
+            start_timestamp = self._sun_next_setting_astro
+
+        dsd = self._sun_next_rising_astro - start_timestamp
+
+        # Moon rises during darkness
+        if (
+            self._moon_next_rising > self._sun_next_setting_astro
+            and self._moon_next_rising < self._sun_next_rising_astro
+        ):
+            _LOGGER.debug("Astronomical calculations Moon rises during darkness")
+            dsd = dsd - (self._sun_next_rising_astro - self._moon_next_rising)
+
+        # Moon sets during darkness
+        if (
+            self._moon_next_setting < self._sun_next_rising_astro
+            and self._moon_next_setting > self._sun_next_setting_astro
+        ):
+            _LOGGER.debug("Astronomical calculations Moon sets during darkness")
+            dsd = dsd - (self._moon_next_setting - self._sun_next_setting_astro)
+
+        # Moon up during darkness
+        if (
+            self._moon_next_rising < self._sun_next_setting_astro
+            and self._moon_next_setting > self._sun_next_rising_astro
+        ):
+            _LOGGER.debug("Astronomical calculations Moon up during darkness")
+            dsd = timedelta(0)
+
+        return dsd.total_seconds()
