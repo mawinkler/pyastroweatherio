@@ -432,7 +432,7 @@ class LocationData(BaseData):
         nightly_condition_sum = 0
         for nightly_condition in self._deepsky_forecast[1].nightly_conditions:
             nightly_condition_sum += nightly_condition
-        return int(round(nightly_condition_sum / len(self._deepsky_forecast[0].nightly_conditions)))
+        return int(round(nightly_condition_sum / len(self._deepsky_forecast[1].nightly_conditions)))
 
     @property
     def deepsky_forecast_tomorrow_dayname(self):
