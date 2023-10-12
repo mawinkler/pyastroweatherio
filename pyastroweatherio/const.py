@@ -73,7 +73,7 @@ LIFTED_INDEX_PLAIN = [
 
 WIND10M_DIRECTON = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 
-# CONDITION = ["excellent", "good", "fair", "poor", "bad"]
+CONDITION_PLAIN = ["excellent", "good", "fair", "poor", "bad"]
 # CONDITION = ["↑", "↗", "→", "↘", "↓"]
 # CONDITION = ["😁", "😀", "😐", "😕", "😞"]
 CONDITION = ["█", "▆", "▄", "▂", "▁"]

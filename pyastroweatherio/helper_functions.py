@@ -69,6 +69,8 @@ class AstronomicalRoutines:
         self._sun_next_setting_nautical = None
         self._sun_next_rising_astro = None
         self._sun_next_setting_astro = None
+        self._sun_previous_rising_astro = None
+        self._sun_previous_setting_astro = None
         self._sun_altitude = None
         self._sun_azimuth = None
         self._moon_next_rising = None
@@ -123,6 +125,9 @@ class AstronomicalRoutines:
         if self._sun is None:
             self._sun = ephem.Sun()
 
+        #
+        # Rise and Setting (Civil)
+        #
         try:
             self._sun_next_rising_civil = self.utc_to_local(
                 self._sun_observer.next_rising(ephem.Sun(), use_center=True).datetime()
@@ -163,7 +168,9 @@ class AstronomicalRoutines:
                     continue
                 break
 
+        #
         # Rise and Setting (Nautical)
+        #
         self._sun_observer_nautical.date = self.utc_to_local(self._forecast_time)
         self._sun.compute(self._sun_observer_nautical)
 
@@ -207,7 +214,9 @@ class AstronomicalRoutines:
                     continue
                 break
 
+        #
         # Rise and Setting (Astronomical)
+        #
         self._sun_observer_astro.date = self.utc_to_local(self._forecast_time)
         self._sun.compute(self._sun_observer_astro)
 
@@ -232,6 +241,26 @@ class AstronomicalRoutines:
                 break
 
         try:
+            self._sun_previous_rising_astro = self.utc_to_local(
+                self._sun_observer_astro.previous_rising(ephem.Sun(), use_center=True).datetime()
+            )
+        except (ephem.AlwaysUpError, ephem.NeverUpError):
+            # Search for the previous astronomical rising
+            start = self._sun_observer_astro.date.datetime()
+            end = self._sun_observer_astro.date.datetime() - timedelta(days=365)
+            timestamp = start
+            while timestamp > end:
+                timestamp -= timedelta(minutes=1440)
+                self._sun_observer_astro.date = timestamp
+                try:
+                    self._sun_previous_rising_astro = self.utc_to_local(
+                        self._sun_observer_astro.previous_rising(ephem.Sun(), use_center=True).datetime()
+                    )
+                except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    continue
+                break
+            
+        try:
             self._sun_next_setting_astro = self.utc_to_local(
                 self._sun_observer_astro.next_setting(ephem.Sun(), use_center=True).datetime()
             )
@@ -246,6 +275,26 @@ class AstronomicalRoutines:
                 try:
                     self._sun_next_setting_astro = self.utc_to_local(
                         self._sun_observer_astro.next_setting(ephem.Sun(), use_center=True).datetime()
+                    )
+                except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    continue
+                break
+
+        try:
+            self._sun_previous_setting_astro = self.utc_to_local(
+                self._sun_observer_astro.previous_setting(ephem.Sun(), use_center=True).datetime()
+            )
+        except (ephem.AlwaysUpError, ephem.NeverUpError):
+            # Search for the previous astronomical setting
+            start = self._sun_observer_astro.date.datetime()
+            end = self._sun_observer_astro.date.datetime() - timedelta(days=365)
+            timestamp = start
+            while timestamp > end:
+                timestamp -= timedelta(minutes=1440)
+                self._sun_observer_astro.date = timestamp
+                try:
+                    self._sun_previous_setting_astro = self.utc_to_local(
+                        self._sun_observer_astro.previous_setting(ephem.Sun(), use_center=True).datetime()
                     )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
                     continue
@@ -411,6 +460,21 @@ class AstronomicalRoutines:
         if self._sun_next_rising_astro is not None:
             return self._sun_next_rising_astro
 
+    async def sun_previous_rising_astro(self) -> datetime:
+        """Returns sun previous astronomical rising"""
+        localtime = self.utc_to_local(datetime.utcnow())
+        if self._sun_previous_rising_astro is None or localtime > self._sun_previous_rising_astro:
+            _LOGGER.debug("Astronomical calculations updating sun_previous_rising_astro")
+            self._forecast_time = datetime.utcnow()
+            self.calculate_sun()
+        else:
+            _LOGGER.debug(
+                "Astronomical calculations sun_previous_rising_astro in %s", str(self._sun_previous_rising_astro - localtime)
+            )
+
+        if self._sun_previous_rising_astro is not None:
+            return self._sun_previous_rising_astro
+
     async def sun_next_setting(self) -> datetime:
         """Returns sun next setting"""
         localtime = self.utc_to_local(datetime.utcnow())
@@ -478,6 +542,21 @@ class AstronomicalRoutines:
 
         if self._sun_next_setting_astro is not None:
             return self._sun_next_setting_astro
+
+    async def sun_previous_setting_astro(self) -> datetime:
+        """Returns sun previous astronomical setting"""
+        localtime = self.utc_to_local(datetime.utcnow())
+        if self._sun_previous_setting_astro is None or localtime > self._sun_previous_setting_astro:
+            _LOGGER.debug("Astronomical calculations updating sun_previous_setting_astro")
+            self._forecast_time = datetime.utcnow()
+            self.calculate_sun()
+        else:
+            _LOGGER.debug(
+                "Astronomical calculations sun_previous_setting_astro in %s", str(self._sun_previous_setting_astro - localtime)
+            )
+
+        if self._sun_previous_setting_astro is not None:
+            return self._sun_previous_setting_astro
 
     # Return Moon setting and rising
     async def moon_next_rising(self) -> datetime:
@@ -566,7 +645,8 @@ class AstronomicalRoutines:
 
         # Are we already in darkness?
         if self._sun_next_setting_astro > self._sun_next_rising_astro:
-            start_timestamp = self.utc_to_local(datetime.utcnow())
+            # start_timestamp = self.utc_to_local(datetime.utcnow())
+            start_timestamp = self._sun_previous_setting_astro
         else:
             start_timestamp = self._sun_next_setting_astro
 
@@ -577,8 +657,16 @@ class AstronomicalRoutines:
     async def deep_sky_darkness_moon_rises(self) -> bool:
         """Returns true if moon rises during astronomical night"""
 
+        start_timestamp = None
+        
+        # Are we already in darkness?
+        if self._sun_next_setting_astro > self._sun_next_rising_astro:
+            start_timestamp = self._sun_previous_setting_astro
+        else:
+            start_timestamp = self._sun_next_setting_astro
+
         if (
-            self._moon_next_rising > self._sun_next_setting_astro
+            self._moon_next_rising > start_timestamp
             and self._moon_next_rising < self._sun_next_rising_astro
         ):
             return True
@@ -587,9 +675,17 @@ class AstronomicalRoutines:
     async def deep_sky_darkness_moon_sets(self) -> bool:
         """Returns true if moon sets during astronomical night"""
 
+        start_timestamp = None
+        
+        # Are we already in darkness?
+        if self._sun_next_setting_astro > self._sun_next_rising_astro:
+            start_timestamp = self._sun_previous_setting_astro
+        else:
+            start_timestamp = self._sun_next_setting_astro
+
         if (
             self._moon_next_setting < self._sun_next_rising_astro
-            and self._moon_next_setting > self._sun_next_setting_astro
+            and self._moon_next_setting > start_timestamp
         ):
             return True
         return False
@@ -597,8 +693,16 @@ class AstronomicalRoutines:
     async def deep_sky_darkness_moon_always_up(self) -> bool:
         """Returns true if moon is up during astronomical night"""
 
+        start_timestamp = None
+        
+        # Are we already in darkness?
+        if self._sun_next_setting_astro > self._sun_next_rising_astro:
+            start_timestamp = self._sun_previous_setting_astro
+        else:
+            start_timestamp = self._sun_next_setting_astro
+
         if (
-            self._moon_next_rising < self._sun_next_setting_astro
+            self._moon_next_rising < start_timestamp
             and self._moon_next_setting > self._sun_next_rising_astro
         ):
             return True
@@ -611,7 +715,8 @@ class AstronomicalRoutines:
 
         # Are we already in darkness?
         if self._sun_next_setting_astro > self._sun_next_rising_astro:
-            start_timestamp = self.utc_to_local(datetime.utcnow())
+            # start_timestamp = self.utc_to_local(datetime.utcnow())
+            start_timestamp = self._sun_previous_setting_astro
         else:
             start_timestamp = self._sun_next_setting_astro
 
@@ -619,7 +724,7 @@ class AstronomicalRoutines:
 
         # Moon rises during darkness
         if (
-            self._moon_next_rising > self._sun_next_setting_astro
+            self._moon_next_rising > start_timestamp
             and self._moon_next_rising < self._sun_next_rising_astro
         ):
             _LOGGER.debug("Astronomical calculations Moon rises during darkness")
@@ -628,14 +733,14 @@ class AstronomicalRoutines:
         # Moon sets during darkness
         if (
             self._moon_next_setting < self._sun_next_rising_astro
-            and self._moon_next_setting > self._sun_next_setting_astro
+            and self._moon_next_setting > start_timestamp
         ):
             _LOGGER.debug("Astronomical calculations Moon sets during darkness")
-            dsd = dsd - (self._moon_next_setting - self._sun_next_setting_astro)
+            dsd = dsd - (self._moon_next_setting - start_timestamp)
 
         # Moon up during darkness
         if (
-            self._moon_next_rising < self._sun_next_setting_astro
+            self._moon_next_rising < start_timestamp
             and self._moon_next_setting > self._sun_next_rising_astro
         ):
             _LOGGER.debug("Astronomical calculations Moon up during darkness")

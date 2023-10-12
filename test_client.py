@@ -184,12 +184,14 @@ async def main() -> None:
             print(
                 f"{esc(COLOR_RED)}Sun next Rising: {esc(COLOR_GREEN)}{str(row.sun_next_rising)}, "
                 + f"{esc(COLOR_RED)}Nautical: {esc(COLOR_GREEN)}{str(row.sun_next_rising_nautical)}, "
-                + f"{esc(COLOR_RED)}Astronomical: {esc(COLOR_GREEN)}{str(row.sun_next_rising_astro)}{esc('0')}"
+                + f"{esc(COLOR_RED)}Astronomical: {esc(COLOR_GREEN)}{str(row.sun_next_rising_astro)}, "
+                + f"{esc(COLOR_RED)}Astronomical Previous: {esc(COLOR_GREEN)}{str(row.sun_previous_rising_astro)}{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}Sun next Setting: {esc(COLOR_GREEN)}{str(row.sun_next_setting)}, "
                 + f"{esc(COLOR_RED)}Nautical: {esc(COLOR_GREEN)}{str(row.sun_next_setting_nautical)}, "
-                + f"{esc(COLOR_RED)}Astronomical: {esc(COLOR_GREEN)}{str(row.sun_next_setting_astro)}{esc('0')}"
+                + f"{esc(COLOR_RED)}Astronomical: {esc(COLOR_GREEN)}{str(row.sun_next_setting_astro)}, "
+                + f"{esc(COLOR_RED)}Astronomical Previous: {esc(COLOR_GREEN)}{str(row.sun_previous_setting_astro)}{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}Moon next Rising: {esc(COLOR_GREEN)}{str(row.moon_next_rising)}, "
@@ -207,19 +209,13 @@ async def main() -> None:
                 + f"{esc(COLOR_RED)}Forecast Tomorrow: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_plain)}{esc('0')}"
             )
             print(
-                f"{esc(COLOR_RED)}Night Duration Astronomical: {esc(COLOR_GREEN)}{str(row.night_duration_astronomical)}{esc('0')}"
+                f"{esc(COLOR_RED)}DSD Moon rises: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness_moon_rises)}, "
+                + f"{esc(COLOR_RED)}DSD Moon sets: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness_moon_sets)}, "
+                + f"{esc(COLOR_RED)}DSD Moon always up: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness_moon_always_up)}{esc('0')}"
             )
             print(
-                f"{esc(COLOR_RED)}Deep Sky Darkness Moon rises: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness_moon_rises)}{esc('0')}"
-            )
-            print(
-                f"{esc(COLOR_RED)}Deep Sky Darkness Moon sets: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness_moon_sets)}{esc('0')}"
-            )
-            print(
-                f"{esc(COLOR_RED)}Deep Sky Darkness Moon always up: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness_moon_always_up)}{esc('0')}"
-            )
-            print(
-                f"{esc(COLOR_RED)}Deep Sky Darkness: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness)}{esc('0')}"
+                f"{esc(COLOR_RED)}Night Duration Astronomical: {esc(COLOR_GREEN)}{str(round(row.night_duration_astronomical / 3600, 2))}, "
+                + f"{esc(COLOR_RED)}DSD: {esc(COLOR_GREEN)}{str(round(row.deep_sky_darkness / 3600,2))}{esc('0')}"
             )
 
 

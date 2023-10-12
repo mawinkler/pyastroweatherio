@@ -5,14 +5,12 @@ import math
 from pyastroweatherio.const import (
     CLOUDCOVER_PLAIN,
     CONDITION,
+    CONDITION_PLAIN,
     DEEP_SKY_THRESHOLD,
     LIFTED_INDEX_PLAIN,
     SEEING_PLAIN,
     TRANSPARENCY_PLAIN,
-    # WIND10M_SPEED_PLAIN,
-    # WIND10M_SPEED,
     WIND10M_DIRECTON,
-    # MAP_WEATHER_TYPE,
 )
 
 
@@ -184,9 +182,11 @@ class LocationData(BaseData):
         self._sun_next_rising = data["sun_next_rising"]
         self._sun_next_rising_nautical = data["sun_next_rising_nautical"]
         self._sun_next_rising_astro = data["sun_next_rising_astro"]
+        self._sun_previous_rising_astro = data["sun_previous_rising_astro"]
         self._sun_next_setting = data["sun_next_setting"]
         self._sun_next_setting_nautical = data["sun_next_setting_nautical"]
         self._sun_next_setting_astro = data["sun_next_setting_astro"]
+        self._sun_previous_setting_astro = data["sun_previous_setting_astro"]
         self._sun_altitude = data["sun_altitude"]
         self._sun_azimuth = data["sun_azimuth"]
         self._moon_next_rising = data["moon_next_rising"]
@@ -276,14 +276,14 @@ class LocationData(BaseData):
     def condition_plain(self) -> str:
         """Return Current View Conditions."""
         if self.condition_percentage > 80:
-            return CONDITION[0].capitalize()
+            return CONDITION_PLAIN[0].capitalize()
         if self.condition_percentage > 60:
-            return CONDITION[1].capitalize()
+            return CONDITION_PLAIN[1].capitalize()
         if self.condition_percentage > 40:
-            return CONDITION[2].capitalize()
+            return CONDITION_PLAIN[2].capitalize()
         if self.condition_percentage > 20:
-            return CONDITION[3].capitalize()
-        return CONDITION[4].capitalize()
+            return CONDITION_PLAIN[3].capitalize()
+        return CONDITION_PLAIN[4].capitalize()
 
     @property
     def sun_next_rising(self) -> datetime:
@@ -304,6 +304,12 @@ class LocationData(BaseData):
             return self._sun_next_rising_astro
 
     @property
+    def sun_previous_rising_astro(self) -> datetime:
+        """Return Sun Previous Rising Astronomical."""
+        if isinstance(self._sun_previous_rising_astro, datetime):
+            return self._sun_previous_rising_astro
+
+    @property
     def sun_next_setting(self) -> datetime:
         """Return Next Setting Civil."""
         if isinstance(self._sun_next_setting, datetime):
@@ -320,6 +326,12 @@ class LocationData(BaseData):
         """Return Sun Next Setting Astronomical."""
         if isinstance(self._sun_next_setting_astro, datetime):
             return self._sun_next_setting_astro
+
+    @property
+    def sun_previous_setting_astro(self) -> datetime:
+        """Return Sun Previous Setting Astronomical."""
+        if isinstance(self._sun_previous_setting_astro, datetime):
+            return self._sun_previous_setting_astro
 
     @property
     def sun_altitude(self) -> float:
