@@ -201,6 +201,7 @@ class LocationData(BaseData):
         self._deep_sky_darkness_moon_always_up = data["deep_sky_darkness_moon_always_up"]
         self._deep_sky_darkness = data["deep_sky_darkness"]
         self._deepsky_forecast = data["deepsky_forecast"]
+        self._uptonight = data["uptonight"]
 
     @property
     def forecast_length(self) -> int:
@@ -402,11 +403,6 @@ class LocationData(BaseData):
         return self._deep_sky_darkness
 
     @property
-    def deepsky_forecast(self):
-        """Return Deepsky Forecast."""
-        return self._deepsky_forecast
-
-    @property
     def deepsky_forecast_today(self) -> int:
         """Return Forecas Today in Percent."""
         nightly_condition_sum = 0
@@ -470,7 +466,23 @@ class LocationData(BaseData):
             return nightly_conditions.weather.replace("_", " ").capitalize()
         return None
 
+    @property
+    def deepsky_forecast(self):
+        """Return Deepsky Forecast."""
+        return self._deepsky_forecast
 
+    @property
+    def uptonight(self) -> int:
+        """Return the number of best DSOs for tonight."""
+        if self._uptonight is not None:
+            return len(self._uptonight)
+        return None
+
+    @property
+    def uptonight_list(self) -> []:
+        if self._uptonight is not None:
+            return self._uptonight
+    
 class ForecastData(BaseData):
     """A representation of 3-Hour Based Forecast AstroWeather Data."""
 
@@ -525,3 +537,38 @@ class NightlyConditionsData:
     def weather(self) -> str:
         """Return Current Weather."""
         return self._weather.replace("_", " ").capitalize()
+
+class DSOUpTonight:
+    """A representation of uptonight DSO."""
+    
+    def __init__(self, data):
+        self._target_name = data["target_name"]
+        self._type = data["type"]
+        self._constellation = data["constellation"]
+        self._size = data["size"]
+        self._foto = data["foto"]
+    
+    @property
+    def target_name(self) -> str:
+        """Return Forecast Name of the Day."""
+        return self._target_name
+
+    @property
+    def type(self) -> str:
+        """Return Forecast Name of the Day."""
+        return self._type
+
+    @property
+    def constellation(self) -> str:
+        """Return Forecast Name of the Day."""
+        return self._constellation
+
+    @property
+    def size(self) -> str:
+        """Return Forecast Name of the Day."""
+        return self._size
+
+    @property
+    def foto(self) -> str:
+        """Return Forecast Name of the Day."""
+        return self._foto

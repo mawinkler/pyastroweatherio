@@ -2,6 +2,7 @@
 import asyncio
 import json
 import logging
+import os.path
 from datetime import datetime, timedelta
 from typing import Optional
 from decimal import Decimal
@@ -30,6 +31,7 @@ from pyastroweatherio.dataclasses import (
     ForecastData,
     LocationData,
     NightlyConditionsData,
+    DSOUpTonight,
 )
 from pyastroweatherio.errors import RequestError
 from pyastroweatherio.helper_functions import ConversionFunctions, AstronomicalRoutines
@@ -50,6 +52,7 @@ class AstroWeather:
         cloudcover_weight=DEFAULT_CONDITION_CLOUDCOVER_WEIGHT,
         seeing_weight=DEFAULT_CONDITION_SEEING_WEIGHT,
         transparency_weight=DEFAULT_CONDITION_TRANSPARENCY_WEIGHT,
+        uptonight_path="/conf/www"
     ):
         self._session: ClientSession = session
         self._latitude = latitude
@@ -60,11 +63,14 @@ class AstroWeather:
         self._weather_data_seventimer_init = ""
         self._weather_data_metno = []
         self._weather_data_metno_init = ""
+        self._weather_data_uptonight = {}
         self._weather_data_seventimer_timestamp = datetime.now() - timedelta(seconds=(DEFAULT_CACHE_TIMEOUT + 1))
         self._weather_data_metno_timestamp = datetime.now() - timedelta(seconds=(DEFAULT_CACHE_TIMEOUT + 1))
+        self._data_uptonight_timestamp = datetime.now() - timedelta(seconds=(DEFAULT_CACHE_TIMEOUT + 1))
         self._cloudcover_weight = cloudcover_weight
         self._seeing_weight = seeing_weight
         self._transparency_weight = transparency_weight
+        self._uptonight_path = uptonight_path
 
         self._forecast_data = None
 
@@ -171,6 +177,7 @@ class AstroWeather:
                 "deep_sky_darkness_moon_always_up": await self._astro_routines.deep_sky_darkness_moon_always_up(),
                 "deep_sky_darkness": await self._astro_routines.deep_sky_darkness(),
                 "deepsky_forecast": await self._get_deepsky_forecast(),
+                "uptonight": await self._get_deepsky_objects(),
             }
             # Met.no
             if (
@@ -497,6 +504,43 @@ class AstroWeather:
 
         return dewpoint
 
+    async def _get_deepsky_objects(self):
+        """Return Deepsky Objects for today"""
+
+        items = []
+
+        await self.retrieve_data_uptonight()
+
+        # Create list of deep sky objects
+        if self._weather_data_uptonight is not None:
+            dso_target_name = self._weather_data_uptonight.get("target name", {})
+            dso_type = self._weather_data_uptonight.get("type", {})
+            dso_constellation = self._weather_data_uptonight.get("constellation", {})
+            dso_size = self._weather_data_uptonight.get("size", {})
+            dso_foto = self._weather_data_uptonight.get("foto", {})
+
+            for row in range(len(dso_target_name)):
+                item = {
+                    "target_name": dso_target_name.get(str(row), ""),
+                    "type": dso_type.get(str(row), ""),
+                    "constellation": dso_constellation.get(str(row), ""),
+                    "size": dso_size.get(str(row), ""),
+                    "foto": dso_foto.get(str(row), ""),
+                }
+                items.append(DSOUpTonight(item))
+
+                _LOGGER.debug(
+                    "DSO: %s, type: %s, constellation: %s, size: %s, foto: %s",
+                    str(item["target_name"]),
+                    str(item["type"]),
+                    str(item["constellation"]),
+                    str(item["size"]),
+                    str(item["foto"]),
+                )
+
+            return items
+        return None
+
     async def retrieve_data_seventimer(self):
         """Retrieves current data from 7timer"""
 
@@ -638,3 +682,31 @@ class AstroWeather:
         finally:
             if not use_running_session:
                 await session.close()
+
+    async def retrieve_data_uptonight(self):
+        """Retrieves current data from uptonight"""
+
+        # TODO:
+        # Add path to config
+        # Implement Caching
+
+        if ((datetime.now() - self._data_uptonight_timestamp).total_seconds()) > DEFAULT_CACHE_TIMEOUT:
+            self._data_uptonight_timestamp = datetime.now()
+            _LOGGER.debug("Updating data from uptonight")
+
+            dataseries = None
+
+            # Testing
+            # print(os.getcwd())
+            # print(os.listdir("/config/www/"))
+            if os.path.isfile(self._uptonight_path + "/uptonight-report.json"):
+                _LOGGER.debug(f"Uptonight report found")
+                with open(self._uptonight_path + "/uptonight-report.json") as json_file:
+                    dataseries = json.load(json_file)
+                    _LOGGER.debug(f"Uptonight imported")
+            else:
+                _LOGGER.debug(f"uptonight-report.json not found. Current path: {self._uptonight_path}/uptonight-report.json")
+
+            self._weather_data_uptonight = dataseries
+        else:
+            _LOGGER.debug("Using cached data for uptonight")

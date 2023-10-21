@@ -51,8 +51,19 @@ async def main() -> None:
         timezone_info="Europe/Berlin",
         cloudcover_weight=3,
         seeing_weight=2,
-        transparency_weight=1
+        transparency_weight=1,
+        uptonight_path="."
     )
+    # astroweather = AstroWeather(
+    #     latitude=61.212,
+    #     longitude=-149.737,
+    #     elevation=115,
+    #     timezone_info="America/Anchorage",
+    #     cloudcover_weight=3,
+    #     seeing_weight=2,
+    #     transparency_weight=1,
+    #     uptonight_path="."
+    # )
 
     start = time.time()
 
@@ -216,6 +227,9 @@ async def main() -> None:
             print(
                 f"{esc(COLOR_RED)}Night Duration Astronomical: {esc(COLOR_GREEN)}{str(round(row.night_duration_astronomical / 3600, 2))}, "
                 + f"{esc(COLOR_RED)}DSD: {esc(COLOR_GREEN)}{str(round(row.deep_sky_darkness / 3600,2))}{esc('0')}"
+            )
+            print(
+                f"{esc(COLOR_RED)}Uptonight: {esc(COLOR_GREEN)}{row.uptonight}{esc('0')}"
             )
 
 

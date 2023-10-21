@@ -109,7 +109,10 @@ class AstronomicalRoutines:
         observer.lon = self._longitude * degree
         observer.lat = self._latitude * degree
         observer.elevation = self._elevation
-        observer.horizon = 0
+        # Naval Observatory Risings and Settings
+        # Set horizon to minus 34 arcminutes
+        # https://aa.usno.navy.mil/data/RS_OneDay
+        observer.horizon = '-0:34'
         observer.pressure = 0
         observer.epoch = datetime.now().strftime("%Y/%m/%d")
         return observer
@@ -327,14 +330,14 @@ class AstronomicalRoutines:
 
         try:
             self._moon_next_rising = self.utc_to_local(
-                self._moon_observer.next_rising(ephem.Moon(), use_center=True).datetime()
+                self._moon_observer.next_rising(ephem.Moon()).datetime()
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             pass
 
         try:
             self._moon_next_setting = self.utc_to_local(
-                self._moon_observer.next_setting(ephem.Moon(), use_center=True).datetime()
+                self._moon_observer.next_setting(ephem.Moon()).datetime()
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             pass
@@ -645,7 +648,6 @@ class AstronomicalRoutines:
 
         # Are we already in darkness?
         if self._sun_next_setting_astro > self._sun_next_rising_astro:
-            # start_timestamp = self.utc_to_local(datetime.utcnow())
             start_timestamp = self._sun_previous_setting_astro
         else:
             start_timestamp = self._sun_next_setting_astro
@@ -715,7 +717,6 @@ class AstronomicalRoutines:
 
         # Are we already in darkness?
         if self._sun_next_setting_astro > self._sun_next_rising_astro:
-            # start_timestamp = self.utc_to_local(datetime.utcnow())
             start_timestamp = self._sun_previous_setting_astro
         else:
             start_timestamp = self._sun_next_setting_astro
