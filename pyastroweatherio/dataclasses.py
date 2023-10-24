@@ -193,6 +193,7 @@ class LocationData(BaseData):
         self._moon_next_setting = data["moon_next_setting"]
         self._moon_phase = data["moon_phase"]
         self._moon_next_new_moon = data["moon_next_new_moon"]
+        self._moon_next_full_moon = data["moon_next_full_moon"]
         self._moon_altitude = data["moon_altitude"]
         self._moon_azimuth = data["moon_azimuth"]
         self._night_duration_astronomical = data["night_duration_astronomical"]
@@ -367,6 +368,12 @@ class LocationData(BaseData):
         if isinstance(self._moon_next_new_moon, datetime):
             return self._moon_next_new_moon
 
+    @property
+    def moon_next_full_moon(self) -> datetime:
+        """Return Moon Next Full Moon."""
+        if isinstance(self._moon_next_full_moon, datetime):
+            return self._moon_next_full_moon
+        
     @property
     def moon_altitude(self) -> float:
         """Return Moon Altitude."""

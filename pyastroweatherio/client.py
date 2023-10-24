@@ -169,6 +169,7 @@ class AstroWeather:
                 "moon_next_setting": await self._astro_routines.moon_next_setting(),
                 "moon_phase": await self._astro_routines.moon_phase(),
                 "moon_next_new_moon": await self._astro_routines.moon_next_new_moon(),
+                "moon_next_full_moon": await self._astro_routines.moon_next_full_moon(),
                 "moon_altitude": await self._astro_routines.moon_altitude(),
                 "moon_azimuth": await self._astro_routines.moon_azimuth(),
                 "night_duration_astronomical": await self._astro_routines.night_duration_astronomical(),
