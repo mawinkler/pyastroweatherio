@@ -52,7 +52,8 @@ class AstroWeather:
         cloudcover_weight=DEFAULT_CONDITION_CLOUDCOVER_WEIGHT,
         seeing_weight=DEFAULT_CONDITION_SEEING_WEIGHT,
         transparency_weight=DEFAULT_CONDITION_TRANSPARENCY_WEIGHT,
-        uptonight_path="/conf/www"
+        uptonight_path="/conf/www",
+        test_datetime=None,
     ):
         self._session: ClientSession = session
         self._latitude = latitude
@@ -71,6 +72,7 @@ class AstroWeather:
         self._seeing_weight = seeing_weight
         self._transparency_weight = transparency_weight
         self._uptonight_path = uptonight_path
+        self._test_datetime = test_datetime
 
         self._forecast_data = None
 
@@ -78,12 +80,15 @@ class AstroWeather:
 
         # Astro Routines
         self._astro_routines = AstronomicalRoutines(
-            self._latitude, self._longitude, self._elevation, self._timezone_info
+            self._latitude, self._longitude, self._elevation, self._timezone_info, self._test_datetime
         )
 
         # Testing
         self.test_mode = False
         self.dump_json = False
+        if self._test_datetime is not None:
+            self.test_mode = True
+            self.dump_json = True
 
     # Public functions
     async def get_location_data(
@@ -123,7 +128,10 @@ class AstroWeather:
         # Anchor timestamp
         init_ts = await cnv.anchor_timestamp(self._weather_data_seventimer_init)
 
-        await self._astro_routines.need_update()
+        if self._test_datetime is not None:
+            await self._astro_routines.need_update()
+        else:
+            await self._astro_routines.need_update(forecast_time=now)
 
         # Met.no
         metno_index = -1
@@ -158,11 +166,9 @@ class AstroWeather:
                 "sun_next_rising": await self._astro_routines.sun_next_rising_civil(),
                 "sun_next_rising_nautical": await self._astro_routines.sun_next_rising_nautical(),
                 "sun_next_rising_astro": await self._astro_routines.sun_next_rising_astro(),
-                "sun_previous_rising_astro": await self._astro_routines.sun_previous_rising_astro(),
                 "sun_next_setting": await self._astro_routines.sun_next_setting_civil(),
                 "sun_next_setting_nautical": await self._astro_routines.sun_next_setting_nautical(),
                 "sun_next_setting_astro": await self._astro_routines.sun_next_setting_astro(),
-                "sun_previous_setting_astro": await self._astro_routines.sun_previous_setting_astro(),
                 "sun_altitude": await self._astro_routines.sun_altitude(),
                 "sun_azimuth": await self._astro_routines.sun_azimuth(),
                 "moon_next_rising": await self._astro_routines.moon_next_rising(),
@@ -176,6 +182,7 @@ class AstroWeather:
                 "deep_sky_darkness_moon_rises": await self._astro_routines.deep_sky_darkness_moon_rises(),
                 "deep_sky_darkness_moon_sets": await self._astro_routines.deep_sky_darkness_moon_sets(),
                 "deep_sky_darkness_moon_always_up": await self._astro_routines.deep_sky_darkness_moon_always_up(),
+                "deep_sky_darkness_moon_always_down": await self._astro_routines.deep_sky_darkness_moon_always_down(),
                 "deep_sky_darkness": await self._astro_routines.deep_sky_darkness(),
                 "deepsky_forecast": await self._get_deepsky_forecast(),
                 "uptonight": await self._get_deepsky_objects(),
@@ -530,14 +537,14 @@ class AstroWeather:
                 }
                 items.append(DSOUpTonight(item))
 
-                _LOGGER.debug(
-                    "DSO: %s, type: %s, constellation: %s, size: %s, foto: %s",
-                    str(item["target_name"]),
-                    str(item["type"]),
-                    str(item["constellation"]),
-                    str(item["size"]),
-                    str(item["foto"]),
-                )
+                # _LOGGER.debug(
+                #     "DSO: %s, type: %s, constellation: %s, size: %s, foto: %s",
+                #     str(item["target_name"]),
+                #     str(item["type"]),
+                #     str(item["constellation"]),
+                #     str(item["size"]),
+                #     str(item["foto"]),
+                # )
 
             return items
         return None
@@ -550,7 +557,6 @@ class AstroWeather:
             _LOGGER.debug("Updating data from 7Timer")
 
             astro_dataseries = None
-            # civil_dataseries = None
 
             # Testing
             if self.test_mode:
@@ -558,8 +564,6 @@ class AstroWeather:
                     astro_dataseries_json = json.load(json_file)
                     astro_dataseries = astro_dataseries_json.get("dataseries", {})
                     json_data_astro = {"init": astro_dataseries_json.get("init")}
-                # with open("civil.json") as json_file:
-                #     civil_dataseries = json.load(json_file).get("dataseries", {})
             else:
                 json_data_astro = await self.async_request_seventimer("astro", "get")
                 astro_dataseries = json_data_astro.get("dataseries", {})
@@ -687,26 +691,21 @@ class AstroWeather:
     async def retrieve_data_uptonight(self):
         """Retrieves current data from uptonight"""
 
-        # TODO:
-        # Add path to config
-        # Implement Caching
-
         if ((datetime.now() - self._data_uptonight_timestamp).total_seconds()) > DEFAULT_CACHE_TIMEOUT:
             self._data_uptonight_timestamp = datetime.now()
             _LOGGER.debug("Updating data from uptonight")
 
             dataseries = None
 
-            # Testing
-            # print(os.getcwd())
-            # print(os.listdir("/config/www/"))
             if os.path.isfile(self._uptonight_path + "/uptonight-report.json"):
                 _LOGGER.debug(f"Uptonight report found")
                 with open(self._uptonight_path + "/uptonight-report.json") as json_file:
                     dataseries = json.load(json_file)
                     _LOGGER.debug(f"Uptonight imported")
             else:
-                _LOGGER.debug(f"uptonight-report.json not found. Current path: {self._uptonight_path}/uptonight-report.json")
+                _LOGGER.debug(
+                    f"uptonight-report.json not found. Current path: {self._uptonight_path}/uptonight-report.json"
+                )
 
             self._weather_data_uptonight = dataseries
         else:

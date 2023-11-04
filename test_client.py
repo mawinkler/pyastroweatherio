@@ -3,6 +3,7 @@ import asyncio
 import pprint
 import logging
 import time
+import os
 from datetime import datetime
 from pyastroweatherio import (
     AstroWeather,
@@ -21,6 +22,41 @@ COLOR_BLUE = "1;34"
 COLOR_PURPLE = "1;35"
 COLOR_CYAN = "1;36"
 
+# Backyard
+latitude = float(os.environ["BACKYARD_LATITUDE"])
+longitude = float(os.environ["BACKYARD_LONGITUDE"])
+elevation = int(os.environ["BACKYARD_ELEVATION"])
+timezone_info = os.environ["BACKYARD_TIMEZONE"]
+
+# Peißenberg
+# latitude=48.811
+# longitude=11.017
+# elevation=977
+# timezone_info = "Europe/Berlin"
+
+# Anchorage
+# latitude=61.212
+# longitude=-149.737
+# elevation=115
+# timezone_info = "America/Anchorage"
+
+# Miami
+# latitude=25.76322
+# longitude=-80.19856
+# elevation=0
+# timezone_info = "America/Cancun"
+
+# London
+# latitude=51.5072
+# longitude=0.1276
+# elevation=11
+# timezone_info = "Europe/London"
+
+# Sydney
+# latitude=-33.869
+# longitude=151.198
+# elevation=3
+# timezone_info = "Australia/Sydney"
 
 def esc(code):
     return f"\033[{code}m"
@@ -28,11 +64,7 @@ def esc(code):
 
 async def main() -> None:
     """Create the aiohttp session and run the example."""
-    logging.basicConfig(level=logging.DEBUG)
-
-    # latitude=48.313,
-    # longitude=11.985,
-    # elevation=460,
+    logging.basicConfig(level=logging.INFO)
 
     print(
         f"{esc(COLOR_BLUE)}--------------------------------------------------------"
@@ -45,25 +77,15 @@ async def main() -> None:
     )
 
     astroweather = AstroWeather(
-        latitude=48.313,
-        longitude=11.985,
-        elevation=462,
-        timezone_info="Europe/Berlin",
+        latitude=latitude,
+        longitude=longitude,
+        elevation=elevation,
+        timezone_info=timezone_info,
         cloudcover_weight=3,
         seeing_weight=2,
         transparency_weight=1,
         uptonight_path="."
     )
-    # astroweather = AstroWeather(
-    #     latitude=61.212,
-    #     longitude=-149.737,
-    #     elevation=115,
-    #     timezone_info="America/Anchorage",
-    #     cloudcover_weight=3,
-    #     seeing_weight=2,
-    #     transparency_weight=1,
-    #     uptonight_path="."
-    # )
 
     start = time.time()
 
@@ -195,19 +217,19 @@ async def main() -> None:
             print(
                 f"{esc(COLOR_RED)}Sun next Rising: {esc(COLOR_GREEN)}{str(row.sun_next_rising)}, "
                 + f"{esc(COLOR_RED)}Nautical: {esc(COLOR_GREEN)}{str(row.sun_next_rising_nautical)}, "
-                + f"{esc(COLOR_RED)}Astronomical: {esc(COLOR_GREEN)}{str(row.sun_next_rising_astro)}, "
-                + f"{esc(COLOR_RED)}Astronomical Previous: {esc(COLOR_GREEN)}{str(row.sun_previous_rising_astro)}{esc('0')}"
+                + f"{esc(COLOR_RED)}Astronomical: {esc(COLOR_GREEN)}{str(row.sun_next_rising_astro)}{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}Sun next Setting: {esc(COLOR_GREEN)}{str(row.sun_next_setting)}, "
                 + f"{esc(COLOR_RED)}Nautical: {esc(COLOR_GREEN)}{str(row.sun_next_setting_nautical)}, "
-                + f"{esc(COLOR_RED)}Astronomical: {esc(COLOR_GREEN)}{str(row.sun_next_setting_astro)}, "
-                + f"{esc(COLOR_RED)}Astronomical Previous: {esc(COLOR_GREEN)}{str(row.sun_previous_setting_astro)}{esc('0')}"
+                + f"{esc(COLOR_RED)}Astronomical: {esc(COLOR_GREEN)}{str(row.sun_next_setting_astro)}{esc('0')}"
             )
             print(
                 f"{esc(COLOR_RED)}Moon next Rising: {esc(COLOR_GREEN)}{str(row.moon_next_rising)}, "
-                + f"{esc(COLOR_RED)}Moon next Setting: {esc(COLOR_GREEN)}{str(row.moon_next_setting)}, "
-                + f"{esc(COLOR_RED)}Moon next new Moon: {esc(COLOR_GREEN)}{str(row.moon_next_new_moon)}, "
+                + f"{esc(COLOR_RED)}Moon next Setting: {esc(COLOR_GREEN)}{str(row.moon_next_setting)}{esc('0')}"
+            )
+            print(
+                f"{esc(COLOR_RED)}Moon next new Moon: {esc(COLOR_GREEN)}{str(row.moon_next_new_moon)}, "
                 + f"{esc(COLOR_RED)}Moon next full Moon: {esc(COLOR_GREEN)}{str(row.moon_next_full_moon)}{esc('0')}"
             )
             print(
@@ -223,6 +245,7 @@ async def main() -> None:
             print(
                 f"{esc(COLOR_RED)}DSD Moon rises: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness_moon_rises)}, "
                 + f"{esc(COLOR_RED)}DSD Moon sets: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness_moon_sets)}, "
+                + f"{esc(COLOR_RED)}DSD Moon always down: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness_moon_always_down)}, "
                 + f"{esc(COLOR_RED)}DSD Moon always up: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness_moon_always_up)}{esc('0')}"
             )
             print(

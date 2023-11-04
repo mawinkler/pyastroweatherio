@@ -182,11 +182,9 @@ class LocationData(BaseData):
         self._sun_next_rising = data["sun_next_rising"]
         self._sun_next_rising_nautical = data["sun_next_rising_nautical"]
         self._sun_next_rising_astro = data["sun_next_rising_astro"]
-        self._sun_previous_rising_astro = data["sun_previous_rising_astro"]
         self._sun_next_setting = data["sun_next_setting"]
         self._sun_next_setting_nautical = data["sun_next_setting_nautical"]
         self._sun_next_setting_astro = data["sun_next_setting_astro"]
-        self._sun_previous_setting_astro = data["sun_previous_setting_astro"]
         self._sun_altitude = data["sun_altitude"]
         self._sun_azimuth = data["sun_azimuth"]
         self._moon_next_rising = data["moon_next_rising"]
@@ -200,6 +198,7 @@ class LocationData(BaseData):
         self._deep_sky_darkness_moon_rises = data["deep_sky_darkness_moon_rises"]
         self._deep_sky_darkness_moon_sets = data["deep_sky_darkness_moon_sets"]
         self._deep_sky_darkness_moon_always_up = data["deep_sky_darkness_moon_always_up"]
+        self._deep_sky_darkness_moon_always_down = data["deep_sky_darkness_moon_always_down"]
         self._deep_sky_darkness = data["deep_sky_darkness"]
         self._deepsky_forecast = data["deepsky_forecast"]
         self._uptonight = data["uptonight"]
@@ -306,12 +305,6 @@ class LocationData(BaseData):
             return self._sun_next_rising_astro
 
     @property
-    def sun_previous_rising_astro(self) -> datetime:
-        """Return Sun Previous Rising Astronomical."""
-        if isinstance(self._sun_previous_rising_astro, datetime):
-            return self._sun_previous_rising_astro
-
-    @property
     def sun_next_setting(self) -> datetime:
         """Return Next Setting Civil."""
         if isinstance(self._sun_next_setting, datetime):
@@ -328,12 +321,6 @@ class LocationData(BaseData):
         """Return Sun Next Setting Astronomical."""
         if isinstance(self._sun_next_setting_astro, datetime):
             return self._sun_next_setting_astro
-
-    @property
-    def sun_previous_setting_astro(self) -> datetime:
-        """Return Sun Previous Setting Astronomical."""
-        if isinstance(self._sun_previous_setting_astro, datetime):
-            return self._sun_previous_setting_astro
 
     @property
     def sun_altitude(self) -> float:
@@ -373,7 +360,7 @@ class LocationData(BaseData):
         """Return Moon Next Full Moon."""
         if isinstance(self._moon_next_full_moon, datetime):
             return self._moon_next_full_moon
-        
+
     @property
     def moon_altitude(self) -> float:
         """Return Moon Altitude."""
@@ -403,6 +390,11 @@ class LocationData(BaseData):
     def deep_sky_darkness_moon_always_up(self) -> bool:
         """Returns true if moon is up during astronomical night."""
         return self._deep_sky_darkness_moon_always_up
+
+    @property
+    def deep_sky_darkness_moon_always_down(self) -> bool:
+        """Returns true if moon is down during astronomical night."""
+        return self._deep_sky_darkness_moon_always_down
 
     @property
     def deep_sky_darkness(self) -> float:
@@ -489,7 +481,8 @@ class LocationData(BaseData):
     def uptonight_list(self) -> []:
         if self._uptonight is not None:
             return self._uptonight
-    
+
+
 class ForecastData(BaseData):
     """A representation of 3-Hour Based Forecast AstroWeather Data."""
 
@@ -545,16 +538,17 @@ class NightlyConditionsData:
         """Return Current Weather."""
         return self._weather.replace("_", " ").capitalize()
 
+
 class DSOUpTonight:
     """A representation of uptonight DSO."""
-    
+
     def __init__(self, data):
         self._target_name = data["target_name"]
         self._type = data["type"]
         self._constellation = data["constellation"]
         self._size = data["size"]
         self._foto = data["foto"]
-    
+
     @property
     def target_name(self) -> str:
         """Return Forecast Name of the Day."""
