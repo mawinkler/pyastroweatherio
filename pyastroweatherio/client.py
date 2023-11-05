@@ -342,11 +342,9 @@ class AstroWeather:
                     item["dewpoint2m"] = details.get("dew_point_temperature", -1)
                     if self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("next_1_hours", {}) == {}:
                         # No more hourly data
-                        _LOGGER.error("Missing Met.no data")
                         break
                     if self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("next_6_hours", {}) == {}:
                         # No more 6-hourly data
-                        _LOGGER.error("Missing Met.no data")
                         break
                     item["weather"] = (
                         self._weather_data_metno[metno_index + cnt + i]
