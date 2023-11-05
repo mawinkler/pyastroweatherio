@@ -80,15 +80,19 @@ class AstroWeather:
 
         # Astro Routines
         self._astro_routines = AstronomicalRoutines(
-            self._latitude, self._longitude, self._elevation, self._timezone_info, self._test_datetime
+            self._latitude,
+            self._longitude,
+            self._elevation,
+            self._timezone_info,
+            self._test_datetime,
         )
 
         # Testing
-        self.test_mode = False
-        self.dump_json = False
+        self._test_mode = False
+        self._dump_json = False
         if self._test_datetime is not None:
-            self.test_mode = True
-            self.dump_json = True
+            self._test_mode = True
+            self._dump_json = True
 
     # Public functions
     async def get_location_data(
@@ -135,7 +139,9 @@ class AstroWeather:
 
         # Met.no
         metno_index = -1
+        # 7Timer
         forecast_skipped = 0
+
         for row in self._weather_data_seventimer:
             # 7Timer: Skip over past forecasts
             forecast_time = init_ts + timedelta(hours=row["timepoint"])
@@ -143,7 +149,7 @@ class AstroWeather:
                 forecast_skipped += 1
                 continue
 
-            _LOGGER.debug("7Timer forecast time: %s", str(forecast_time))
+            _LOGGER.debug("Forecast time: %s", str(forecast_time))
 
             # Met.no: Search for 7Timer forecast time
             for datapoint in self._weather_data_metno:
@@ -152,17 +158,38 @@ class AstroWeather:
                     break
             _LOGGER.debug("Met.no start index: %s", str(metno_index))
 
+            details = None
+            # Verify that Met.no start index is correct and get details
+            if (
+                datetime.strptime(
+                    self._weather_data_metno[metno_index].get("time"),
+                    "%Y-%m-%dT%H:%M:%SZ",
+                )
+                == forecast_time
+            ):
+                details = self._weather_data_metno[metno_index].get("data", {}).get("instant", {}).get("details", {})
+            else:
+                break
+
             item = {
-                "init": init_ts,
-                "timepoint": row["timepoint"],
-                "timestamp": forecast_time,
+                # seventimer_init is "init" of 7timer astro data
+                "seventimer_init": init_ts,  # init
+                # seventimer_timepoint is "timepoint" of 7timer astro data and defines the data for init + timepoint
+                "seventimer_timepoint": row["timepoint"],  # timepoint
+                # Forecast_time is the actual datetime for the forecast data onwards in UTC
+                # Corresponds to "time" in met data
+                "forecast_time": forecast_time,  # timestamp
+                # Remaining forecast data point in 7timer data
                 "forecast_length": (len(self._weather_data_seventimer) - forecast_skipped) * 3,
+                # Location
                 "latitude": self._latitude,
                 "longitude": self._longitude,
                 "elevation": self._elevation,
+                # 7timer
                 "seeing": row["seeing"],
                 "transparency": row["transparency"],
                 "lifted_index": row["lifted_index"],
+                # Calculate
                 "sun_next_rising": await self._astro_routines.sun_next_rising_civil(),
                 "sun_next_rising_nautical": await self._astro_routines.sun_next_rising_nautical(),
                 "sun_next_rising_astro": await self._astro_routines.sun_next_rising_astro(),
@@ -185,61 +212,44 @@ class AstroWeather:
                 "deep_sky_darkness_moon_always_down": await self._astro_routines.deep_sky_darkness_moon_always_down(),
                 "deep_sky_darkness": await self._astro_routines.deep_sky_darkness(),
                 "deepsky_forecast": await self._get_deepsky_forecast(),
-                "uptonight": await self._get_deepsky_objects(),
-            }
-            # Met.no
-            if (
-                datetime.strptime(
-                    self._weather_data_metno[metno_index].get("time"),
-                    "%Y-%m-%dT%H:%M:%SZ",
-                )
-                == forecast_time
-            ):
-                # _LOGGER.debug("Met.no Cloud Area Fraction timestamp match: %s", str(forecast_time))
-                details = self._weather_data_metno[metno_index].get("data", {}).get("instant", {}).get("details", {})
-                item["cloudcover"] = int(details.get("cloud_area_fraction", -1) / 12.5 + 1)
-
-                item["cloud_area_fraction"] = details.get("cloud_area_fraction", -1)
-                item["cloud_area_fraction_high"] = details.get("cloud_area_fraction_high", -1)
-                item["cloud_area_fraction_low"] = details.get("cloud_area_fraction_low", -1)
-                item["cloud_area_fraction_medium"] = details.get("cloud_area_fraction_medium", -1)
-                item["fog_area_fraction"] = details.get("fog_area_fraction", -1)
-
-                item["condition_percentage"] = await self.calc_condition_percentage(
-                    item["cloud_area_fraction"] / 12.5 + 1,
-                    row["seeing"],
-                    row["transparency"],
-                )
-
-                item["rh2m"] = details.get("relative_humidity", -1)
-                item["wind_speed"] = details.get("wind_speed", -1)
-                item["wind_from_direction"] = details.get("wind_from_direction", -1)
-                item["temp2m"] = details.get("air_temperature", -1)
-                item["dewpoint2m"] = details.get("dew_point_temperature", -1)
-                item["weather"] = (
-                    self._weather_data_metno[metno_index]
-                    .get("data", {})
-                    .get("next_1_hours", {})
-                    .get("summary", {})
-                    .get("symbol_code", "")
-                )
-                item["weather6"] = (
-                    self._weather_data_metno[metno_index]
-                    .get("data", {})
-                    .get("next_6_hours", {})
-                    .get("summary", {})
-                    .get("symbol_code", "")
-                )
-                item["precipitation_amount"] = (
+                # Met.no
+                "cloudcover": int(details.get("cloud_area_fraction", -1) / 12.5 + 1),
+                "cloud_area_fraction": details.get("cloud_area_fraction", -1),
+                "cloud_area_fraction_high": details.get("cloud_area_fraction_high", -1),
+                "cloud_area_fraction_low": details.get("cloud_area_fraction_low", -1),
+                "cloud_area_fraction_medium": details.get("cloud_area_fraction_medium", -1),
+                "fog_area_fraction": details.get("fog_area_fraction", -1),
+                "rh2m": details.get("relative_humidity", -1),
+                "wind_speed": details.get("wind_speed", -1),
+                "wind_from_direction": details.get("wind_from_direction", -1),
+                "temp2m": details.get("air_temperature", -1),
+                "dewpoint2m": details.get("dew_point_temperature", -1),
+                "weather": self._weather_data_metno[metno_index]
+                .get("data", {})
+                .get("next_1_hours", {})
+                .get("summary", {})
+                .get("symbol_code", ""),
+                "weather6": self._weather_data_metno[metno_index]
+                .get("data", {})
+                .get("next_6_hours", {})
+                .get("summary", {})
+                .get("symbol_code", ""),
+                "precipitation_amount": (
                     self._weather_data_metno[metno_index]
                     .get("data", {})
                     .get("next_1_hours", {})
                     .get("details", {})
                     .get("precipitation_amount", "")
-                )
-
-            else:
-                break
+                ),
+                # Condition
+                "condition_percentage": await self.calc_condition_percentage(
+                    details.get("cloud_area_fraction", -1) / 12.5 + 1,
+                    row["seeing"],
+                    row["transparency"],
+                ),
+                # Uptonight objects
+                "uptonight": await self._get_deepsky_objects(),
+            }
 
             items.append(LocationData(item))
             break
@@ -282,18 +292,13 @@ class AstroWeather:
                         break
                 _LOGGER.debug("Met.no start index: %s", str(metno_index))
 
-            # Hour of day needs to be in local time
-            hour_of_day = (forecast_time.hour + utc_to_local_diff) % 24
-
-            cloudcover = row["cloudcover"]
             seeing = row["seeing"]
             transparency = row["transparency"]
-
             item = {
-                "init": init_ts,
-                "timepoint": row["timepoint"],
-                "timestamp": forecast_time,
-                "hour": hour_of_day,
+                "seventimer_init": init_ts,
+                "seventimer_timepoint": row["timepoint"],
+                "forecast_time": forecast_time,
+                "hour": forecast_time.hour % 24,
                 "seeing": seeing,
                 "transparency": transparency,
                 "lifted_index": row["lifted_index"],
@@ -306,7 +311,6 @@ class AstroWeather:
                 )
                 == forecast_time
             ):
-                # _LOGGER.debug("Met.no Cloud Area Fraction timestamp match: %s", str(forecast_time))
                 # Continue hourly
                 for i in range(0, 3):
                     details = (
@@ -315,8 +319,8 @@ class AstroWeather:
                         .get("instant", {})
                         .get("details", {})
                     )
-                    # Overwrite cloudcover
                     if details.get("cloud_area_fraction") is None:
+                        _LOGGER.error("Missing Met.no data")
                         break
                     item["cloudcover"] = int(details.get("cloud_area_fraction", -1) / 12.5 + 1)
 
@@ -338,9 +342,11 @@ class AstroWeather:
                     item["dewpoint2m"] = details.get("dew_point_temperature", -1)
                     if self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("next_1_hours", {}) == {}:
                         # No more hourly data
+                        _LOGGER.error("Missing Met.no data")
                         break
                     if self._weather_data_metno[metno_index + cnt + i].get("data", {}).get("next_6_hours", {}) == {}:
                         # No more 6-hourly data
+                        _LOGGER.error("Missing Met.no data")
                         break
                     item["weather"] = (
                         self._weather_data_metno[metno_index + cnt + i]
@@ -366,8 +372,8 @@ class AstroWeather:
 
                     items.append(ForecastData(item))
 
-                    item["timepoint"] = item["timepoint"] + 1
-                    item["timestamp"] = item["timestamp"] + timedelta(hours=1)
+                    item["seventimer_timepoint"] = item["seventimer_timepoint"] + 1
+                    item["forecast_time"] = item["forecast_time"] + timedelta(hours=1)
                     item["hour"] = item["hour"] + 1
             else:
                 break
@@ -395,6 +401,7 @@ class AstroWeather:
         init_ts = await cnv.anchor_timestamp(self._weather_data_seventimer_init)
 
         utc_to_local_diff = self._astro_routines.utc_to_local_diff()
+        _LOGGER.debug("UTC to local diff: %s", str(utc_to_local_diff))
 
         # Create forecast
         forecast_dayname = ""
@@ -404,64 +411,73 @@ class AstroWeather:
 
         sun_next_setting = await self._astro_routines.sun_next_setting()
         sun_next_rising = await self._astro_routines.sun_next_rising()
+        night_duration_astronomical = await self._astro_routines.night_duration_astronomical()
 
-        _LOGGER.debug(
-            "sun_next_setting: %s, sun_next_rising: %s",
-            str(sun_next_setting),
-            str(sun_next_rising),
-        )
-        for row in self._forecast_data:
-            # Hour of day needs to be in local time
-            hour_of_day = (row.timestamp.hour + utc_to_local_diff) % 24
+        start_index = -1
+        # Find start index
+        for idx, row in enumerate(self._forecast_data):
+            if row.forecast_time.hour % 24 == sun_next_setting.hour:
+                start_index = idx
+                break
 
-            # Skip daytime, we're only interested in the forecasts at
-            # darkness.
-            if hour_of_day < sun_next_setting.hour and hour_of_day > sun_next_rising.hour:
-                start_forecast_hour = 0
-                start_weather = ""
-                interval_points = []
-                continue
-            # cloudcover = row.cloudcover
-            seeing = row.seeing
-            transparency = row.transparency
-            cloud_area_fraction = 0
+        forecast_data_len = len(self._forecast_data)
+        for days in range(0, 2):
+            start_forecast_hour = 0
+            start_weather = ""
+            interval_points = []
+            for idx in range(
+                start_index,
+                start_index + int(round(night_duration_astronomical / 3600, 0) + 1),
+            ):
+                if idx >= forecast_data_len:
+                    _LOGGER.warning("No more forecast data")
+                    break
+                row = self._forecast_data[idx]
 
-            # Met.no
-            cloud_area_fraction = row.cloud_area_fraction_percentage / 12.5 + 1
+                seeing = row.seeing
+                transparency = row.transparency
+                cloud_area_fraction = row.cloud_area_fraction_percentage / 12.5 + 1
 
-            if len(interval_points) == 0:
-                forecast_dayname = row.timestamp.strftime("%A")
-                start_forecast_hour = hour_of_day
-                start_weather = row.weather6
+                if len(interval_points) == 0:
+                    forecast_dayname = row.forecast_time.strftime("%A")
+                    start_forecast_hour = row.forecast_time.hour
+                    start_weather = row.weather6
 
-            # Calculate Condition
-            interval_points.append(await self.calc_condition_percentage(cloud_area_fraction, seeing, transparency))
-
-            if hour_of_day == sun_next_rising.hour:
-                item = {
-                    "init": init_ts,
-                    "dayname": forecast_dayname,
-                    "hour": start_forecast_hour,
-                    "nightly_conditions": interval_points,
-                    "weather": start_weather,
-                }
-                items.append(NightlyConditionsData(item))
-
-                conditions_numeric = ""
-                for condition in interval_points:
-                    conditions_numeric += str(condition) + ", "
                 _LOGGER.debug(
-                    "Nightly conditions day: %s, start hour: %s, nightly conditions: %s, weather: %s, conditions numeric: %s",
-                    str(forecast_dayname),
-                    str(start_forecast_hour),
-                    str(len(interval_points)),
-                    str(start_weather),
-                    conditions_numeric,
+                    "Idex: %d, Hour of day: %d, cloud_area_fraction: %s, seeing: %s, transparency: %s, condition: %s",
+                    idx,
+                    row.forecast_time.hour,
+                    str(cloud_area_fraction),
+                    str(seeing),
+                    str(transparency),
+                    await self.calc_condition_percentage(cloud_area_fraction, seeing, transparency),
                 )
 
-            # Forecast for two nights only
-            if len(items) == 2:
-                break
+                # Calculate Condition
+                interval_points.append(await self.calc_condition_percentage(cloud_area_fraction, seeing, transparency))
+
+                if row.forecast_time.hour == sun_next_rising.hour:
+                    item = {
+                        "seventimer_init": init_ts,
+                        "dayname": forecast_dayname,
+                        "hour": start_forecast_hour,
+                        "nightly_conditions": interval_points,
+                        "weather": start_weather,
+                    }
+                    items.append(NightlyConditionsData(item))
+
+                    conditions_numeric = ""
+                    for condition in interval_points:
+                        conditions_numeric += str(condition) + ", "
+                    _LOGGER.debug(
+                        "Nightly conditions day: %s, start hour: %s, nightly conditions: %s, weather: %s, conditions numeric: %s",
+                        str(forecast_dayname),
+                        str(start_forecast_hour),
+                        str(len(interval_points)),
+                        str(start_weather),
+                        conditions_numeric,
+                    )
+            start_index += 24
 
         return items
 
@@ -559,8 +575,8 @@ class AstroWeather:
             astro_dataseries = None
 
             # Testing
-            if self.test_mode:
-                with open("astro.json") as json_file:
+            if self._test_mode:
+                with open("debug/" + "astro.json") as json_file:
                     astro_dataseries_json = json.load(json_file)
                     astro_dataseries = astro_dataseries_json.get("dataseries", {})
                     json_data_astro = {"init": astro_dataseries_json.get("init")}
@@ -605,9 +621,9 @@ class AstroWeather:
                 plain = str(await resp.text()).replace("\n", " ")
                 data = json.loads(plain)
 
-                if self.dump_json:
+                if self._dump_json:
                     json_string = json.dumps(data)
-                    with open(product + ".json", "w") as outfile:
+                    with open("debug/" + product + ".json", "w") as outfile:
                         outfile.write(json_string)
 
                 return data
@@ -630,8 +646,8 @@ class AstroWeather:
             dataseries = None
 
             # Testing
-            if self.test_mode:
-                with open("met.json") as json_file:
+            if self._test_mode:
+                with open("debug/" + "met.json") as json_file:
                     dataseries = json.load(json_file).get("properties", {}).get("timeseries", [])
             else:
                 json_data_metno = await self.async_request_met("met", "get")
@@ -673,9 +689,9 @@ class AstroWeather:
                 # data = json.loads(plain)
                 data = await resp.json()
 
-                if self.dump_json:
+                if self._dump_json:
                     json_string = json.dumps(data)
-                    with open(product + ".json", "w") as outfile:
+                    with open("debug/" + product + ".json", "w") as outfile:
                         outfile.write(json_string)
 
                 return data

@@ -36,6 +36,7 @@ class ConversionFunctions:
 
     async def anchor_timestamp(self, value) -> datetime:
         """Converts the datetime string from 7Timer to DateTime."""
+        _LOGGER.debug("7timer anchor timestamp: %s", str(datetime.strptime(value, "%Y%m%d%H")))
         return datetime.strptime(value, "%Y%m%d%H")
 
 
@@ -102,8 +103,8 @@ class AstronomicalRoutines:
 
     def utc_to_local_diff(self):
         """returns the UTC Offset"""
-        local = self.utc_to_local(datetime.now())
-        return local.utcoffset().seconds // 3600
+        now = datetime.now(pytz.timezone(self._timezone_info))
+        return now.utcoffset().total_seconds() / 3600
 
     #
     # Observers
@@ -422,7 +423,7 @@ class AstronomicalRoutines:
         # Moon Azimuth
         self._moon_azimuth = deg(float(self._moon.az))
 
-    def sun_previous_rising_astro(self) -> datetime:
+    async def sun_previous_rising_astro(self) -> datetime:
         """Returns sun previous astronomical rising"""
         if self._sun_previous_rising_astro is None or self._forecast_time > self._sun_previous_rising_astro:
             _LOGGER.debug("Astronomical calculations updating sun_previous_rising_astro")
@@ -431,7 +432,7 @@ class AstronomicalRoutines:
         if self._sun_previous_rising_astro is not None:
             return self._sun_previous_rising_astro
 
-    def sun_previous_setting_astro(self) -> datetime:
+    async def sun_previous_setting_astro(self) -> datetime:
         """Returns sun previous astronomical setting"""
         if self._sun_previous_setting_astro is None or self._forecast_time > self._sun_previous_setting_astro:
             _LOGGER.debug("Astronomical calculations updating sun_previous_setting_astro")

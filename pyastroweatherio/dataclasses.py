@@ -18,9 +18,10 @@ class BaseData:
     """A representation of the base class for AstroWeather Data."""
 
     def __init__(self, data):
-        self._init = data["init"]
-        self._timepoint = data["timepoint"]
-        self._timestamp = data["timestamp"]
+        self._seventimer_init = data["seventimer_init"]
+        self._seventimer_timepoint = data["seventimer_timepoint"]
+        self._forecast_time = data["forecast_time"]
+
         self._cloudcover = data["cloudcover"]
         self._cloud_area_fraction = data["cloud_area_fraction"]
         self._cloud_area_fraction_high = data["cloud_area_fraction_high"]
@@ -41,19 +42,19 @@ class BaseData:
         self._precipitation_amount = data["precipitation_amount"]
 
     @property
-    def init(self) -> datetime:
+    def seventimer_init(self) -> datetime:
         """Return Forecast Anchor."""
-        return self._init.replace(microsecond=0, tzinfo=timezone.utc)
+        return self._seventimer_init.replace(microsecond=0, tzinfo=timezone.utc)
 
     @property
-    def timepoint(self) -> int:
+    def seventimer_timepoint(self) -> int:
         """Return Forecast Hour."""
-        return self._timepoint
+        return self._seventimer_timepoint
 
     @property
-    def timestamp(self) -> datetime:
+    def forecast_time(self) -> datetime:
         """Return Forecast Timestamp."""
-        return self._timestamp.replace(microsecond=0, tzinfo=timezone.utc)
+        return self._forecast_time.replace(microsecond=0, tzinfo=timezone.utc)
 
     @property
     def condition_percentage(self) -> int:
@@ -507,16 +508,16 @@ class NightlyConditionsData:
     """A representation of nights Sky Quality Data."""
 
     def __init__(self, data):
-        self._init = data["init"]
+        self._seventimer_init = data["seventimer_init"]
         self._dayname = data["dayname"]
         self._hour = data["hour"]
         self._nightly_conditions = data["nightly_conditions"]
         self._weather = data["weather"]
 
     @property
-    def init(self) -> datetime:
+    def seventimer_init(self) -> datetime:
         """Return Forecast Anchor."""
-        return self._init
+        return self._seventimer_init
 
     @property
     def dayname(self) -> str:
