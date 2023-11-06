@@ -458,6 +458,10 @@ class AstronomicalRoutines:
     #
     # Public methods
     #
+    async def time_shift(self) -> int:
+        """Returns the time_shift to UTC"""
+        return self.utc_to_local_diff() * 3600
+        
     async def need_update(self, forecast_time=None):
         """Update Sun and Moon"""
         if forecast_time is not None:

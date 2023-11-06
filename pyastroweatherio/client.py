@@ -179,6 +179,8 @@ class AstroWeather:
                 # Forecast_time is the actual datetime for the forecast data onwards in UTC
                 # Corresponds to "time" in met data
                 "forecast_time": forecast_time,  # timestamp
+                # Time shift to UTC
+                "time_shift": await self._astro_routines.time_shift(),
                 # Remaining forecast data point in 7timer data
                 "forecast_length": (len(self._weather_data_seventimer) - forecast_skipped) * 3,
                 # Location
@@ -265,6 +267,7 @@ class AstroWeather:
         await self.retrieve_data_seventimer()
         await self.retrieve_data_metno()
         now = datetime.utcnow()
+        # now = datetime.utcnow() + timedelta(hours=12)
 
         # Create items
         cnt = 0
@@ -411,24 +414,26 @@ class AstroWeather:
         sun_next_rising = await self._astro_routines.sun_next_rising()
         night_duration_astronomical = await self._astro_routines.night_duration_astronomical()
 
-        start_index = -1
-        # Find start index
+        start_indexes = []
+        # Find start index for two nights and store the indexes
         for idx, row in enumerate(self._forecast_data):
+            if row.forecast_time.hour % 24 == sun_next_rising.hour and len(start_indexes) == 0:
+                start_indexes.append(0)
             if row.forecast_time.hour % 24 == sun_next_setting.hour:
-                start_index = idx
-                break
-
+                start_indexes.append(idx)
+            
         forecast_data_len = len(self._forecast_data)
-        for days in range(0, 2):
+        for day in range(0, 2):
             start_forecast_hour = 0
             start_weather = ""
             interval_points = []
+            start_index = start_indexes[day] 
             for idx in range(
                 start_index,
                 start_index + int(round(night_duration_astronomical / 3600, 0) + 1),
             ):
                 if idx >= forecast_data_len:
-                    _LOGGER.warning("No more forecast data")
+                    _LOGGER.debug("No more forecast data")
                     break
                 row = self._forecast_data[idx]
 
@@ -454,7 +459,7 @@ class AstroWeather:
                 # Calculate Condition
                 interval_points.append(await self.calc_condition_percentage(cloud_area_fraction, seeing, transparency))
 
-                if row.forecast_time.hour == sun_next_rising.hour:
+                if row.forecast_time.hour == sun_next_rising.hour or idx >= (forecast_data_len - 1):
                     item = {
                         "seventimer_init": init_ts,
                         "dayname": forecast_dayname,
@@ -475,6 +480,10 @@ class AstroWeather:
                         str(start_weather),
                         conditions_numeric,
                     )
+                    
+                    # Test for end of astronomical night. Will get true if we're already at night.
+                    if row.forecast_time.hour % 24 == sun_next_rising.hour:
+                        break
             start_index += 24
 
         return items

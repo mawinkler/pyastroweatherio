@@ -37,16 +37,10 @@ timezone_info = os.environ["BACKYARD_TIMEZONE"]
 # timezone_info = "Europe/Berlin"
 
 # Anchorage
-# latitude=61.212
-# longitude=-149.737
-# elevation=115
-# timezone_info = "America/Anchorage"
-
-# Miami
-# latitude=25.76322
-# longitude=-80.19856
-# elevation=0
-# timezone_info = "America/Cancun"
+latitude=61.212
+longitude=-149.737
+elevation=115
+timezone_info = "America/Anchorage"
 
 # London
 # latitude=51.5072
@@ -109,8 +103,8 @@ async def main() -> None:
 
     start = time.time()
 
-    test_hourly_forecast = True
-    test_deepsky_forecast = True
+    test_hourly_forecast = False
+    test_deepsky_forecast = False
     test_location_data = True
     try:
         if test_hourly_forecast:
@@ -256,7 +250,8 @@ async def main() -> None:
                     f"{esc(COLOR_RED)}Seventimer Init: {esc(COLOR_GREEN)}{str(row.seventimer_init)}, "
                     + f"{esc(COLOR_RED)}Seventimer Timepoint: {esc(COLOR_GREEN)}{str(row.seventimer_timepoint)}, "
                     + f"{esc(COLOR_RED)}Forecast Time: {esc(COLOR_GREEN)}{str(row.forecast_time)}, "
-                    + f"{esc(COLOR_RED)}Forecast Length: {esc(COLOR_GREEN)}{str(row.forecast_length)}{esc('0')}"
+                    + f"{esc(COLOR_RED)}Forecast Length: {esc(COLOR_GREEN)}{str(row.forecast_length)}, "
+                    + f"{esc(COLOR_RED)}Time Shift: {esc(COLOR_GREEN)}{str(row.time_shift)}{esc('0')}"
                 )
                 print(
                     f"{esc(COLOR_RED)}Latitude: {esc(COLOR_GREEN)}{str(row.latitude)}, "

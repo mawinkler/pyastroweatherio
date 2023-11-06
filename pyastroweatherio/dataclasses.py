@@ -176,6 +176,7 @@ class LocationData(BaseData):
 
     def __init__(self, data):
         super().__init__(data)
+        self._time_shift = data["time_shift"]
         self._forecast_length = data["forecast_length"]
         self._latitude = data["latitude"]
         self._longitude = data["longitude"]
@@ -204,6 +205,11 @@ class LocationData(BaseData):
         self._deepsky_forecast = data["deepsky_forecast"]
         self._uptonight = data["uptonight"]
 
+    @property
+    def time_shift(self) -> int:
+        """Return Forecast Timestamp."""
+        return self._time_shift
+    
     @property
     def forecast_length(self) -> int:
         """Return Forecast Length in Hours"""

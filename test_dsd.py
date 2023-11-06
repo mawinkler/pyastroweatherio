@@ -84,9 +84,9 @@ async def main() -> None:
         "Datetime;Sun next Rising;Sun next Rising Astronomical;Sun next Setting;Sun next Setting Astronomical;Moon next Rising;Moon next Setting;Sun Altitude;Moon Altitude;DSD Moon rises;DSD Moon sets;DSD Moon always up;DSD Moon always down;NDA;DSD\n"
     )
 
-    ds_string = "11/05/2023 00:00:00"
+    ds_string = "11/06/2023 00:00:00"
     dt = datetime.strptime(ds_string, "%m/%d/%Y %H:%M:%S")
-    de_string = "11/06/2023 00:00:00"
+    de_string = "11/08/2023 00:00:00"
     de = datetime.strptime(de_string, "%m/%d/%Y %H:%M:%S")
 
     start = time.time()
@@ -160,6 +160,10 @@ async def main() -> None:
                     + convert_to_hhmm(row.night_duration_astronomical)
                     + ";"
                     + convert_to_hhmm(row.deep_sky_darkness)
+                    + ";"
+                    + str(row.deepsky_forecast_today_plain)
+                    + ";"
+                    + str(row.deepsky_forecast_tomorrow_plain)
                     + "\n"
                 )
         except AstroWeatherError as err:
