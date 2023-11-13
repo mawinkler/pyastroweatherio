@@ -735,8 +735,8 @@ class AstronomicalRoutines:
         else:
             start_timestamp = self._sun_next_setting_astro
 
-        if self._moon_next_setting < start_timestamp and self._moon_next_rising > self._sun_next_rising_astro:
-            _LOGGER.debug("Moon is up during astronomical night")
+        if self._moon_previous_setting < start_timestamp and self._moon_next_rising > self._sun_next_rising_astro:
+            _LOGGER.debug("Moon is down during astronomical night")
             return True
         return False
 
@@ -744,7 +744,10 @@ class AstronomicalRoutines:
         """Returns the remaining timespan of deep sky darkness"""
         dsd = timedelta(0)
 
+        _LOGGER.debug(f"DSD - Calculating")
+
         if self.astronomical_darkness():
+            _LOGGER.debug(f"DSD - In astronomical darkness")
             if await self.deep_sky_darkness_moon_rises():
                 dsd = self._moon_next_rising - self._forecast_time
                 _LOGGER.debug(f"DSD - Sun down, Moon rises {dsd}")
@@ -759,9 +762,13 @@ class AstronomicalRoutines:
 
             if await self.deep_sky_darkness_moon_always_down():
                 dsd = self._sun_next_rising_astro - self._forecast_time
-                _LOGGER.debug(f"DSD - Sun down, Moon down {dsd}")
+                _LOGGER.debug(f"DSD - Moon always down {dsd}")
+            else:
+                _LOGGER.debug(f"DSD - Moon NOT always down {dsd}")
+
 
         if not self.astronomical_darkness():
+            _LOGGER.debug(f"DSD - At sunlight")
             if await self.deep_sky_darkness_moon_rises():
                 dsd = self._moon_next_rising - self._sun_next_setting_astro
                 _LOGGER.debug(f"DSD - Sun up, Moon rises {dsd}")
@@ -776,5 +783,8 @@ class AstronomicalRoutines:
 
         if await self.deep_sky_darkness_moon_always_up():
             dsd = timedelta(0)
+            _LOGGER.debug(f"DSD - Moon always up {dsd}")
+        else:
+            _LOGGER.debug(f"DSD - Moon NOT always up {dsd}")
 
         return dsd.total_seconds()

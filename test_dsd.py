@@ -40,6 +40,12 @@ timezone_info = os.environ["BACKYARD_TIMEZONE"]
 # elevation=115
 # timezone_info = "America/Anchorage"
 
+# Hacienda Los Andes
+latitude=-30.29528
+longitude=-70.71262
+elevation=1000
+timezone_info = "Chile/Continental"
+
 # London
 # latitude=51.5072
 # longitude=0.1276
@@ -84,9 +90,9 @@ async def main() -> None:
         "Datetime;Sun next Rising;Sun next Rising Astronomical;Sun next Setting;Sun next Setting Astronomical;Moon next Rising;Moon next Setting;Sun Altitude;Moon Altitude;DSD Moon rises;DSD Moon sets;DSD Moon always up;DSD Moon always down;NDA;DSD\n"
     )
 
-    ds_string = "11/06/2023 00:00:00"
+    ds_string = "11/13/2023 00:00:00"
     dt = datetime.strptime(ds_string, "%m/%d/%Y %H:%M:%S")
-    de_string = "11/08/2023 00:00:00"
+    de_string = "11/15/2023 00:00:00"
     de = datetime.strptime(de_string, "%m/%d/%Y %H:%M:%S")
 
     start = time.time()

@@ -3,6 +3,7 @@ import asyncio
 import json
 import logging
 import os.path
+import math
 from datetime import datetime, timedelta
 from typing import Optional
 from decimal import Decimal
@@ -89,10 +90,8 @@ class AstroWeather:
 
         # Testing
         self._test_mode = False
-        self._dump_json = False
         if self._test_datetime is not None:
             self._test_mode = True
-            self._dump_json = True
 
     # Public functions
     async def get_location_data(
@@ -386,6 +385,7 @@ class AstroWeather:
 
         self._forecast_data = items
 
+        _LOGGER.debug("Forceast Length: %s", str(len(items)))
         return items
 
     async def _get_deepsky_forecast(self):
@@ -430,7 +430,7 @@ class AstroWeather:
             start_index = start_indexes[day] 
             for idx in range(
                 start_index,
-                start_index + int(round(night_duration_astronomical / 3600, 0) + 1),
+                start_index + int(math.floor(night_duration_astronomical / 3600) + 2),
             ):
                 if idx >= forecast_data_len:
                     _LOGGER.debug("No more forecast data")
@@ -457,7 +457,8 @@ class AstroWeather:
                 )
 
                 # Calculate Condition
-                interval_points.append(await self.calc_condition_percentage(cloud_area_fraction, seeing, transparency))
+                if len(interval_points) <= int(math.floor(night_duration_astronomical / 3600)):
+                    interval_points.append(await self.calc_condition_percentage(cloud_area_fraction, seeing, transparency))
 
                 if row.forecast_time.hour == sun_next_rising.hour or idx >= (forecast_data_len - 1):
                     item = {
@@ -583,10 +584,14 @@ class AstroWeather:
 
             # Testing
             if self._test_mode:
-                with open("debug/" + "astro.json") as json_file:
-                    astro_dataseries_json = json.load(json_file)
-                    astro_dataseries = astro_dataseries_json.get("dataseries", {})
-                    json_data_astro = {"init": astro_dataseries_json.get("init")}
+                if os.path.isfile("debug/astro.json"):
+                    with open("debug/astro.json") as json_file:
+                        astro_dataseries_json = json.load(json_file)
+                        astro_dataseries = astro_dataseries_json.get("dataseries", {})
+                        json_data_astro = {"init": astro_dataseries_json.get("init")}
+                else:
+                    json_data_astro = await self.async_request_seventimer("astro", "get")
+                    astro_dataseries = json_data_astro.get("dataseries", {})
             else:
                 json_data_astro = await self.async_request_seventimer("astro", "get")
                 astro_dataseries = json_data_astro.get("dataseries", {})
@@ -628,7 +633,7 @@ class AstroWeather:
                 plain = str(await resp.text()).replace("\n", " ")
                 data = json.loads(plain)
 
-                if self._dump_json:
+                if self._test_mode:
                     json_string = json.dumps(data)
                     with open("debug/" + product + ".json", "w") as outfile:
                         outfile.write(json_string)
@@ -654,11 +659,14 @@ class AstroWeather:
 
             # Testing
             if self._test_mode:
-                with open("debug/" + "met.json") as json_file:
-                    dataseries = json.load(json_file).get("properties", {}).get("timeseries", [])
+                if os.path.isfile("debug/met.json"):
+                    with open("debug/met.json") as json_file:
+                        dataseries = json.load(json_file).get("properties", {}).get("timeseries", [])
+                else:
+                    json_data_metno = await self.async_request_met("met", "get")
+                    dataseries = json_data_metno.get("properties", {}).get("timeseries", [])
             else:
                 json_data_metno = await self.async_request_met("met", "get")
-
                 dataseries = json_data_metno.get("properties", {}).get("timeseries", [])
 
             self._weather_data_metno = dataseries
@@ -696,7 +704,7 @@ class AstroWeather:
                 # data = json.loads(plain)
                 data = await resp.json()
 
-                if self._dump_json:
+                if self._test_mode:
                     json_string = json.dumps(data)
                     with open("debug/" + product + ".json", "w") as outfile:
                         outfile.write(json_string)
