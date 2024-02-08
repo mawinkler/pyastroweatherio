@@ -561,14 +561,14 @@ class AstroWeather:
                 }
                 items.append(DSOUpTonight(item))
 
-                # _LOGGER.debug(
-                #     "DSO: %s, type: %s, constellation: %s, size: %s, foto: %s",
-                #     str(item["target_name"]),
-                #     str(item["type"]),
-                #     str(item["constellation"]),
-                #     str(item["size"]),
-                #     str(item["foto"]),
-                # )
+                _LOGGER.debug(
+                    "DSO: %s, type: %s, constellation: %s, size: %s, foto: %s",
+                    str(item["target_name"]),
+                    str(item["type"]),
+                    str(item["constellation"]),
+                    str(item["size"]),
+                    str(item["foto"]),
+                )
 
             return items
         return None
