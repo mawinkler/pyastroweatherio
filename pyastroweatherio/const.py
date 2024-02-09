@@ -2,6 +2,7 @@
 
 BASE_URL_SEVENTIMER = "https://www.7timer.info/bin/api.pl"
 BASE_URL_MET = "https://api.met.no/weatherapi/locationforecast/2.0/complete"
+HEADERS = {"User-Agent": "AstroWeather github.com/mawinkler/astroweather"}
 STIMER_OUTPUT = "json"
 
 DEFAULT_TIMEOUT = 10

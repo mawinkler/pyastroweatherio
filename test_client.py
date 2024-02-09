@@ -43,10 +43,10 @@ timezone_info = os.environ["BACKYARD_TIMEZONE"]
 # timezone_info = "America/Anchorage"
 
 # Hacienda Los Andes
-latitude=-30.29528
-longitude=-70.71262
-elevation=1000
-timezone_info = "Chile/Continental"
+# latitude=-30.29528
+# longitude=-70.71262
+# elevation=1000
+# timezone_info = "Chile/Continental"
 
 # London
 # latitude=51.5072
@@ -109,7 +109,7 @@ async def main() -> None:
 
     start = time.time()
 
-    test_hourly_forecast = False
+    test_hourly_forecast = True
     test_deepsky_forecast = True
     test_location_data = True
     try:

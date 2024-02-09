@@ -13,6 +13,7 @@ from aiohttp.client_exceptions import ClientError
 from pyastroweatherio.const import (
     BASE_URL_SEVENTIMER,
     BASE_URL_MET,
+    HEADERS,
     DEFAULT_TIMEOUT,
     DEFAULT_CACHE_TIMEOUT,
     DEFAULT_ELEVATION,
@@ -628,7 +629,7 @@ class AstroWeather:
         )
         try:
             _LOGGER.debug(f"Query url: {url}")
-            async with session.request(method, url) as resp:
+            async with session.request(method, url, headers=HEADERS) as resp:
                 resp.raise_for_status()
                 plain = str(await resp.text()).replace("\n", " ")
                 data = json.loads(plain)
@@ -678,9 +679,6 @@ class AstroWeather:
         """Make a request against the 7timer API."""
 
         use_running_session = self._session and not self._session.closed
-        headers = {
-            'User-Agent': 'AstroWeather github.com/mawinkler/astroweather'
-            }
         
         if use_running_session:
             session = self._session
@@ -701,7 +699,7 @@ class AstroWeather:
         )
         try:
             _LOGGER.debug(f"Query url: {url}")
-            async with session.request(method, url, headers=headers) as resp:
+            async with session.request(method, url, headers=HEADERS) as resp:
                 resp.raise_for_status()
                 # plain = str(await resp.text()).replace("\n", " ")
                 # data = json.loads(plain)
