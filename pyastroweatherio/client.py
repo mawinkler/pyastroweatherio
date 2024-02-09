@@ -678,7 +678,10 @@ class AstroWeather:
         """Make a request against the 7timer API."""
 
         use_running_session = self._session and not self._session.closed
-
+        headers = {
+            'User-Agent': 'AstroWeather github.com/mawinkler/astroweather'
+            }
+        
         if use_running_session:
             session = self._session
         else:
@@ -698,7 +701,7 @@ class AstroWeather:
         )
         try:
             _LOGGER.debug(f"Query url: {url}")
-            async with session.request(method, url) as resp:
+            async with session.request(method, url, headers=headers) as resp:
                 resp.raise_for_status()
                 # plain = str(await resp.text()).replace("\n", " ")
                 # data = json.loads(plain)
