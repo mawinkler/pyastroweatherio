@@ -1,4 +1,5 @@
 """Define a client to interact with 7Timer."""
+
 import asyncio
 import json
 import logging
@@ -422,13 +423,13 @@ class AstroWeather:
                 start_indexes.append(0)
             if row.forecast_time.hour % 24 == sun_next_setting.hour:
                 start_indexes.append(idx)
-            
+
         forecast_data_len = len(self._forecast_data)
         for day in range(0, 2):
             start_forecast_hour = 0
             start_weather = ""
             interval_points = []
-            start_index = start_indexes[day] 
+            start_index = start_indexes[day]
             for idx in range(
                 start_index,
                 start_index + int(math.floor(night_duration_astronomical / 3600) + 2),
@@ -459,7 +460,9 @@ class AstroWeather:
 
                 # Calculate Condition
                 if len(interval_points) <= int(math.floor(night_duration_astronomical / 3600)):
-                    interval_points.append(await self.calc_condition_percentage(cloud_area_fraction, seeing, transparency))
+                    interval_points.append(
+                        await self.calc_condition_percentage(cloud_area_fraction, seeing, transparency)
+                    )
 
                 if row.forecast_time.hour == sun_next_rising.hour or idx >= (forecast_data_len - 1):
                     item = {
@@ -482,7 +485,7 @@ class AstroWeather:
                         str(start_weather),
                         conditions_numeric,
                     )
-                    
+
                     # Test for end of astronomical night. Will get true if we're already at night.
                     if row.forecast_time.hour % 24 == sun_next_rising.hour:
                         break
@@ -496,6 +499,22 @@ class AstroWeather:
         #   Clouds: 1-9
         #   Seeing: 1-8
         #   Transparency: 1-8
+
+        # Wind
+        # 0 --- Calm	less than 1 mph (0 m/s)	Smoke rises vertically
+        # 1 --- Light air	    1 - 3 mph   0   .5-1.5 m/s	    Smoke drifts with air, weather vanes inactive
+        # 2 --- Light breeze	4 - 7 mph       2-3 m/s	        Weather vanes active, wind felt on face, leaves rustle
+        # 3 --- Gentle breeze	8 - 12 mph      3.5-5 m/s	    Leaves & small twigs move, light flags extend
+        # 4 --- Moderate breeze	13 - 18 mph     5.5-8 m/s	    Small branches sway, dust & loose paper blows about
+        # 5 --- Fresh breeze	19 - 24 mph     8.5-10.5 m/s	Small trees sway, waves break on inland waters
+        # 6 --- Strong breeze	25 - 31 mph     11-13.5 m/s	    Large branches sway, umbrellas difficult to use
+        # 7 --- Moderate gale	32 - 38 mph     14-16.5 m/s	    Whole trees sway, difficult to walk against wind
+        # 8 --- Fresh gale	    39 - 46 mph     17-20 m/s	    Twigs broken off trees, walking against wind very difficult
+        # 9 --- Strong gale	    47 - 54 mph     20.5-23.5 m/s	Slight damage to buildings, shingles blown off roof
+        # 10 -- Whole gale	    55 - 63 mph     24-27.5 m/s	    Trees uprooted, considerable damage to buildings
+        # 11 -- Storm	        64 - 73 mph     28-31.5 m/s	    Widespread damage, very rare occurrence
+        # 12 -- Hurricane	    over 73 mph     over 32 m/s	    Violent destruction
+
         condition = int(
             100
             - (
@@ -679,7 +698,7 @@ class AstroWeather:
         """Make a request against the 7timer API."""
 
         use_running_session = self._session and not self._session.closed
-        
+
         if use_running_session:
             session = self._session
         else:
