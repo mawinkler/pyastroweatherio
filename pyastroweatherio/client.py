@@ -11,6 +11,9 @@ from decimal import Decimal
 from aiohttp import ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ClientError
 
+import pprint
+pp = pprint.PrettyPrinter()
+     
 from pyastroweatherio.const import (
     BASE_URL_SEVENTIMER,
     BASE_URL_MET,
@@ -22,6 +25,9 @@ from pyastroweatherio.const import (
     DEFAULT_CONDITION_CLOUDCOVER_WEIGHT,
     DEFAULT_CONDITION_SEEING_WEIGHT,
     DEFAULT_CONDITION_TRANSPARENCY_WEIGHT,
+    DEFAULT_CONDITION_CALM_WEIGHT,
+    WIND10M_VALUE,
+    WIND10M_RANGE,
     HOME_LATITUDE,
     HOME_LONGITUDE,
     STIMER_OUTPUT,
@@ -55,6 +61,7 @@ class AstroWeather:
         cloudcover_weight=DEFAULT_CONDITION_CLOUDCOVER_WEIGHT,
         seeing_weight=DEFAULT_CONDITION_SEEING_WEIGHT,
         transparency_weight=DEFAULT_CONDITION_TRANSPARENCY_WEIGHT,
+        calm_weight=DEFAULT_CONDITION_CALM_WEIGHT,
         uptonight_path="/conf/www",
         test_datetime=None,
     ):
@@ -74,6 +81,7 @@ class AstroWeather:
         self._cloudcover_weight = cloudcover_weight
         self._seeing_weight = seeing_weight
         self._transparency_weight = transparency_weight
+        self._calm_weight = calm_weight
         self._uptonight_path = uptonight_path
         self._test_datetime = test_datetime
 
@@ -249,6 +257,7 @@ class AstroWeather:
                     details.get("cloud_area_fraction", -1) / 12.5 + 1,
                     row["seeing"],
                     row["transparency"],
+                    details.get("wind_speed", -1),
                 ),
                 # Uptonight objects
                 "uptonight": await self._get_deepsky_objects(),
@@ -278,7 +287,7 @@ class AstroWeather:
 
         utc_to_local_diff = self._astro_routines.utc_to_local_diff()
         _LOGGER.debug("UTC to local diff: %s", str(utc_to_local_diff))
-        _LOGGER.debug("Forecast length: %s", str(len(self._weather_data_seventimer)))
+        _LOGGER.debug("Forecast length 7timer: %s", str(len(self._weather_data_seventimer)))
 
         # Met.no
         metno_index = -1
@@ -333,14 +342,16 @@ class AstroWeather:
                     item["cloud_area_fraction_low"] = details.get("cloud_area_fraction_low", -1)
                     item["cloud_area_fraction_medium"] = details.get("cloud_area_fraction_medium", -1)
                     item["fog_area_fraction"] = details.get("fog_area_fraction", -1)
+                    item["rh2m"] = details.get("relative_humidity", -1)
+                    item["wind_speed"] = details.get("wind_speed", -1)
 
                     item["condition_percentage"] = await self.calc_condition_percentage(
                         item["cloud_area_fraction"] / 12.5 + 1,
                         row["seeing"],
                         row["transparency"],
+                        item["wind_speed"],
                     )
-                    item["rh2m"] = details.get("relative_humidity", -1)
-                    item["wind_speed"] = details.get("wind_speed", -1)
+
                     item["wind_from_direction"] = details.get("wind_from_direction", -1)
                     item["temp2m"] = details.get("air_temperature", -1)
                     item["dewpoint2m"] = details.get("dew_point_temperature", -1)
@@ -418,6 +429,7 @@ class AstroWeather:
 
         start_indexes = []
         # Find start index for two nights and store the indexes
+        _LOGGER.debug("Forecast data length: %s", str(len(self._forecast_data)))
         for idx, row in enumerate(self._forecast_data):
             if row.forecast_time.hour % 24 == sun_next_rising.hour and len(start_indexes) == 0:
                 start_indexes.append(0)
@@ -425,7 +437,7 @@ class AstroWeather:
                 start_indexes.append(idx)
 
         forecast_data_len = len(self._forecast_data)
-        for day in range(0, 2):
+        for day in range(0, len(start_indexes)):
             start_forecast_hour = 0
             start_weather = ""
             interval_points = []
@@ -442,6 +454,7 @@ class AstroWeather:
                 seeing = row.seeing
                 transparency = row.transparency
                 cloud_area_fraction = row.cloud_area_fraction_percentage / 12.5 + 1
+                wind_speed = row.wind10m_speed
 
                 if len(interval_points) == 0:
                     forecast_dayname = row.forecast_time.strftime("%A")
@@ -449,19 +462,20 @@ class AstroWeather:
                     start_weather = row.weather6
 
                 _LOGGER.debug(
-                    "Idex: %d, Hour of day: %d, cloud_area_fraction: %s, seeing: %s, transparency: %s, condition: %s",
+                    "Idex: %d, Hour of day: %d, cloud_area_fraction: %s, seeing: %s, transparency: %s, wind_speed: %s, condition: %s",
                     idx,
                     row.forecast_time.hour,
                     str(cloud_area_fraction),
                     str(seeing),
                     str(transparency),
-                    await self.calc_condition_percentage(cloud_area_fraction, seeing, transparency),
+                    str(wind_speed),
+                    await self.calc_condition_percentage(cloud_area_fraction, seeing, transparency, wind_speed),
                 )
 
                 # Calculate Condition
                 if len(interval_points) <= int(math.floor(night_duration_astronomical / 3600)):
                     interval_points.append(
-                        await self.calc_condition_percentage(cloud_area_fraction, seeing, transparency)
+                        await self.calc_condition_percentage(cloud_area_fraction, seeing, transparency, wind_speed)
                     )
 
                 if row.forecast_time.hour == sun_next_rising.hour or idx >= (forecast_data_len - 1):
@@ -493,27 +507,18 @@ class AstroWeather:
 
         return items
 
-    async def calc_condition_percentage(self, cloudcover, seeing, transparency):
-        """Return condition based on cloud cover, seeing and transparency"""
+    async def calc_condition_percentage(self, cloudcover, seeing, transparency, wind_speed):
+        """Return condition based on cloud cover, seeing, transparency, and wind speed"""
         # Possible Values:
         #   Clouds: 1-9
         #   Seeing: 1-8
         #   Transparency: 1-8
+        #   Wind: 1-8
 
-        # Wind
-        # 0 --- Calm	less than 1 mph (0 m/s)	Smoke rises vertically
-        # 1 --- Light air	    1 - 3 mph   0   .5-1.5 m/s	    Smoke drifts with air, weather vanes inactive
-        # 2 --- Light breeze	4 - 7 mph       2-3 m/s	        Weather vanes active, wind felt on face, leaves rustle
-        # 3 --- Gentle breeze	8 - 12 mph      3.5-5 m/s	    Leaves & small twigs move, light flags extend
-        # 4 --- Moderate breeze	13 - 18 mph     5.5-8 m/s	    Small branches sway, dust & loose paper blows about
-        # 5 --- Fresh breeze	19 - 24 mph     8.5-10.5 m/s	Small trees sway, waves break on inland waters
-        # 6 --- Strong breeze	25 - 31 mph     11-13.5 m/s	    Large branches sway, umbrellas difficult to use
-        # 7 --- Moderate gale	32 - 38 mph     14-16.5 m/s	    Whole trees sway, difficult to walk against wind
-        # 8 --- Fresh gale	    39 - 46 mph     17-20 m/s	    Twigs broken off trees, walking against wind very difficult
-        # 9 --- Strong gale	    47 - 54 mph     20.5-23.5 m/s	Slight damage to buildings, shingles blown off roof
-        # 10 -- Whole gale	    55 - 63 mph     24-27.5 m/s	    Trees uprooted, considerable damage to buildings
-        # 11 -- Storm	        64 - 73 mph     28-31.5 m/s	    Widespread damage, very rare occurrence
-        # 12 -- Hurricane	    over 73 mph     over 32 m/s	    Violent destruction
+        wind_speed_value = 0
+        for (start, end), derate in zip(WIND10M_RANGE, WIND10M_VALUE):
+            if start <= wind_speed <= end:
+                wind_speed_value = derate
 
         condition = int(
             100
@@ -521,30 +526,25 @@ class AstroWeather:
                 self._cloudcover_weight * cloudcover
                 + self._seeing_weight * seeing
                 + self._transparency_weight * transparency
+                + self._calm_weight * wind_speed_value
                 - self._cloudcover_weight
                 - self._seeing_weight
                 - self._transparency_weight
+                - self._calm_weight
             )
             * 100
             / (
                 self._cloudcover_weight * 9
                 + self._seeing_weight * 8
                 + self._transparency_weight * 8
+                + self._calm_weight * 8
                 - self._cloudcover_weight
                 - self._seeing_weight
                 - self._transparency_weight
+                - self._calm_weight
             )
         )
-        # _LOGGER.debug(
-        #     "Calc condition cloudcover: %d(%d), seeing %d(%d), transparency: %d(%d), condition %d",
-        #     cloudcover,
-        #     self._cloudcover_weight,
-        #     seeing,
-        #     self._seeing_weight,
-        #     transparency,
-        #     self._transparency_weight,
-        #     condition,
-        # )
+
         return condition
 
     async def calc_dewpoint2m(self, rh2m, temp2m):
@@ -616,8 +616,12 @@ class AstroWeather:
                 json_data_astro = await self.async_request_seventimer("astro", "get")
                 astro_dataseries = json_data_astro.get("dataseries", {})
 
-            self._weather_data_seventimer = astro_dataseries
-            self._weather_data_seventimer_init = json_data_astro.get("init")
+            if astro_dataseries != {}:
+                self._weather_data_seventimer = astro_dataseries
+                self._weather_data_seventimer_init = json_data_astro.get("init")
+            else:
+                self._weather_data_seventimer = {}
+                self._weather_data_seventimer_init = datetime.now().strftime("%Y%m%d%H")
         else:
             _LOGGER.debug("Using cached data for 7Timer")
 
@@ -660,8 +664,12 @@ class AstroWeather:
 
                 return data
         except asyncio.TimeoutError as tex:
+            _LOGGER.error(f"Request to endpoint timed out: {tex}")
+            return {}
             raise RequestError(f"Request to endpoint timed out: {tex}") from None
         except ClientError as err:
+            _LOGGER.error(f"Error requesting data: {err}")
+            return {}
             raise RequestError(f"Error requesting data: {err}") from None
 
         finally:

@@ -10,7 +10,10 @@ from pyastroweatherio.const import (
     LIFTED_INDEX_PLAIN,
     SEEING_PLAIN,
     TRANSPARENCY_PLAIN,
+    WIND10M_PLAIN,
     WIND10M_DIRECTON,
+    WIND10M_VALUE,
+    WIND10M_RANGE,
 )
 
 
@@ -137,6 +140,11 @@ class BaseData:
         return self._wind_speed
 
     @property
+    def calm_percentage(self) -> int:
+        """Return 10m Wind Speed."""
+        return int((100 + 100 / 7 - self._wind_speed * 100 / 7))
+    
+    @property
     def wind10m_direction(self) -> str:
         """Return 10m Wind Direction."""
         direction = self._wind_from_direction
@@ -254,6 +262,20 @@ class LocationData(BaseData):
             return TRANSPARENCY_PLAIN[self._transparency - 1]
         return None
 
+    @property
+    def wind10m_speed_plain(self) -> str:
+        """Return Transparency."""
+        wind10m_speed = self._wind_speed
+        
+        wind_speed_value = 0
+        for (start, end), derate in zip(WIND10M_RANGE, WIND10M_VALUE):
+            if start <= wind10m_speed <= end:
+                wind_speed_value = derate
+                
+        if wind_speed_value >= 1 and wind_speed_value <= 8:
+            return WIND10M_PLAIN[wind_speed_value - 1]
+        return None
+    
     @property
     def lifted_index_plain(self) -> str:
         """Return Lifted Index."""

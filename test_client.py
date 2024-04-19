@@ -104,6 +104,7 @@ async def main() -> None:
         cloudcover_weight=3,
         seeing_weight=2,
         transparency_weight=1,
+        calm_weight=3,
         uptonight_path=".",
     )
 
@@ -134,22 +135,23 @@ async def main() -> None:
                     + f"{esc(COLOR_RED)}Hour of Day: {esc(COLOR_GREEN)}{str(row.hour)}{esc('0')}"
                 )
                 print(
-                    f"{esc(COLOR_RED)}Cloudcover: {esc(COLOR_GREEN)}{str(row.cloudcover_percentage)}, "
-                    + f"{esc(COLOR_RED)}Cloudless: {esc(COLOR_GREEN)}{str(row.cloudless_percentage)}, "
-                    + f"{esc(COLOR_RED)}Seeing: {esc(COLOR_GREEN)}{str(row.seeing_percentage)}, "
-                    + f"{esc(COLOR_RED)}Transparency: {esc(COLOR_GREEN)}{str(row.transparency_percentage)}, "
+                    f"{esc(COLOR_RED)}Cloudcover: {esc(COLOR_GREEN)}{str(row.cloudcover_percentage)}%, "
+                    + f"{esc(COLOR_RED)}Cloudless: {esc(COLOR_GREEN)}{str(row.cloudless_percentage)}%, "
+                    + f"{esc(COLOR_RED)}Seeing: {esc(COLOR_GREEN)}{str(row.seeing_percentage)}%, "
+                    + f"{esc(COLOR_RED)}Transparency: {esc(COLOR_GREEN)}{str(row.transparency_percentage)}%, "
+                    + f"{esc(COLOR_RED)}Calm Percentage: {esc(COLOR_GREEN)}{str(row.calm_percentage)}%, "
                     + f"{esc(COLOR_RED)}Liftet Index: {esc(COLOR_GREEN)}{str(row.lifted_index)}{esc('0')}"
                 )
                 print(
-                    f"{esc(COLOR_RED)}Cloud Area Fraction: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_percentage)}, "
-                    + f"{esc(COLOR_RED)}Cloud Area Fraction High: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_high_percentage)}, "
-                    + f"{esc(COLOR_RED)}Cloud Area Fraction Low: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_low_percentage)}, "
-                    + f"{esc(COLOR_RED)}Cloud Area Fraction Medium: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_medium_percentage)}{esc('0')}"
+                    f"{esc(COLOR_RED)}Cloud Area Fraction: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_percentage)}%, "
+                    + f"{esc(COLOR_RED)}Cloud Area Fraction High: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_high_percentage)}%, "
+                    + f"{esc(COLOR_RED)}Cloud Area Fraction Low: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_low_percentage)}%, "
+                    + f"{esc(COLOR_RED)}Cloud Area Fraction Medium: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_medium_percentage)}%{esc('0')}"
                 )
-                print(f"{esc(COLOR_RED)}View Condition: {esc(COLOR_GREEN)}{str(row.condition_percentage)}{esc('0')}")
+                print(f"{esc(COLOR_RED)}View Condition: {esc(COLOR_GREEN)}{str(row.condition_percentage)}%{esc('0')}")
                 print(
                     f"{esc(COLOR_RED)}Wind Direction: {esc(COLOR_GREEN)}{str(row.wind10m_direction)}, "
-                    + f"{esc(COLOR_RED)}Speed: {esc(COLOR_GREEN)}{str(row.wind10m_speed)}{esc('0')}"
+                    + f"{esc(COLOR_RED)}Speed: {esc(COLOR_GREEN)}{str(row.wind10m_speed)}m/s{esc('0')}"
                 )
                 print(
                     f"{esc(COLOR_RED)}Temperature: {esc(COLOR_GREEN)}{str(row.temp2m)}, "
@@ -265,26 +267,26 @@ async def main() -> None:
                     + f"{esc(COLOR_RED)}Elevation: {esc(COLOR_GREEN)}{str(row.elevation)}{esc('0')}"
                 )
                 print(
-                    f"{esc(COLOR_RED)}View Condition: {esc(COLOR_GREEN)}{str(row.condition_percentage)}, "
+                    f"{esc(COLOR_RED)}View Condition: {esc(COLOR_GREEN)}{str(row.condition_percentage)}%, "
                     + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.condition_plain)}{esc('0')}"
                 )
                 print(
-                    f"{esc(COLOR_RED)}Cloudcover: {esc(COLOR_GREEN)}{str(row.cloudcover_percentage)}, "
-                    + f"{esc(COLOR_RED)}Cloudless: {esc(COLOR_GREEN)}{str(row.cloudless_percentage)}, "
+                    f"{esc(COLOR_RED)}Cloudcover: {esc(COLOR_GREEN)}{str(row.cloudcover_percentage)}%, "
+                    + f"{esc(COLOR_RED)}Cloudless: {esc(COLOR_GREEN)}{str(row.cloudless_percentage)}%, "
                     + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.cloudcover_plain)}{esc('0')}"
                 )
                 print(
-                    f"{esc(COLOR_RED)}Cloud Area Fraction: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_percentage)}, "
-                    + f"{esc(COLOR_RED)}Cloud Area Fraction High: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_high_percentage)}, "
-                    + f"{esc(COLOR_RED)}Cloud Area Fraction Low: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_low_percentage)}, "
-                    + f"{esc(COLOR_RED)}Cloud Area Fraction Medium: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_medium_percentage)}{esc('0')}"
+                    f"{esc(COLOR_RED)}Cloud Area Fraction: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_percentage)}%, "
+                    + f"{esc(COLOR_RED)}Cloud Area Fraction High: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_high_percentage)}%, "
+                    + f"{esc(COLOR_RED)}Cloud Area Fraction Low: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_low_percentage)}%, "
+                    + f"{esc(COLOR_RED)}Cloud Area Fraction Medium: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_medium_percentage)}%{esc('0')}"
                 )
                 print(
-                    f"{esc(COLOR_RED)}Seeing: {esc(COLOR_GREEN)}{str(row.seeing_percentage)}, "
+                    f"{esc(COLOR_RED)}Seeing: {esc(COLOR_GREEN)}{str(row.seeing_percentage)}%, "
                     + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.seeing_plain)}{esc('0')}"
                 )
                 print(
-                    f"{esc(COLOR_RED)}Transparency: {esc(COLOR_GREEN)}{str(row.transparency_percentage)}, "
+                    f"{esc(COLOR_RED)}Transparency: {esc(COLOR_GREEN)}{str(row.transparency_percentage)}%, "
                     + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.transparency_plain)}{esc('0')}"
                 )
                 print(
@@ -292,8 +294,10 @@ async def main() -> None:
                     + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.lifted_index_plain)}{esc('0')}"
                 )
                 print(
-                    f"{esc(COLOR_RED)}Wind Direction: {esc(COLOR_GREEN)}{str(row.wind10m_direction)}, "
-                    + f"{esc(COLOR_RED)}Speed: {esc(COLOR_GREEN)}{str(row.wind10m_speed)}{esc('0')}"
+                    f"{esc(COLOR_RED)}Calm Percentage: {esc(COLOR_GREEN)}{str(row.calm_percentage)}%, "
+                    + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.wind10m_speed_plain)}, "
+                    + f"{esc(COLOR_RED)}Wind Direction: {esc(COLOR_GREEN)}{str(row.wind10m_direction)}, "
+                    + f"{esc(COLOR_RED)}Speed: {esc(COLOR_GREEN)}{str(row.wind10m_speed)}m/s{esc('0')}"
                 )
                 print(
                     f"{esc(COLOR_RED)}Temperature: {esc(COLOR_GREEN)}{str(row.temp2m)}, "

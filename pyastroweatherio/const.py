@@ -1,6 +1,6 @@
 """Constant Definitions for AstroWeather."""
 
-BASE_URL_SEVENTIMER = "https://www.7timer.info/bin/api.pl"
+BASE_URL_SEVENTIMER = "https://www.7timer.info2/bin/api.pl"
 BASE_URL_MET = "https://api.met.no/weatherapi/locationforecast/2.0/complete"
 HEADERS = {"User-Agent": "AstroWeather github.com/mawinkler/astroweather"}
 STIMER_OUTPUT = "json"
@@ -12,6 +12,7 @@ DEFAULT_TIMEZONE = "Etc/UTC"
 DEFAULT_CONDITION_CLOUDCOVER_WEIGHT = 3
 DEFAULT_CONDITION_SEEING_WEIGHT = 2
 DEFAULT_CONDITION_TRANSPARENCY_WEIGHT = 1
+DEFAULT_CONDITION_CALM_WEIGHT = 2
 
 CIVIL_TWILIGHT = 0
 CIVIL_DUSK_DAWN = -6
@@ -73,6 +74,34 @@ LIFTED_INDEX_PLAIN = [
 ]
 
 WIND10M_DIRECTON = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+
+# Wind
+# 0 --- Calm            less than 1 mph (0 m/s)      Smoke rises vertically
+# 1 --- Light air       1 - 3 mph     0.5-1.5 m/s    Smoke drifts with air, weather vanes inactive
+# 2 --- Light breeze    4 - 7 mph     2-3 m/s        Weather vanes active, wind felt on face, leaves rustle
+# 3 --- Gentle breeze   8 - 12 mph    3.5-5 m/s      Leaves & small twigs move, light flags extend
+# 4 --- Moderate breeze 13 - 18 mph   5.5-8 m/s      Small branches sway, dust & loose paper blows about
+# 5 --- Fresh breeze    19 - 24 mph   8.5-10.5 m/s   Small trees sway, waves break on inland waters
+# 6 --- Strong breeze   25 - 31 mph   11-13.5 m/s    Large branches sway, umbrellas difficult to use
+# 7 --- Moderate gale   32 - 38 mph   14-16.5 m/s    Whole trees sway, difficult to walk against wind
+# Too windy
+# 8 --- Fresh gale      39 - 46 mph   17-20 m/s      Twigs broken off trees, walking against wind very difficult
+# 9 --- Strong gale     47 - 54 mph   20.5-23.5 m/s  Slight damage to buildings, shingles blown off roof
+# 10 -- Whole gale      55 - 63 mph   24-27.5 m/s    Trees uprooted, considerable damage to buildings
+# 11 -- Storm           64 - 73 mph   28-31.5 m/s    Widespread damage, very rare occurrence
+# 12 -- Hurricane       over 73 mph   over 32 m/s    Violent destruction
+WIND10M_VALUE = [1, 2, 3, 4, 5, 6, 7, 8]
+WIND10M_RANGE = [(0, 0.49), (0.5, 1.99), (2, 3.49), (3.5, 5.49), (5.5, 8.49), (8.5, 10.99), (11, 13.99), (14, 100)]
+WIND10M_PLAIN = [
+    "Calm",
+    "Light air",
+    "Light breeze",
+    "Gentle breeze",
+    "Moderate breeze",
+    "Fresh breeze",
+    "Strong breeze",
+    "Moderate gale",
+]
 
 CONDITION_PLAIN = ["excellent", "good", "fair", "poor", "bad"]
 # CONDITION = ["↑", "↗", "→", "↘", "↓"]
