@@ -620,7 +620,16 @@ class AstroWeather:
                 self._weather_data_seventimer = astro_dataseries
                 self._weather_data_seventimer_init = json_data_astro.get("init")
             else:
-                self._weather_data_seventimer = {}
+                # Fake 7timer weather data if service is broken
+                # This eliminates consideration of seeing, transparency, and lifted_index
+                # TODO: Think about a complete redesign of the calculations and potentially
+                #       make met.no the leading source instead of 7timer
+                # TODO: Find another source for seeing and transparency
+                self._seeing_weight = 0
+                self._transparency_weight = 0
+                self._weather_data_seventimer = []
+                for index in range(0, 20):
+                    self._weather_data_seventimer.append({"timepoint": index * 3, "seeing": 0, "transparency": 0, "lifted_index": 0})
                 self._weather_data_seventimer_init = datetime.now().strftime("%Y%m%d%H")
         else:
             _LOGGER.debug("Using cached data for 7Timer")
@@ -666,11 +675,11 @@ class AstroWeather:
         except asyncio.TimeoutError as tex:
             _LOGGER.error(f"Request to endpoint timed out: {tex}")
             return {}
-            raise RequestError(f"Request to endpoint timed out: {tex}") from None
+            # raise RequestError(f"Request to endpoint timed out: {tex}") from None
         except ClientError as err:
             _LOGGER.error(f"Error requesting data: {err}")
             return {}
-            raise RequestError(f"Error requesting data: {err}") from None
+            # raise RequestError(f"Error requesting data: {err}") from None
 
         finally:
             if not use_running_session:
