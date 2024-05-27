@@ -1,4 +1,5 @@
-""" Communicates with 7Timer using REST. """
+"""Communicates with 7Timer using REST."""
+
 from pyastroweatherio.client import AstroWeather
 from pyastroweatherio.errors import AstroWeatherError, RequestError, ResultError
 from pyastroweatherio.const import (

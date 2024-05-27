@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name="pyastroweatherio",
     packages=["pyastroweatherio"],
-    version="0.43.1.dev8",
+    version="0.50.1",
     license="MIT",
     description="Python Wrapper for 7Timer and Met.no REST API",
     long_description=" ".join(
@@ -16,7 +16,7 @@ setup(
     author_email="winkler.info@icloud.com",
     url="https://github.com/mawinkler/pyastroweatherio",
     keywords=["AstroWeather", "7Timer", "Met.no", "Python"],
-    install_requires=["aiohttp", "pyephem"],
+    install_requires=["aiohttp", "aiofiles", "pyephem"],
     classifiers=[
         # Chose either "3 - Alpha", "4 - Beta" or "5 - Production/Stable" as the current state of your package
         "Development Status :: 4 - Beta",
@@ -31,5 +31,6 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
     ],
 )

@@ -30,31 +30,43 @@ longitude = float(os.environ["BACKYARD_LONGITUDE"])
 elevation = int(os.environ["BACKYARD_ELEVATION"])
 timezone_info = os.environ["BACKYARD_TIMEZONE"]
 
-# Peißenberg
+# # ITV
+# latitude = 50.429
+# longitude = 9.181
+# elevation = 357
+# timezone_info = "Europe/Berlin"
+
+# # Santiago
+# latitude = -33.46
+# longitude = -70.65
+# elevation = 556
+# timezone_info = "America/Santiago"
+
+# # Peißenberg
 # latitude=48.811
 # longitude=11.017
 # elevation=977
 # timezone_info = "Europe/Berlin"
 
-# Anchorage
+# # Anchorage
 # latitude=61.212
 # longitude=-149.737
 # elevation=115
 # timezone_info = "America/Anchorage"
 
-# Hacienda Los Andes
+# # Hacienda Los Andes
 # latitude=-30.29528
 # longitude=-70.71262
 # elevation=1000
 # timezone_info = "Chile/Continental"
 
-# London
+# # London
 # latitude=51.5072
 # longitude=0.1276
 # elevation=11
 # timezone_info = "Europe/London"
 
-# Sydney
+# # Sydney
 # latitude=-33.869
 # longitude=151.198
 # elevation=3
@@ -102,10 +114,15 @@ async def main() -> None:
         elevation=elevation,
         timezone_info=timezone_info,
         cloudcover_weight=3,
+        cloudcover_high_weakening=0.5,
+        cloudcover_medium_weakening=1,
+        cloudcover_low_weakening=1,
         seeing_weight=2,
         transparency_weight=1,
         calm_weight=3,
         uptonight_path=".",
+        # test_datetime=datetime.strptime("2024-04-29T11:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
+        experimental_features=True,
     )
 
     start = time.time()
@@ -120,7 +137,7 @@ async def main() -> None:
             f = open("debug/test_client_hourly_forecast.csv", "w")
 
             f.write(
-                "Init;Timepoint;Timestamp;Hour of Day;Cloudcover;Cloudless;Seeing;Transparency;Liftet Index;Cloud Area Fraction;Cloud Area Fraction High;Cloud Area Fraction Low;Cloud Area Fraction Medium;View Condition;Wind Direction;Speed;Temperature;Rel Humidity;Dew Point;Weather;Weather 6;Precipitation amount\n"
+                "Init,Timepoint,Timestamp,Hour of Day,Cloudcover,Cloudless,Seeing,Transparency,Lifted Index,Cloud Area Fraction,Cloud Area Fraction High,Cloud Area Fraction Low,Cloud Area Fraction Medium,View Condition,Wind Direction,Speed,Temperature,Rel Humidity,Dew Point,Weather,Weather 6,Precipitation amount\n"
             )
 
             for row in data:
@@ -166,59 +183,71 @@ async def main() -> None:
 
                 f.write(
                     str(row.seventimer_init)
-                    + ";"
+                    + ","
                     + str(row.seventimer_timepoint)
-                    + ";"
+                    + ","
                     + str(row.forecast_time)
-                    + ";"
+                    + ","
                     + str(row.hour)
-                    + ";"
+                    + ","
                     + str(row.cloudcover_percentage)
-                    + ";"
+                    + ","
                     + str(row.cloudless_percentage)
-                    + ";"
+                    + ","
                     + str(row.seeing)
-                    + ";"
+                    + ","
                     + str(row.transparency)
-                    + ";"
+                    + ","
                     + str(row.lifted_index)
-                    + ";"
+                    + ","
                     + str(row.cloud_area_fraction_percentage)
-                    + ";"
+                    + ","
                     + str(row.cloud_area_fraction_high_percentage)
-                    + ";"
+                    + ","
                     + str(row.cloud_area_fraction_low_percentage)
-                    + ";"
+                    + ","
                     + str(row.cloud_area_fraction_medium_percentage)
-                    + ";"
+                    + ","
                     + str(row.condition_percentage)
-                    + ";"
+                    + ","
                     + str(row.wind10m_direction)
-                    + ";"
+                    + ","
                     + str(row.wind10m_speed)
-                    + ";"
+                    + ","
                     + str(row.temp2m)
-                    + ";"
+                    + ","
                     + str(row.rh2m)
-                    + ";"
+                    + ","
                     + str(row.dewpoint2m)
-                    + ";"
+                    + ","
                     + str(row.weather)
-                    + ";"
+                    + ","
                     + str(row.weather6)
-                    + ";"
+                    + ","
                     + str(row.precipitation_amount)
                     + "\n"
                 )
 
             f.close()
 
+            # print(
+            #     f"{esc(COLOR_BLUE)}--------------------------------------------------------"
+            #     + f"---------------------------------------------------------------{esc('0')}"
+            # )
+
+            # for row in data:
+            #     print(
+            #         f"{esc(COLOR_RED)}Seventimer Init: {esc(COLOR_GREEN)}{str(row.seventimer_init)}, "
+            #         + f"{esc(COLOR_RED)}Forecast Time: {esc(COLOR_GREEN)}{str(row.forecast_time)}, "
+            #         + f"{esc(COLOR_RED)}Seeing: \t{esc(COLOR_GREEN)}{str(row.seeing)}{esc('0')}"
+            #     )
+
         if test_deepsky_forecast:
             data = await astroweather.get_deepsky_forecast()
 
             f = open("debug/test_client_deepsky_forecast.csv", "w")
 
-            f.write("Init;Hour of Day;Nightly conditions;Weather\n")
+            f.write("Init,Hour of Day,Nightly conditions,Weather\n")
 
             for row in data:
                 print(
@@ -236,11 +265,11 @@ async def main() -> None:
 
                 f.write(
                     str(row.seventimer_init)
-                    + ";"
+                    + ","
                     + str(row.hour)
-                    + ";"
+                    + ","
                     + str(row.nightly_conditions)
-                    + ";"
+                    + ","
                     + str(row.weather)
                     + "\n"
                 )
@@ -272,8 +301,7 @@ async def main() -> None:
                 )
                 print(
                     f"{esc(COLOR_RED)}Cloudcover: {esc(COLOR_GREEN)}{str(row.cloudcover_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Cloudless: {esc(COLOR_GREEN)}{str(row.cloudless_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.cloudcover_plain)}{esc('0')}"
+                    + f"{esc(COLOR_RED)}Cloudless: {esc(COLOR_GREEN)}{str(row.cloudless_percentage)}%{esc('0')}"
                 )
                 print(
                     f"{esc(COLOR_RED)}Cloud Area Fraction: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_percentage)}%, "
@@ -282,16 +310,16 @@ async def main() -> None:
                     + f"{esc(COLOR_RED)}Cloud Area Fraction Medium: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_medium_percentage)}%{esc('0')}"
                 )
                 print(
-                    f"{esc(COLOR_RED)}Seeing: {esc(COLOR_GREEN)}{str(row.seeing_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.seeing_plain)}{esc('0')}"
+                    f"{esc(COLOR_RED)}Seeing: {esc(COLOR_GREEN)}{str(row.seeing)}\", "
+                    + f"{esc(COLOR_RED)}Seeing: {esc(COLOR_GREEN)}{str(row.seeing_percentage)}%{esc('0')}"
                 )
                 print(
-                    f"{esc(COLOR_RED)}Transparency: {esc(COLOR_GREEN)}{str(row.transparency_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.transparency_plain)}{esc('0')}"
+                    f"{esc(COLOR_RED)}Transparency: {esc(COLOR_GREEN)}{str(row.transparency)}, "
+                    + f"{esc(COLOR_RED)}Transparency: {esc(COLOR_GREEN)}{str(row.transparency_percentage)}%{esc('0')}"
                 )
                 print(
                     f"{esc(COLOR_RED)}Lifted Index: {esc(COLOR_GREEN)}{str(row.lifted_index)}, "
-                    + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.lifted_index_plain)}{esc('0')}"
+                    + f"{esc(COLOR_RED)}Lifted Index Plain: {esc(COLOR_GREEN)}{str(row.lifted_index_plain)}{esc('0')}"
                 )
                 print(
                     f"{esc(COLOR_RED)}Calm Percentage: {esc(COLOR_GREEN)}{str(row.calm_percentage)}%, "
