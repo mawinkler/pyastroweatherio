@@ -191,6 +191,32 @@ class AstroWeather:
             .get("instant", {})
             .get("details", {})
         )
+        details_metno_next_1_hours = (
+            self._weather_data_metno[metno_index]
+            .get("data", {})
+            .get("next_1_hours", {})
+        )
+        details_metno_next_6_hours = (
+            self._weather_data_metno[metno_index]
+            .get("data", {})
+            .get("next_6_hours", {})
+        )
+
+        # Break condition
+        if details_metno_next_1_hours is None:
+            # No more hourly data
+            _LOGGER.debug(
+                "No more hourly data at %s",
+                self._weather_data_metno[metno_index].get("time", {}),
+            )
+            return None
+        if details_metno_next_6_hours is None:
+            # No more 6-hourly data
+            _LOGGER.debug(
+                "No more 6-hourly data at %s",
+                self._weather_data_metno[metno_index].get("time", {}),
+            )
+            return None
 
         # 7Timer: Search for start index
         seventimer_init = await cnv.anchor_timestamp(self._weather_data_seventimer_init)
@@ -313,22 +339,12 @@ class AstroWeather:
             "wind_from_direction": details_metno.get("wind_from_direction"),
             "temp2m": details_metno.get("air_temperature"),
             "dewpoint2m": details_metno.get("dew_point_temperature"),
-            "weather": self._weather_data_metno[metno_index]
-            .get("data", {})
-            .get("next_1_hours", {})
-            .get("summary", {})
-            .get("symbol_code"),
-            "weather6": self._weather_data_metno[metno_index]
-            .get("data", {})
-            .get("next_6_hours", {})
-            .get("summary", {})
-            .get("symbol_code"),
-            "precipitation_amount": (
-                self._weather_data_metno[metno_index]
-                .get("data", {})
-                .get("next_1_hours", {})
-                .get("details", {})
-                .get("precipitation_amount")
+            "weather": details_metno_next_1_hours.get("summary", {}).get("symbol_code"),
+            "weather6": details_metno_next_6_hours.get("summary", {}).get(
+                "symbol_code"
+            ),
+            "precipitation_amount": details_metno_next_1_hours.get("details", {}).get(
+                "precipitation_amount"
             ),
             # Condition
             "condition_percentage": await self._calc_condition_percentage(
@@ -338,6 +354,9 @@ class AstroWeather:
                 seeing,
                 transparency,
                 details_metno.get("wind_speed"),
+                details_metno_next_1_hours.get("details", {}).get(
+                    "precipitation_amount"
+                ),
             ),
             # Uptonight objects
             "uptonight": await self._get_deepsky_objects(),
@@ -396,9 +415,7 @@ class AstroWeather:
             last_forecast_time = datetime.strptime(
                 datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ"
             )
-            details_metno = (
-                datapoint.get("data", {}).get("instant", {}).get("details", {})
-            )
+            details_metno = datapoint.get("data", {}).get("instant", {}).get("details")
 
             if details_metno.get("cloud_area_fraction") is None:
                 _LOGGER.error("Missing Met.no data")
@@ -408,6 +425,32 @@ class AstroWeather:
                 seventimer_init,
                 datetime.strptime(datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ"),
             )
+            details_metno_next_1_hours = (
+                self._weather_data_metno[metno_index]
+                .get("data", {})
+                .get("next_1_hours")
+            )
+            details_metno_next_6_hours = (
+                self._weather_data_metno[metno_index]
+                .get("data", {})
+                .get("next_6_hours")
+            )
+
+            # Break condition
+            if details_metno_next_1_hours is None:
+                # No more hourly data
+                _LOGGER.debug(
+                    "No more hourly data at %s",
+                    self._weather_data_metno[metno_index].get("time", {}),
+                )
+                break
+            if details_metno_next_6_hours is None:
+                # No more 6-hourly data
+                _LOGGER.debug(
+                    "No more 6-hourly data at %s",
+                    self._weather_data_metno[metno_index].get("time", {}),
+                )
+                break
 
             item = {
                 "seventimer_init": init_ts,
@@ -484,6 +527,9 @@ class AstroWeather:
             item["seeing"] = seeing
             item["transparency"] = transparency
             item["lifted_index"] = lifted_index
+            item["precipitation_amount"] = details_metno_next_1_hours.get(
+                "details", {}
+            ).get("precipitation_amount")
             item["condition_percentage"] = await self._calc_condition_percentage(
                 item["cloud_area_fraction_high"],
                 item["cloud_area_fraction_medium"],
@@ -491,55 +537,18 @@ class AstroWeather:
                 seeing,
                 transparency,
                 item["wind_speed"],
+                details_metno_next_1_hours.get("details", {}).get(
+                    "precipitation_amount"
+                ),
             )
-
             item["wind_from_direction"] = details_metno.get("wind_from_direction")
             item["temp2m"] = details_metno.get("air_temperature")
             item["dewpoint2m"] = details_metno.get("dew_point_temperature")
-            if (
-                self._weather_data_metno[metno_index]
-                .get("data", {})
-                .get("next_1_hours")
-                is None
-            ):
-                # No more hourly data
-                _LOGGER.debug(
-                    "No more hourly data at %s",
-                    self._weather_data_metno[metno_index].get("time", {}),
-                )
-                break
-            if (
-                self._weather_data_metno[metno_index]
-                .get("data", {})
-                .get("next_6_hours")
-                is None
-            ):
-                # No more 6-hourly data
-                _LOGGER.debug(
-                    "No more 6-hourly data at %s",
-                    self._weather_data_metno[metno_index].get("time", {}),
-                )
-                break
-            item["weather"] = (
-                self._weather_data_metno[metno_index]
-                .get("data", {})
-                .get("next_1_hours", {})
-                .get("summary", {})
-                .get("symbol_code")
+            item["weather"] = details_metno_next_1_hours.get("summary", {}).get(
+                "symbol_code"
             )
-            item["weather6"] = (
-                self._weather_data_metno[metno_index]
-                .get("data", {})
-                .get("next_6_hours", {})
-                .get("summary", {})
-                .get("symbol_code")
-            )
-            item["precipitation_amount"] = (
-                self._weather_data_metno[metno_index]
-                .get("data", {})
-                .get("next_1_hours", {})
-                .get("details", {})
-                .get("precipitation_amount")
+            item["weather6"] = details_metno_next_6_hours.get("summary", {}).get(
+                "symbol_code"
             )
 
             items.append(ForecastData(item))
@@ -652,6 +661,7 @@ class AstroWeather:
                             details_forecast.seeing,
                             details_forecast.transparency,
                             details_forecast.wind10m_speed,
+                            details_forecast.precipitation_amount,
                         )
                     )
 
@@ -695,6 +705,7 @@ class AstroWeather:
         seeing,
         transparency,
         wind_speed,
+        precipitation_amount,
     ):
         """Return condition based on cloud cover, seeing, transparency, and wind speed."""
 
@@ -707,6 +718,7 @@ class AstroWeather:
                 seeing,
                 transparency,
                 wind_speed,
+                precipitation_amount,
             ]
         ):
             return None
@@ -741,6 +753,7 @@ class AstroWeather:
                 + self._transparency_weight
                 + self._calm_weight
             )
+            - precipitation_amount * 100
         )
 
         # _LOGGER.debug(
@@ -755,6 +768,9 @@ class AstroWeather:
         #     str(self._calm_weight),
         #     condition,
         # )
+
+        # Ensure condition is within the valid range [0, 1]
+        condition = max(0, min(100, condition))
 
         return condition
 

@@ -104,21 +104,21 @@ class AtmosphericRoutines:
         # Calculate Lifted Index
         lifted_index = env_temp_500mb - lifted_temp_500mb
 
-        _LOGGER.debug(
-            "Lifted Index (LI): {:.2f} °C (".format(lifted_index)
-            + "Air pressure at sea level (AP): {:.2f} mbar, ".format(
-                air_pressure_at_sea_level
-            )
-            + "Dew point(DP): {:.2f} °C, ".format(dew_point_temperature)
-            + "Temperature (T): {:.2f} °C, ".format(temperature)
-            + "Saturation vapor pressure at surface (ES): {:.2f} mbar, ".format(es)
-            + "Actual vapor pressure at surface (E): {:.2f} mbar, ".format(e)
-            + "Mixing ratio at surface (W): {:.2f} grams per kg, ".format(w)
-            + "Lifting Condensation Level (LCL): {:.2f} meters, ".format(lcl)
-            + "Temperature of the lifted parcel (T Parcel): {:.2f} °C)".format(
-                lifted_temp_500mb
-            )
-        )
+        # _LOGGER.debug(
+        #     "Lifted Index (LI): {:.2f} °C (".format(lifted_index)
+        #     + "Air pressure at sea level (AP): {:.2f} mbar, ".format(
+        #         air_pressure_at_sea_level
+        #     )
+        #     + "Dew point(DP): {:.2f} °C, ".format(dew_point_temperature)
+        #     + "Temperature (T): {:.2f} °C, ".format(temperature)
+        #     + "Saturation vapor pressure at surface (ES): {:.2f} mbar, ".format(es)
+        #     + "Actual vapor pressure at surface (E): {:.2f} mbar, ".format(e)
+        #     + "Mixing ratio at surface (W): {:.2f} grams per kg, ".format(w)
+        #     + "Lifting Condensation Level (LCL): {:.2f} meters, ".format(lcl)
+        #     + "Temperature of the lifted parcel (T Parcel): {:.2f} °C)".format(
+        #         lifted_temp_500mb
+        #     )
+        # )
 
         return lifted_index
 
@@ -200,12 +200,12 @@ class AtmosphericRoutines:
             transparency
         )
 
-        _LOGGER.debug(
-            "Magnitude Degradation: {:.2f} mag (".format(magnitude_degradation)
-            + "Lifted Index (LI): {:.2f} °C, ".format(lifted_index)
-            + "Seeing: {:.2f} arcsec, ".format(seeing)
-            + "Estimated Atmospheric Transparency: {:.2f})".format(transparency)
-        )
+        # _LOGGER.debug(
+        #     "Magnitude Degradation: {:.2f} mag (".format(magnitude_degradation)
+        #     + "Lifted Index (LI): {:.2f} °C, ".format(lifted_index)
+        #     + "Seeing: {:.2f} arcsec, ".format(seeing)
+        #     + "Estimated Atmospheric Transparency: {:.2f})".format(transparency)
+        # )
 
         return magnitude_degradation
 
@@ -289,13 +289,13 @@ class AtmosphericRoutines:
         )
         seeing = 0.98 / seeing_factor
 
-        _LOGGER.debug(
-            "Seeing: {:.2f} arcsec (".format(seeing)
-            + "Water Vapor Pressure: {:.2f} mbar, ".format(water_vapor_pressure)
-            + "Wind Speed: {:.2f} m/s, ".format(wind_speed)
-            + "Relative Pressure: {:.2f} mbar, ".format(relative_pressure)
-            + "Seeing Factor: {:.2f})".format(seeing_factor)
-        )
+        # _LOGGER.debug(
+        #     "Seeing: {:.2f} arcsec (".format(seeing)
+        #     + "Water Vapor Pressure: {:.2f} mbar, ".format(water_vapor_pressure)
+        #     + "Wind Speed: {:.2f} m/s, ".format(wind_speed)
+        #     + "Relative Pressure: {:.2f} mbar, ".format(relative_pressure)
+        #     + "Seeing Factor: {:.2f})".format(seeing_factor)
+        # )
 
         if seeing > SEEING_MAX:
             seeing = SEEING_MAX  # max out seeing
