@@ -264,7 +264,8 @@ async def main() -> None:
                 )
                 print(
                     f"{esc(COLOR_RED)}Nightly conditions: {esc(COLOR_GREEN)}{str(row.nightly_conditions)}, "
-                    + f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}{esc('0')}"
+                    + f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}, "
+                    + f"{esc(COLOR_RED)}Precipitation Amount: {esc(COLOR_GREEN)}{str(row.precipitation_amount6)}{esc('0')}"
                 )
 
                 f.write(
@@ -372,11 +373,13 @@ async def main() -> None:
                 print(
                     f"{esc(COLOR_RED)}Forecast Today: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today)}, "
                     + f"{esc(COLOR_RED)}Forecast Today Dayname: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_dayname)}, "
+                    + f"{esc(COLOR_RED)}Forecast Today Desc: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_desc)}, "
                     + f"{esc(COLOR_RED)}Forecast Today: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_plain)}{esc('0')}"
                 )
                 print(
                     f"{esc(COLOR_RED)}Forecast Tomorrow: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow)}, "
                     + f"{esc(COLOR_RED)}Forecast Tomorrow Dayname: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_dayname)}, "
+                    + f"{esc(COLOR_RED)}Forecast Tomorrow Desc: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_desc)}, "
                     + f"{esc(COLOR_RED)}Forecast Tomorrow: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_plain)}{esc('0')}"
                 )
                 print(

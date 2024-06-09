@@ -346,6 +346,9 @@ class AstroWeather:
             "precipitation_amount": details_metno_next_1_hours.get("details", {}).get(
                 "precipitation_amount"
             ),
+            "precipitation_amount6": details_metno_next_6_hours.get("details", {}).get(
+                "precipitation_amount"
+            ),
             # Condition
             "condition_percentage": await self._calc_condition_percentage(
                 details_metno.get("cloud_area_fraction_high"),
@@ -550,6 +553,9 @@ class AstroWeather:
             item["weather6"] = details_metno_next_6_hours.get("summary", {}).get(
                 "symbol_code"
             )
+            item["precipitation_amount6"] = details_metno_next_6_hours.get(
+                "details", {}
+            ).get("precipitation_amount")
 
             items.append(ForecastData(item))
 
@@ -628,6 +634,7 @@ class AstroWeather:
                     forecast_dayname = details_forecast.forecast_time.strftime("%A")
                     start_forecast_hour = details_forecast.forecast_time.hour
                     start_weather = details_forecast.weather6
+                    start_precipitation_amount6 = details_forecast.precipitation_amount6
 
                 # _LOGGER.debug(
                 #     "Idex: %d, Hour of day: %d, cloud_area_fraction: %s %s %s, seeing: %s, transparency: %s, wind_speed: %s, condition: %s",
@@ -675,6 +682,7 @@ class AstroWeather:
                         "hour": start_forecast_hour,
                         "nightly_conditions": interval_points,
                         "weather": start_weather,
+                        "precipitation_amount6": start_precipitation_amount6,
                     }
                     items.append(NightlyConditionsData(item))
 

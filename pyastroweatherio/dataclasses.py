@@ -46,6 +46,7 @@ class BaseData:
         self._weather = data["weather"]
         self._weather6 = data["weather6"]
         self._precipitation_amount = data["precipitation_amount"]
+        self._precipitation_amount6 = data["precipitation_amount6"]
 
     @property
     def seventimer_init(self) -> datetime:
@@ -253,10 +254,18 @@ class BaseData:
 
     @property
     def precipitation_amount(self) -> float:
-        """Return Current Weather."""
+        """Return Current Precipitation Amount."""
 
         if self._precipitation_amount is not None:
             return self._precipitation_amount
+        return None
+
+    @property
+    def precipitation_amount6(self) -> float:
+        """Return Precipitation Amount in next 6 hours."""
+
+        if self._precipitation_amount6 is not None:
+            return self._precipitation_amount6
         return None
 
 
@@ -616,6 +625,16 @@ class LocationData(BaseData):
         return None
 
     @property
+    def deepsky_forecast_today_precipitation_amount6(self) -> float:
+        """Return Forecast Today Precipitation Amount6."""
+
+        if self._deepsky_forecast is not None:
+            if len(self._deepsky_forecast) > 0:
+                nightly_conditions = self._deepsky_forecast[0]
+                return nightly_conditions.precipitation_amount6
+        return None
+
+    @property
     def deepsky_forecast_tomorrow(self) -> int:
         """Return Forecas Tomorrow in Percentt."""
 
@@ -664,6 +683,16 @@ class LocationData(BaseData):
             if len(self._deepsky_forecast) > 1:
                 nightly_conditions = self._deepsky_forecast[1]
                 return nightly_conditions.weather.replace("_", " ").capitalize()
+        return None
+
+    @property
+    def deepsky_forecast_tomorrow_precipitation_amount6(self) -> float:
+        """Return Forecast Today Precipitation Amount6."""
+
+        if self._deepsky_forecast is not None:
+            if len(self._deepsky_forecast) > 0:
+                nightly_conditions = self._deepsky_forecast[1]
+                return nightly_conditions.precipitation_amount6
         return None
 
     @property
@@ -720,12 +749,13 @@ class ForecastData(BaseData):
 class NightlyConditionsData:
     """A representation of nights Sky Quality Data."""
 
-    def __init__(self, data):
+    def __init__(self, data) -> None:
         self._seventimer_init = data["seventimer_init"]
         self._dayname = data["dayname"]
         self._hour = data["hour"]
         self._nightly_conditions = data["nightly_conditions"]
         self._weather = data["weather"]
+        self._precipitation_amount6 = data["precipitation_amount6"]
 
     @property
     def seventimer_init(self) -> datetime:
@@ -765,6 +795,14 @@ class NightlyConditionsData:
 
         if self._weather is not None:
             return self._weather.replace("_", " ").capitalize()
+        return None
+
+    @property
+    def precipitation_amount6(self) -> float:
+        """Return Current Precipitation Amount 6hrs."""
+
+        if self._precipitation_amount6 is not None:
+            return self._precipitation_amount6
         return None
 
 
