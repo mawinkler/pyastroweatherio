@@ -794,6 +794,7 @@ class AstroWeather:
             dso_target_name = self._weather_data_uptonight.get("target name", {})
             dso_type = self._weather_data_uptonight.get("type", {})
             dso_constellation = self._weather_data_uptonight.get("constellation", {})
+            dso_magnitude = self._weather_data_uptonight.get("magnitude", {})
             dso_size = self._weather_data_uptonight.get("size", {})
             dso_foto = self._weather_data_uptonight.get("foto", {})
 
@@ -802,6 +803,7 @@ class AstroWeather:
                     "target_name": dso_target_name.get(str(row), ""),
                     "type": dso_type.get(str(row), ""),
                     "constellation": dso_constellation.get(str(row), ""),
+                    "magnitude": dso_magnitude.get(str(row), ""),
                     "size": dso_size.get(str(row), ""),
                     "foto": dso_foto.get(str(row), ""),
                 }
