@@ -813,6 +813,7 @@ class DSOUpTonight:
         self._target_name = data["target_name"]
         self._type = data["type"]
         self._constellation = data["constellation"]
+        self._magnitude = data["magnitude"]
         self._size = data["size"]
         self._foto = data["foto"]
 
@@ -854,4 +855,12 @@ class DSOUpTonight:
 
         if self._foto is not None:
             return self._foto
+        return None
+        
+    @property
+    def magnitude(self) -> str:
+        """Return Forecast Name of the Day."""
+
+        if self._magnitude is not None:
+            return self._magnitude
         return None
