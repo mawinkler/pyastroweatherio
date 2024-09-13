@@ -167,9 +167,7 @@ async def main() -> None:
                     + f"{esc(COLOR_RED)}Cloud Area Fraction Medium: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_medium_percentage)}%, "
                     + f"{esc(COLOR_RED)}Precipitation Amount {esc(COLOR_GREEN)}{str(row.precipitation_amount)}mm{esc('0')}"
                 )
-                print(
-                    f"{esc(COLOR_RED)}View Condition: {esc(COLOR_GREEN)}{str(row.condition_percentage)}%{esc('0')}"
-                )
+                print(f"{esc(COLOR_RED)}View Condition: {esc(COLOR_GREEN)}{str(row.condition_percentage)}%{esc('0')}")
                 print(
                     f"{esc(COLOR_RED)}Wind Direction: {esc(COLOR_GREEN)}{str(row.wind10m_direction)}, "
                     + f"{esc(COLOR_RED)}Speed: {esc(COLOR_GREEN)}{str(row.wind10m_speed)}m/s{esc('0')}"
@@ -392,16 +390,15 @@ async def main() -> None:
                     f"{esc(COLOR_RED)}Night Duration Astronomical: {esc(COLOR_GREEN)}{str(round(row.night_duration_astronomical / 3600, 2))}, "
                     + f"{esc(COLOR_RED)}DSD: {esc(COLOR_GREEN)}{str(round(row.deep_sky_darkness / 3600,2))}{esc('0')}"
                 )
-                print(
-                    f"{esc(COLOR_RED)}Uptonight: {esc(COLOR_GREEN)}{row.uptonight}{esc('0')}"
-                )
+                print(f"{esc(COLOR_RED)}Uptonight: {esc(COLOR_GREEN)}{row.uptonight}{esc('0')}")
+                print(f"{esc(COLOR_RED)}Uptonight Bodies: {esc(COLOR_GREEN)}{row.uptonight_bodies}{esc('0')}")
 
     except AstroWeatherError as err:
         print(err)
 
     end = time.time()
 
-    print(f"Execution time: %s seconds", end - start)
+    print(f"Execution time: {end - start} seconds")
 
     return None
 

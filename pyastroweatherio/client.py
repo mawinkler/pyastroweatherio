@@ -39,6 +39,7 @@ from pyastroweatherio.const import (
 )
 from pyastroweatherio.dataclasses import (
     DSOUpTonight,
+    BODIESUpTonight,
     ForecastData,
     LocationData,
     NightlyConditionsData,
@@ -85,6 +86,7 @@ class AstroWeather:
         self._weather_data_metno = []
         self._weather_data_metno_init = ""
         self._weather_data_uptonight = {}
+        self._weather_data_uptonight_bodies = {}
         self._weather_data_seventimer_timestamp = datetime.now() - timedelta(
             seconds=(DEFAULT_CACHE_TIMEOUT + 1)
         )
@@ -363,6 +365,7 @@ class AstroWeather:
             ),
             # Uptonight objects
             "uptonight": await self._get_deepsky_objects(),
+            "uptonight_bodies": await self._get_bodies(),
         }
 
         items.append(LocationData(item))
@@ -819,6 +822,59 @@ class AstroWeather:
             return items
         return None
 
+    async def _get_bodies(self):
+        """Return Bodies for today."""
+
+        items = []
+
+        await self.retrieve_data_uptonight()
+
+        # Create list of bodies
+        if self._weather_data_uptonight_bodies is not None:
+            body_target_name = self._weather_data_uptonight_bodies.get(
+                "target name", {}
+            )
+            body_max_altitude = self._weather_data_uptonight_bodies.get(
+                "max altitude", {}
+            )
+            body_azimuth = self._weather_data_uptonight_bodies.get("azimuth", {})
+            body_max_altitude_time = self._weather_data_uptonight_bodies.get(
+                "max altitude time", {}
+            )
+            body_foto = self._weather_data_uptonight_bodies.get("foto", {})
+
+            for row in range(len(body_target_name)):
+                # UpTonight delivers the time in local time zone. here we need it in UTC
+                body_max_altitude_time_local = body_max_altitude_time.get(str(row), "")
+                local_datetime = datetime.strptime(
+                    body_max_altitude_time_local, "%m/%d/%Y %H:%M:%S"
+                )
+                body_max_altitude_time_utc = (
+                    local_datetime
+                    - timedelta(seconds=await self._astro_routines.time_shift())
+                ).replace(tzinfo=UTC)
+
+                item = {
+                    "target_name": body_target_name.get(str(row), ""),
+                    "max_altitude": body_max_altitude.get(str(row), ""),
+                    "azimuth": body_azimuth.get(str(row), ""),
+                    "max_altitude_time": body_max_altitude_time_utc,
+                    "foto": body_foto.get(str(row), ""),
+                }
+                items.append(BODIESUpTonight(item))
+
+                _LOGGER.debug(
+                    "DSO: %s, type: %s, constellation: %s, size: %s, foto: %s",
+                    str(item["target_name"]),
+                    str(item["max_altitude"]),
+                    str(item["azimuth"]),
+                    str(item["max_altitude_time"]),
+                    str(item["foto"]),
+                )
+
+            return items
+        return None
+
     async def retrieve_data_seventimer(self):
         """Retrieves current data from 7timer."""
 
@@ -1036,7 +1092,8 @@ class AstroWeather:
             self._data_uptonight_timestamp = datetime.now()
             _LOGGER.debug("Updating data from uptonight")
 
-            dataseries = None
+            dataseries_dso = None
+            dataseries_bodies = None
 
             if os.path.exists(self._uptonight_path):
                 if os.path.isfile(self._uptonight_path + "/uptonight-report.json"):
@@ -1044,20 +1101,34 @@ class AstroWeather:
                     async with aiofiles.open(
                         self._uptonight_path + "/uptonight-report.json", mode="r"
                     ) as json_file:
-                        # with open(self._uptonight_path + "/uptonight-report.json") as json_file:
                         contents = await json_file.read()
-                        # dataseries = json.load(json_file)
-                    dataseries = json.loads(contents)
-                    _LOGGER.debug(f"Uptonight imported")
+                    dataseries_dso = json.loads(contents)
+                    _LOGGER.debug("Uptonight DSO imported")
                 else:
                     _LOGGER.debug(
                         f"File uptonight-report.json not found in {self._uptonight_path}"
                     )
+
+                if os.path.isfile(
+                    self._uptonight_path + "/uptonight-bodies-report.json"
+                ):
+                    # _LOGGER.debug(f"Uptonight report found")
+                    async with aiofiles.open(
+                        self._uptonight_path + "/uptonight-bodies-report.json", mode="r"
+                    ) as json_file:
+                        contents = await json_file.read()
+                    dataseries_bodies = json.loads(contents)
+                    _LOGGER.debug("Uptonight BODIES imported")
+                else:
+                    _LOGGER.debug(
+                        f"File uptonight-bodies-report.json not found in {self._uptonight_path}"
+                    )
             else:
                 _LOGGER.debug(
-                    f"Path for uptonight-report.json not found. Current path: {self._uptonight_path}/uptonight-report.json"
+                    f"Path for UpTonight data not found. Current path: {self._uptonight_path}/uptonight-report.json"
                 )
 
-            self._weather_data_uptonight = dataseries
+            self._weather_data_uptonight = dataseries_dso
+            self._weather_data_uptonight_bodies = dataseries_bodies
         else:
             _LOGGER.debug("Using cached data for uptonight")

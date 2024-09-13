@@ -306,6 +306,7 @@ class LocationData(BaseData):
         self._deep_sky_darkness = data["deep_sky_darkness"]
         self._deepsky_forecast = data["deepsky_forecast"]
         self._uptonight = data["uptonight"]
+        self._uptonight_bodies = data["uptonight_bodies"]
 
     @property
     def time_shift(self) -> int:
@@ -719,6 +720,22 @@ class LocationData(BaseData):
             return self._uptonight
         return None
 
+    @property
+    def uptonight_bodies(self) -> int:
+        """Return the number of best BODIEs for tonight."""
+
+        if self._uptonight_bodies is not None:
+            return len(self._uptonight_bodies)
+        return None
+
+    @property
+    def uptonight_bodies_list(self) -> []:
+        """Return the list of UpTonight bodies."""
+
+        if self._uptonight_bodies is not None:
+            return self._uptonight_bodies
+        return None
+
 
 class ForecastData(BaseData):
     """A representation of 3-Hour Based Forecast AstroWeather Data."""
@@ -846,6 +863,57 @@ class DSOUpTonight:
 
         if self._size is not None:
             return self._size
+        return None
+
+    @property
+    def foto(self) -> str:
+        """Return Forecast Name of the Day."""
+
+        if self._foto is not None:
+            return self._foto
+        return None
+
+
+class BODIESUpTonight:
+    """A representation of uptonight BODIES."""
+
+    def __init__(self, data):
+        self._target_name = data["target_name"]
+        self._max_altitude = data["max_altitude"]
+        self._azimuth = data["azimuth"]
+        self._max_altitude_time = data["max_altitude_time"]
+        self._foto = data["foto"]
+
+    @property
+    def target_name(self) -> str:
+        """Return Forecast Name of the Day."""
+
+        if self._target_name is not None:
+            return self._target_name
+        return None
+
+    @property
+    def max_altitude(self) -> float:
+        """Return maximum altitude of the body."""
+
+        if self._max_altitude is not None:
+            return self._max_altitude
+        return None
+
+    @property
+    def azimuth(self) -> float:
+        """Return the azimuth of maximum altitude."""
+
+        if self._azimuth is not None:
+            return self._azimuth
+        return None
+
+    @property
+    def max_altitude_time(self) -> datetime:
+        """Return date and time of maximum altitude."""
+
+        if self._max_altitude_time is not None:
+            return self._max_altitude_time
         return None
 
     @property
