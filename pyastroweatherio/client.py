@@ -40,6 +40,7 @@ from pyastroweatherio.const import (
 from pyastroweatherio.dataclasses import (
     DSOUpTonight,
     BODIESUpTonight,
+    COMETSUpTonight,
     ForecastData,
     LocationData,
     NightlyConditionsData,
@@ -87,6 +88,7 @@ class AstroWeather:
         self._weather_data_metno_init = ""
         self._weather_data_uptonight = {}
         self._weather_data_uptonight_bodies = {}
+        self._weather_data_uptonight_comets = {}
         self._weather_data_seventimer_timestamp = datetime.now() - timedelta(
             seconds=(DEFAULT_CACHE_TIMEOUT + 1)
         )
@@ -366,6 +368,7 @@ class AstroWeather:
             # Uptonight objects
             "uptonight": await self._get_deepsky_objects(),
             "uptonight_bodies": await self._get_bodies(),
+            "uptonight_comets": await self._get_comets(),
         }
 
         items.append(LocationData(item))
@@ -846,11 +849,8 @@ class AstroWeather:
             for row in range(len(body_target_name)):
                 # UpTonight delivers the time in local time zone. here we need it in UTC
                 body_max_altitude_time_local = body_max_altitude_time.get(str(row), "")
-                local_datetime = datetime.strptime(
-                    body_max_altitude_time_local, "%m/%d/%Y %H:%M:%S"
-                )
                 body_max_altitude_time_utc = (
-                    local_datetime
+                    datetime.strptime(body_max_altitude_time_local, "%m/%d/%Y %H:%M:%S")
                     - timedelta(seconds=await self._astro_routines.time_shift())
                 ).replace(tzinfo=UTC)
 
@@ -864,12 +864,85 @@ class AstroWeather:
                 items.append(BODIESUpTonight(item))
 
                 _LOGGER.debug(
-                    "DSO: %s, type: %s, constellation: %s, size: %s, foto: %s",
+                    "Body: %s, max_altitude: %s, azimuth: %s, max_altitude_time: %s, foto: %s",
                     str(item["target_name"]),
                     str(item["max_altitude"]),
                     str(item["azimuth"]),
                     str(item["max_altitude_time"]),
                     str(item["foto"]),
+                )
+
+            return items
+        return None
+
+    async def _get_comets(self):
+        """Return Comets for today."""
+
+        items = []
+
+        await self.retrieve_data_uptonight()
+
+        # Create list of comets
+        if self._weather_data_uptonight_comets is not None:
+            comet_target_name = self._weather_data_uptonight_comets.get(
+                "target name", {}
+            )
+            distance_au_earth = self._weather_data_uptonight_comets.get(
+                "distance earth au", {}
+            )
+            distance_au_sun = self._weather_data_uptonight_comets.get(
+                "distance sun au", {}
+            )
+            absolute_magnitude = self._weather_data_uptonight_comets.get(
+                "absolute magnitude", {}
+            )
+            visual_magnitude = self._weather_data_uptonight_comets.get(
+                "visual magnitude", {}
+            )
+            altitude = self._weather_data_uptonight_comets.get("altitude", {})
+            azimuth = self._weather_data_uptonight_comets.get("azimuth", {})
+            rise_time = self._weather_data_uptonight_comets.get("rise time", {})
+            set_time = self._weather_data_uptonight_comets.get("set time", {})
+
+            for row in range(len(comet_target_name)):
+                # UpTonight delivers the time in local time zone. here we need it in UTC
+                rise_time_local = rise_time.get(str(row), "")
+                set_time_local = set_time.get(str(row), "")
+                rise_time_local_utc = (
+                    datetime.strptime(rise_time_local, "%m/%d/%Y %H:%M:%S")
+                    - timedelta(seconds=await self._astro_routines.time_shift())
+                ).replace(tzinfo=UTC)
+                set_time_local_utc = (
+                    datetime.strptime(set_time_local, "%m/%d/%Y %H:%M:%S")
+                    - timedelta(seconds=await self._astro_routines.time_shift())
+                ).replace(tzinfo=UTC)
+
+                item = {
+                    "designation": comet_target_name.get(str(row), ""),
+                    "distance_au_earth": distance_au_earth.get(str(row), ""),
+                    "distance_au_sun": distance_au_sun.get(str(row), ""),
+                    "absolute_magnitude": absolute_magnitude.get(str(row), ""),
+                    "visual_magnitude": visual_magnitude.get(str(row), ""),
+                    "altitude": altitude.get(str(row), ""),
+                    "azimuth": azimuth.get(str(row), ""),
+                    # "ra": body_azimuth.get(str(row), ""),
+                    # "dec": body_azimuth.get(str(row), ""),
+                    "rise_time": rise_time_local_utc,
+                    "set_time": set_time_local_utc,
+                }
+                items.append(COMETSUpTonight(item))
+
+                _LOGGER.debug(
+                    "Comet: %s, type: %s, constellation: %s, size: %s, foto: %s",
+                    str(item["designation"]),
+                    str(item["distance_au_earth"]),
+                    str(item["distance_au_sun"]),
+                    str(item["absolute_magnitude"]),
+                    str(item["visual_magnitude"]),
+                    str(item["altitude"]),
+                    str(item["azimuth"]),
+                    str(item["rise_time"]),
+                    str(item["set_time"]),
                 )
 
             return items
@@ -1094,6 +1167,7 @@ class AstroWeather:
 
             dataseries_dso = None
             dataseries_bodies = None
+            dataseries_comets = None
 
             if os.path.exists(self._uptonight_path):
                 if os.path.isfile(self._uptonight_path + "/uptonight-report.json"):
@@ -1118,10 +1192,25 @@ class AstroWeather:
                     ) as json_file:
                         contents = await json_file.read()
                     dataseries_bodies = json.loads(contents)
-                    _LOGGER.debug("Uptonight BODIES imported")
+                    _LOGGER.debug("Uptonight Bodies imported")
                 else:
                     _LOGGER.debug(
                         f"File uptonight-bodies-report.json not found in {self._uptonight_path}"
+                    )
+
+                if os.path.isfile(
+                    self._uptonight_path + "/uptonight-comets-report.json"
+                ):
+                    # _LOGGER.debug(f"Uptonight report found")
+                    async with aiofiles.open(
+                        self._uptonight_path + "/uptonight-comets-report.json", mode="r"
+                    ) as json_file:
+                        contents = await json_file.read()
+                    dataseries_comets = json.loads(contents)
+                    _LOGGER.debug("Uptonight Comets imported")
+                else:
+                    _LOGGER.debug(
+                        f"File uptonight-comets-report.json not found in {self._uptonight_path}"
                     )
             else:
                 _LOGGER.debug(
@@ -1130,5 +1219,6 @@ class AstroWeather:
 
             self._weather_data_uptonight = dataseries_dso
             self._weather_data_uptonight_bodies = dataseries_bodies
+            self._weather_data_uptonight_comets = dataseries_comets
         else:
             _LOGGER.debug("Using cached data for uptonight")

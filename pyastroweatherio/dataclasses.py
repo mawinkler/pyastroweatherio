@@ -307,6 +307,7 @@ class LocationData(BaseData):
         self._deepsky_forecast = data["deepsky_forecast"]
         self._uptonight = data["uptonight"]
         self._uptonight_bodies = data["uptonight_bodies"]
+        self._uptonight_comets = data["uptonight_comets"]
 
     @property
     def time_shift(self) -> int:
@@ -736,6 +737,22 @@ class LocationData(BaseData):
             return self._uptonight_bodies
         return None
 
+    @property
+    def uptonight_comets(self) -> int:
+        """Return the number of best comets for tonight."""
+
+        if self._uptonight_comets is not None:
+            return len(self._uptonight_comets)
+        return None
+
+    @property
+    def uptonight_comets_list(self) -> []:
+        """Return the list of UpTonight comets."""
+
+        if self._uptonight_comets is not None:
+            return self._uptonight_comets
+        return None
+
 
 class ForecastData(BaseData):
     """A representation of 3-Hour Based Forecast AstroWeather Data."""
@@ -835,7 +852,7 @@ class DSOUpTonight:
 
     @property
     def target_name(self) -> str:
-        """Return Forecast Name of the Day."""
+        """Return object name."""
 
         if self._target_name is not None:
             return self._target_name
@@ -875,7 +892,7 @@ class DSOUpTonight:
 
 
 class BODIESUpTonight:
-    """A representation of uptonight BODIES."""
+    """A representation of uptonight bodies."""
 
     def __init__(self, data):
         self._target_name = data["target_name"]
@@ -886,7 +903,7 @@ class BODIESUpTonight:
 
     @property
     def target_name(self) -> str:
-        """Return Forecast Name of the Day."""
+        """Return body name."""
 
         if self._target_name is not None:
             return self._target_name
@@ -922,4 +939,93 @@ class BODIESUpTonight:
 
         if self._foto is not None:
             return self._foto
+        return None
+
+
+class COMETSUpTonight:
+    """A representation of uptonight comets."""
+
+    def __init__(self, data):
+        self._designation = data["designation"]
+        self._distance_au_earth = data["distance_au_earth"]
+        self._distance_au_sun = data["distance_au_sun"]
+        self._absolute_magnitude = data["absolute_magnitude"]
+        self._visual_magnitude = data["visual_magnitude"]
+        self._altitude = data["altitude"]
+        self._azimuth = data["azimuth"]
+        # self._ra = data["ra"]
+        # self._dec = data["dec"]
+        self._rise_time = data["rise_time"]
+        self._set_time = data["set_time"]
+
+    @property
+    def designation(self) -> str:
+        """Return comet name."""
+
+        if self._designation is not None:
+            return self._designation
+        return None
+
+    @property
+    def distance_au_earth(self) -> float:
+        """Return distance to earth in au."""
+
+        if self._distance_au_earth is not None:
+            return self._distance_au_earth
+        return None
+
+    @property
+    def distance_au_sun(self) -> float:
+        """Return distance to sun in au."""
+
+        if self._distance_au_sun is not None:
+            return self._distance_au_sun
+        return None
+
+    @property
+    def absolute_magnitude(self) -> float:
+        """Return absolute magnitude."""
+
+        if self._absolute_magnitude is not None:
+            return self._absolute_magnitude
+        return None
+
+    @property
+    def visual_magnitude(self) -> float:
+        """Return visual magnitude."""
+
+        if self._visual_magnitude is not None:
+            return self._visual_magnitude
+        return None
+
+    @property
+    def altitude(self) -> float:
+        """Return altitude."""
+
+        if self._altitude is not None:
+            return self._altitude
+        return None
+
+    @property
+    def azimuth(self) -> float:
+        """Return the azimuth of maximum altitude."""
+
+        if self._azimuth is not None:
+            return self._azimuth
+        return None
+
+    @property
+    def rise_time(self) -> datetime:
+        """Return rise time."""
+
+        if self._rise_time is not None:
+            return self._rise_time
+        return None
+
+    @property
+    def set_time(self) -> datetime:
+        """Return rise time."""
+
+        if self._set_time is not None:
+            return self._set_time
         return None
