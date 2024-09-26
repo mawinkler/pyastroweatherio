@@ -801,26 +801,51 @@ class AstroWeather:
             dso_type = self._weather_data_uptonight.get("type", {})
             dso_constellation = self._weather_data_uptonight.get("constellation", {})
             dso_size = self._weather_data_uptonight.get("size", {})
+            dso_visual_magnitude = self._weather_data_uptonight.get("mag", {})
+            dso_meridian_transit = self._weather_data_uptonight.get(
+                "meridian transit", {}
+            )
+            dso_meridian_antitransit = self._weather_data_uptonight.get(
+                "meridian antitransit", {}
+            )
             dso_foto = self._weather_data_uptonight.get("foto", {})
 
             for row in range(len(dso_target_name)):
+                dso_meridian_transit_local = dso_meridian_transit.get(str(row), "")
+                if dso_meridian_transit_local != "":
+                    dso_meridian_transit_utc = (
+                        datetime.strptime(
+                            dso_meridian_transit_local, "%m/%d/%Y %H:%M:%S"
+                        )
+                        - timedelta(seconds=await self._astro_routines.time_shift())
+                    ).replace(tzinfo=UTC)
+                else:
+                    dso_meridian_transit_utc = ""
+
+                dso_meridian_antitransit_local = dso_meridian_antitransit.get(
+                    str(row), ""
+                )
+                if dso_meridian_antitransit_local != "":
+                    dso_meridian_antitransit_utc = (
+                        datetime.strptime(
+                            dso_meridian_antitransit_local, "%m/%d/%Y %H:%M:%S"
+                        )
+                        - timedelta(seconds=await self._astro_routines.time_shift())
+                    ).replace(tzinfo=UTC)
+                else:
+                    dso_meridian_antitransit_utc = ""
+
                 item = {
                     "target_name": dso_target_name.get(str(row), ""),
                     "type": dso_type.get(str(row), ""),
                     "constellation": dso_constellation.get(str(row), ""),
                     "size": dso_size.get(str(row), ""),
+                    "visual_magnitude": dso_visual_magnitude.get(str(row), ""),
+                    "meridian_transit": dso_meridian_transit_utc,
+                    "meridian_antitransit": dso_meridian_antitransit_utc,
                     "foto": dso_foto.get(str(row), ""),
                 }
                 items.append(DSOUpTonight(item))
-
-                # _LOGGER.debug(
-                #     "DSO: %s, type: %s, constellation: %s, size: %s, foto: %s",
-                #     str(item["target_name"]),
-                #     str(item["type"]),
-                #     str(item["constellation"]),
-                #     str(item["size"]),
-                #     str(item["foto"]),
-                # )
 
             return items
         return None
@@ -844,6 +869,12 @@ class AstroWeather:
             body_max_altitude_time = self._weather_data_uptonight_bodies.get(
                 "max altitude time", {}
             )
+            body_visual_magnitude = self._weather_data_uptonight_bodies.get(
+                "visual magnitude", {}
+            )
+            body_meridian_transit = self._weather_data_uptonight_bodies.get(
+                "meridian transit", {}
+            )
             body_foto = self._weather_data_uptonight_bodies.get("foto", {})
 
             for row in range(len(body_target_name)):
@@ -854,23 +885,27 @@ class AstroWeather:
                     - timedelta(seconds=await self._astro_routines.time_shift())
                 ).replace(tzinfo=UTC)
 
+                body_meridian_transit_local = body_meridian_transit.get(str(row), "")
+                if body_meridian_transit_local != "":
+                    body_meridian_transit_utc = (
+                        datetime.strptime(
+                            body_meridian_transit_local, "%m/%d/%Y %H:%M:%S"
+                        )
+                        - timedelta(seconds=await self._astro_routines.time_shift())
+                    ).replace(tzinfo=UTC)
+                else:
+                    body_meridian_transit_utc = ""
+
                 item = {
                     "target_name": body_target_name.get(str(row), ""),
                     "max_altitude": body_max_altitude.get(str(row), ""),
                     "azimuth": body_azimuth.get(str(row), ""),
                     "max_altitude_time": body_max_altitude_time_utc,
+                    "visual_magnitude": body_visual_magnitude.get(str(row), ""),
+                    "meridian_transit": body_meridian_transit_utc,
                     "foto": body_foto.get(str(row), ""),
                 }
                 items.append(BODIESUpTonight(item))
-
-                _LOGGER.debug(
-                    "Body: %s, max_altitude: %s, azimuth: %s, max_altitude_time: %s, foto: %s",
-                    str(item["target_name"]),
-                    str(item["max_altitude"]),
-                    str(item["azimuth"]),
-                    str(item["max_altitude_time"]),
-                    str(item["foto"]),
-                )
 
             return items
         return None
@@ -931,19 +966,6 @@ class AstroWeather:
                     "set_time": set_time_local_utc,
                 }
                 items.append(COMETSUpTonight(item))
-
-                _LOGGER.debug(
-                    "Comet: %s, type: %s, constellation: %s, size: %s, foto: %s",
-                    str(item["designation"]),
-                    str(item["distance_au_earth"]),
-                    str(item["distance_au_sun"]),
-                    str(item["absolute_magnitude"]),
-                    str(item["visual_magnitude"]),
-                    str(item["altitude"]),
-                    str(item["azimuth"]),
-                    str(item["rise_time"]),
-                    str(item["set_time"]),
-                )
 
             return items
         return None

@@ -848,6 +848,9 @@ class DSOUpTonight:
         self._type = data["type"]
         self._constellation = data["constellation"]
         self._size = data["size"]
+        self._visual_magnitude = data["visual_magnitude"]
+        self._meridian_transit = data["meridian_transit"]
+        self._meridian_antitransit = data["meridian_antitransit"]
         self._foto = data["foto"]
 
     @property
@@ -860,7 +863,7 @@ class DSOUpTonight:
 
     @property
     def type(self) -> str:
-        """Return Forecast Name of the Day."""
+        """Return the type of the object."""
 
         if self._type is not None:
             return self._type
@@ -868,7 +871,7 @@ class DSOUpTonight:
 
     @property
     def constellation(self) -> str:
-        """Return Forecast Name of the Day."""
+        """Return the constellation of the object."""
 
         if self._constellation is not None:
             return self._constellation
@@ -876,15 +879,39 @@ class DSOUpTonight:
 
     @property
     def size(self) -> str:
-        """Return Forecast Name of the Day."""
+        """Return size of the object."""
 
         if self._size is not None:
             return self._size
         return None
 
     @property
+    def visual_magnitude(self) -> float:
+        """Return visual magnitude of the object."""
+
+        if self._visual_magnitude is not None:
+            return self._visual_magnitude
+        return None
+
+    @property
+    def meridian_transit(self) -> datetime:
+        """Return the meridian transit time of the object."""
+
+        if self._meridian_transit is not None:
+            return self._meridian_transit
+        return None
+
+    @property
+    def meridian_antitransit(self) -> datetime:
+        """Return the meridian anti-transit time of the object."""
+
+        if self._meridian_antitransit is not None:
+            return self._meridian_antitransit
+        return None
+
+    @property
     def foto(self) -> str:
-        """Return Forecast Name of the Day."""
+        """Return fraction of time observable of the object."""
 
         if self._foto is not None:
             return self._foto
@@ -899,6 +926,8 @@ class BODIESUpTonight:
         self._max_altitude = data["max_altitude"]
         self._azimuth = data["azimuth"]
         self._max_altitude_time = data["max_altitude_time"]
+        self._visual_magnitude = data["visual_magnitude"]
+        self._meridian_transit = data["meridian_transit"]
         self._foto = data["foto"]
 
     @property
@@ -934,8 +963,24 @@ class BODIESUpTonight:
         return None
 
     @property
+    def visual_magnitude(self) -> float:
+        """Return visual magnitude of the body."""
+
+        if self._visual_magnitude is not None:
+            return self._visual_magnitude
+        return None
+
+    @property
+    def meridian_transit(self) -> datetime:
+        """Return the meridian transit time of the body."""
+
+        if self._meridian_transit is not None:
+            return self._meridian_transit
+        return None
+
+    @property
     def foto(self) -> str:
-        """Return Forecast Name of the Day."""
+        """Return fraction of time observable of the body."""
 
         if self._foto is not None:
             return self._foto

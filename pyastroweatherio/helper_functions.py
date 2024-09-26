@@ -958,6 +958,42 @@ class AstronomicalRoutines:
         # Moon Azimuth
         self._moon_azimuth = deg(float(self._moon.az))
 
+    # def calculate_moon_distance_size(self):
+    #     # Define the observer's location (latitude, longitude, elevation)
+    #     observer = ephem.Observer()
+    #     observer.lat = '37.7749'    # Latitude (e.g., San Francisco)
+    #     observer.lon = '-122.4194'  # Longitude
+    #     observer.elevation = 10     # Elevation in meters
+
+    #     # Define the Moon object
+    #     moon = ephem.Moon()
+
+    #     # Compute the Moon's position from the observer's location
+    #     moon.compute(observer)
+
+    #     # Get the distance in Earth radii
+    #     moon_distance = moon.earth_distance  # in AU (Astronomical Units)
+
+    #     # Convert to kilometers
+    #     moon_distance_km = moon_distance * 149597870.7  # 1 AU = 149597870.7 km
+
+    #     # Get the Moon's angular size (in degrees)
+    #     moon_angular_size = moon.radius * 2  # radius is half of the angular diameter
+
+    #     # Average distance and angular size for comparison
+    #     avg_moon_distance_km = 384400  # Average distance of the Moon from Earth in km
+    #     avg_moon_angular_size = 0.5181  # Average angular size in degrees
+
+    #     # Relative distance and size compared to average
+    #     relative_distance = moon_distance_km / avg_moon_distance_km
+    #     relative_size = moon_angular_size / avg_moon_angular_size
+
+    #     # Output
+    #     print(f"Moon distance from observer: {moon_distance_km:.2f} km")
+    #     print(f"Relative distance compared to average: {relative_distance:.3f}")
+    #     print(f"Moon angular size: {moon_angular_size:.4f} degrees")
+    #     print(f"Relative angular size compared to average: {relative_size:.3f}")
+
     async def sun_previous_rising_astro(self) -> datetime:
         """Returns sun previous astronomical rising."""
 

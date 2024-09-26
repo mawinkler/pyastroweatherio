@@ -7,6 +7,7 @@ import time
 import os
 from datetime import datetime
 import pytz
+from pprint import pprint as pp
 
 from pyastroweatherio import (
     AstroWeather,
@@ -396,10 +397,22 @@ async def main() -> None:
                     f"{esc(COLOR_RED)}Uptonight: {esc(COLOR_GREEN)}{row.uptonight}{esc('0')}"
                 )
                 print(
+                    row.uptonight_list[0].target_name,
+                    row.uptonight_list[0].visual_magnitude,
+                )
+                print(
                     f"{esc(COLOR_RED)}Uptonight Bodies: {esc(COLOR_GREEN)}{row.uptonight_bodies}{esc('0')}"
                 )
                 print(
+                    row.uptonight_bodies_list[0].target_name,
+                    row.uptonight_bodies_list[0].visual_magnitude,
+                )
+                print(
                     f"{esc(COLOR_RED)}Uptonight Comets: {esc(COLOR_GREEN)}{row.uptonight_comets}{esc('0')}"
+                )
+                print(
+                    row.uptonight_comets_list[0].designation,
+                    row.uptonight_comets_list[0].visual_magnitude,
                 )
 
     except AstroWeatherError as err:
