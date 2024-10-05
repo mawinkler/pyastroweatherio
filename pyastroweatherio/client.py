@@ -797,6 +797,7 @@ class AstroWeather:
 
         # Create list of deep sky objects
         if self._weather_data_uptonight is not None:
+            dso_id = self._weather_data_uptonight.get("id", {})
             dso_target_name = self._weather_data_uptonight.get("target name", {})
             dso_type = self._weather_data_uptonight.get("type", {})
             dso_constellation = self._weather_data_uptonight.get("constellation", {})
@@ -836,6 +837,7 @@ class AstroWeather:
                     dso_meridian_antitransit_utc = ""
 
                 item = {
+                    "id": dso_id.get(str(row), ""),
                     "target_name": dso_target_name.get(str(row), ""),
                     "type": dso_type.get(str(row), ""),
                     "constellation": dso_constellation.get(str(row), ""),

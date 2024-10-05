@@ -844,6 +844,7 @@ class DSOUpTonight:
     """A representation of uptonight DSO."""
 
     def __init__(self, data):
+        self._id = data["id"]
         self._target_name = data["target_name"]
         self._type = data["type"]
         self._constellation = data["constellation"]
@@ -852,6 +853,14 @@ class DSOUpTonight:
         self._meridian_transit = data["meridian_transit"]
         self._meridian_antitransit = data["meridian_antitransit"]
         self._foto = data["foto"]
+
+    @property
+    def id(self) -> str:
+        """Return object catalogue id."""
+
+        if self._id is not None:
+            return self._id
+        return None
 
     @property
     def target_name(self) -> str:
