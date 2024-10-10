@@ -578,6 +578,7 @@ class AstronomicalRoutines:
         self._moon_azimuth = None
         self._sun = None
         self._moon = None
+        # self._moon_data = {}
 
         # Internal only
         self._sun_previous_rising_astro = None
@@ -941,6 +942,8 @@ class AstronomicalRoutines:
             ephem.next_full_moon(self._forecast_time).datetime().replace(tzinfo=UTC)
         )
 
+        # self.calculate_moon_distance_size()
+
     def calculate_moon_altaz(self):
         """Calculates moon altitude and azimuth."""
 
@@ -958,41 +961,53 @@ class AstronomicalRoutines:
         # Moon Azimuth
         self._moon_azimuth = deg(float(self._moon.az))
 
-    # def calculate_moon_distance_size(self):
-    #     # Define the observer's location (latitude, longitude, elevation)
-    #     observer = ephem.Observer()
-    #     observer.lat = '37.7749'    # Latitude (e.g., San Francisco)
-    #     observer.lon = '-122.4194'  # Longitude
-    #     observer.elevation = 10     # Elevation in meters
+    def calculate_moon_distance_size(self):
+        """Calculate moon distance and relative size"""
+        if self._moon_observer is None:
+            self._moon_observer = self.get_moon_observer()
+        if self._moon is None:
+            self._moon = ephem.Moon()
 
-    #     # Define the Moon object
-    #     moon = ephem.Moon()
+        # Get the distance in Earth radii
+        self._moon_data["distance"] = (
+            self._moon.earth_distance  # in AU (Astronomical Units)
+        )
 
-    #     # Compute the Moon's position from the observer's location
-    #     moon.compute(observer)
+        # Convert to kilometers
+        self._moon_data["distance_km"] = (
+            self._moon_data["distance"] * 149597870.7  # 1 AU = 149597870.7 km
+        )
 
-    #     # Get the distance in Earth radii
-    #     moon_distance = moon.earth_distance  # in AU (Astronomical Units)
+        # Get the Moon's angular size (in degrees)
+        self._moon_data["angular_size"] = (
+            self._moon.radius * 2 * 57.29578  # 180 / pi
+        )
 
-    #     # Convert to kilometers
-    #     moon_distance_km = moon_distance * 149597870.7  # 1 AU = 149597870.7 km
+        # Average distance and angular size for comparison
+        self._moon_data["avg_distance_km"] = (
+            384400  # Average distance of the Moon from Earth in km
+        )
+        self._moon_data["avg_angular_size"] = 0.5181  # Average angular size in degrees
 
-    #     # Get the Moon's angular size (in degrees)
-    #     moon_angular_size = moon.radius * 2  # radius is half of the angular diameter
+        # Relative distance and size compared to average
+        self._moon_data["relative_distance"] = (
+            self._moon_data["distance_km"] / self._moon_data["avg_distance_km"]
+        )
+        self._moon_data["relative_size"] = (
+            self._moon_data["angular_size"] / self._moon_data["avg_angular_size"]
+        )
 
-    #     # Average distance and angular size for comparison
-    #     avg_moon_distance_km = 384400  # Average distance of the Moon from Earth in km
-    #     avg_moon_angular_size = 0.5181  # Average angular size in degrees
-
-    #     # Relative distance and size compared to average
-    #     relative_distance = moon_distance_km / avg_moon_distance_km
-    #     relative_size = moon_angular_size / avg_moon_angular_size
-
-    #     # Output
-    #     print(f"Moon distance from observer: {moon_distance_km:.2f} km")
-    #     print(f"Relative distance compared to average: {relative_distance:.3f}")
-    #     print(f"Moon angular size: {moon_angular_size:.4f} degrees")
-    #     print(f"Relative angular size compared to average: {relative_size:.3f}")
+        # Output
+        print(f"Moon distance from observer: {self._moon_data["distance_km"]:.2f} km")
+        print(
+            f"Relative distance compared to average: {self._moon_data["relative_distance"]:.3f}"
+        )
+        print(f"Moon size: {self._moon_data["angular_size"]:.4f} degrees")
+        print(f"Moon size: {self._moon_data["angular_size"] * 60:.4f} minutes")
+        print(
+            f"Relative size compared to average: {self._moon_data["relative_size"]:.3f}"
+        )
+        print(self._moon_data)
 
     async def sun_previous_rising_astro(self) -> datetime:
         """Returns sun previous astronomical rising."""
@@ -1027,14 +1042,22 @@ class AstronomicalRoutines:
     def astronomical_darkness(self) -> bool:
         """Returns true during astronomical night."""
 
-        if self._sun_next_setting_astro > self._sun_next_rising_astro:
+        if (
+            self._sun_next_setting_astro is not None
+            and self._sun_next_rising_astro is not None
+            and self._sun_next_setting_astro > self._sun_next_rising_astro
+        ):
             return True
         return False
 
     def moon_down(self) -> bool:
         """Returns true while moon is set-"""
 
-        if self._moon_next_setting > self._moon_next_rising:
+        if (
+            self._moon_next_setting is not None
+            and self._moon_next_rising is not None
+            and self._moon_next_setting > self._moon_next_rising
+        ):
             return True
         return False
 
@@ -1305,9 +1328,9 @@ class AstronomicalRoutines:
         else:
             start_timestamp = self._sun_next_setting_astro
 
-        astroduration = self._sun_next_rising_astro - start_timestamp
-
-        return astroduration.total_seconds()
+        if start_timestamp is not None:
+            return (self._sun_next_rising_astro - start_timestamp).total_seconds()
+        return 0
 
     async def deep_sky_darkness_moon_rises(self) -> bool:
         """Returns true if moon rises during astronomical night."""
@@ -1321,7 +1344,10 @@ class AstronomicalRoutines:
             start_timestamp = self._sun_next_setting_astro
 
         if (
-            self._moon_next_rising > start_timestamp
+            self._moon_next_rising is not None
+            and self._sun_next_rising_astro is not None
+            and start_timestamp is not None
+            and self._moon_next_rising > start_timestamp
             and self._moon_next_rising < self._sun_next_rising_astro
         ):
             _LOGGER.debug("DSD: Moon rises during astronomical night")
@@ -1346,7 +1372,10 @@ class AstronomicalRoutines:
             start_timestamp_moon = self._moon_next_setting
 
         if (
-            start_timestamp_moon > start_timestamp
+            self._sun_next_rising_astro is not None
+            and start_timestamp_moon is not None
+            and start_timestamp is not None
+            and start_timestamp_moon > start_timestamp
             and start_timestamp_moon < self._sun_next_rising_astro
         ):
             _LOGGER.debug("DSD: Moon sets during astronomical night")
@@ -1365,7 +1394,11 @@ class AstronomicalRoutines:
             start_timestamp = self._sun_next_setting_astro
 
         if (
-            self._moon_next_rising < start_timestamp
+            self._moon_next_rising is not None
+            and self._moon_next_setting is not None
+            and self._sun_next_rising_astro is not None
+            and start_timestamp is not None
+            and self._moon_next_rising < start_timestamp
             and self._moon_next_setting > self._sun_next_rising_astro
         ):
             _LOGGER.debug("DSD: Moon is up during astronomical night")
@@ -1384,7 +1417,11 @@ class AstronomicalRoutines:
             start_timestamp = self._sun_next_setting_astro
 
         if (
-            self._moon_previous_setting < start_timestamp
+            self._moon_previous_setting is not None
+            and self._moon_next_rising is not None
+            and self._sun_next_rising_astro is not None
+            and start_timestamp is not None
+            and self._moon_previous_setting < start_timestamp
             and self._moon_next_rising > self._sun_next_rising_astro
         ):
             _LOGGER.debug("DSD: Moon is down during astronomical night")

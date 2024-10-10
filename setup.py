@@ -3,13 +3,14 @@ from setuptools import setup
 setup(
     name="pyastroweatherio",
     packages=["pyastroweatherio"],
-    version="0.61.0",
+    version="0.61.1",
     license="MIT",
     description="Python Wrapper for 7Timer and Met.no REST API",
     long_description=" ".join(
         [
             "Lightweight Python 3 module to receive data via",
-            "REST API from 7Timer and Met.no.",
+            "REST API from 7Timer and Met.no and consume",
+            "UpTonight reports.",
         ],
     ),
     author="Markus Winkler",

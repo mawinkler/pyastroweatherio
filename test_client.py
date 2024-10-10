@@ -45,34 +45,39 @@ timezone_info = os.environ["BACKYARD_TIMEZONE"]
 # timezone_info = "America/Santiago"
 
 # # Peißenberg
-# latitude=48.811
-# longitude=11.017
-# elevation=977
+# latitude = 48.811
+# longitude = 11.017
+# elevation = 977
 # timezone_info = "Europe/Berlin"
 
-# # Anchorage
-# latitude=61.212
-# longitude=-149.737
-# elevation=115
+# Anchorage
+# latitude = 61.212
+# longitude = -149.737
+# elevation = 115
 # timezone_info = "America/Anchorage"
 
 # # Hacienda Los Andes
-# latitude=-30.29528
-# longitude=-70.71262
-# elevation=1000
+# latitude = -30.29528
+# longitude = -70.71262
+# elevation = 1000
 # timezone_info = "Chile/Continental"
 
 # # London
-# latitude=51.5072
-# longitude=0.1276
-# elevation=11
+# latitude = 51.5072
+# longitude = 0.1276
+# elevation = 11
 # timezone_info = "Europe/London"
 
 # # Sydney
-# latitude=-33.869
-# longitude=151.198
-# elevation=3
+# latitude = -33.869
+# longitude = 151.198
+# elevation = 3
 # timezone_info = "Australia/Sydney"
+
+# latitude = 65.064717
+# longitude = 25.553043
+# elevation = 12
+# timezone_info = "Europe/Helsinki"
 
 
 def esc(code):
@@ -123,7 +128,7 @@ async def main() -> None:
         transparency_weight=1,
         calm_weight=3,
         uptonight_path=".",
-        # test_datetime=datetime.strptime("2024-04-29T11:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
+        test_datetime=datetime.strptime("2024-10-17T11:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
         experimental_features=True,
     )
 
