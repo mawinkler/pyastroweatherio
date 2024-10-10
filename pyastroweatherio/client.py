@@ -307,27 +307,10 @@ class AstroWeather:
             "transparency": transparency,
             "lifted_index": lifted_index,
             # Astronomical routines
-            "sun_next_rising": await self._astro_routines.sun_next_rising_civil(),
-            "sun_next_rising_nautical": await self._astro_routines.sun_next_rising_nautical(),
-            "sun_next_rising_astro": await self._astro_routines.sun_next_rising_astro(),
-            "sun_next_setting": await self._astro_routines.sun_next_setting_civil(),
-            "sun_next_setting_nautical": await self._astro_routines.sun_next_setting_nautical(),
-            "sun_next_setting_astro": await self._astro_routines.sun_next_setting_astro(),
-            "sun_altitude": await self._astro_routines.sun_altitude(),
-            "sun_azimuth": await self._astro_routines.sun_azimuth(),
-            "moon_next_rising": await self._astro_routines.moon_next_rising(),
-            "moon_next_setting": await self._astro_routines.moon_next_setting(),
-            "moon_phase": await self._astro_routines.moon_phase(),
-            "moon_next_new_moon": await self._astro_routines.moon_next_new_moon(),
-            "moon_next_full_moon": await self._astro_routines.moon_next_full_moon(),
-            "moon_altitude": await self._astro_routines.moon_altitude(),
-            "moon_azimuth": await self._astro_routines.moon_azimuth(),
+            "sun_data": await self._astro_routines.sun_data(),
+            "moon_data": await self._astro_routines.moon_data(),
+            "darkness_data": await self._astro_routines.darkness_data(),
             "night_duration_astronomical": await self._astro_routines.night_duration_astronomical(),
-            "deep_sky_darkness_moon_rises": await self._astro_routines.deep_sky_darkness_moon_rises(),
-            "deep_sky_darkness_moon_sets": await self._astro_routines.deep_sky_darkness_moon_sets(),
-            "deep_sky_darkness_moon_always_up": await self._astro_routines.deep_sky_darkness_moon_always_up(),
-            "deep_sky_darkness_moon_always_down": await self._astro_routines.deep_sky_darkness_moon_always_down(),
-            "deep_sky_darkness": await self._astro_routines.deep_sky_darkness(),
             "deepsky_forecast": await self._get_deepsky_forecast(),
             # Met.no
             "cloudcover": details_metno.get("cloud_area_fraction"),
@@ -602,6 +585,12 @@ class AstroWeather:
         start_forecast_hour = 0
         start_weather = ""
         interval_points = []
+        now = datetime.now(UTC).replace(tzinfo=None)
+
+        if self._test_datetime is not None:
+            await self._astro_routines.need_update()
+        else:
+            await self._astro_routines.need_update(forecast_time=now)
 
         sun_next_setting = await self._astro_routines.sun_next_setting()
         sun_next_rising = await self._astro_routines.sun_next_rising()

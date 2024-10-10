@@ -16,8 +16,6 @@ from pyastroweatherio import (
 
 _LOGGER = logging.getLogger(__name__)
 
-
-pp = pprint.PrettyPrinter()
 COLOR_BLACK = "1;30"
 COLOR_RED = "1;31"
 COLOR_GREEN = "1;32"
@@ -128,7 +126,7 @@ async def main() -> None:
         transparency_weight=1,
         calm_weight=3,
         uptonight_path=".",
-        test_datetime=datetime.strptime("2024-10-17T11:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
+        # test_datetime=datetime.strptime("2024-10-17T11:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
         experimental_features=True,
     )
 
