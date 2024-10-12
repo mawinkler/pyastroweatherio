@@ -9,6 +9,10 @@ from zoneinfo import ZoneInfo
 import ephem
 from ephem import degree
 
+# import metpy.calc as mpcalc
+# from metpy.units import units
+# import numpy as np
+
 from pyastroweatherio.const import (
     ASTRONOMICAL_DUSK_DAWN,
     CIVIL_DUSK_DAWN,
@@ -83,13 +87,13 @@ class AtmosphericRoutines:
         # Checked with https://www.weather.gov/epz/wxcalc_vaporpressure
         es = self._calculate_vapor_pressure(temperature)
 
-        # Calculate actual vapor pressure at surface
+        # Calculate actual Vapor Pressure at surface
         # Checked with https://www.weather.gov/epz/wxcalc_vaporpressure
         e = self._calculate_vapor_pressure(
             dew_point_temperature
         )  # 6.112 * (10 ** (7.5 * (Td - Tn) / (Td - 35.85)))
 
-        # Calculate mixing ratio at surface in grams per kilogram
+        # Calculate Mixing Ratio at Surface in grams per kilogram
         # Checked with https://www.weather.gov/epz/wxcalc_mixingratio
         w = self._calculate_mixing_ratio(e, air_pressure_at_sea_level)
 
@@ -102,23 +106,16 @@ class AtmosphericRoutines:
         )  # Assumption: 500 mb is halfway through the troposphere
 
         # Calculate Lifted Index
-        lifted_index = env_temp_500mb - lifted_temp_500mb
+        lifted_index = (env_temp_500mb - lifted_temp_500mb) * 2 + 7
 
-        # _LOGGER.debug(
-        #     "Lifted Index (LI): {:.2f} °C (".format(lifted_index)
-        #     + "Air pressure at sea level (AP): {:.2f} mbar, ".format(
-        #         air_pressure_at_sea_level
-        #     )
-        #     + "Dew point(DP): {:.2f} °C, ".format(dew_point_temperature)
-        #     + "Temperature (T): {:.2f} °C, ".format(temperature)
-        #     + "Saturation vapor pressure at surface (ES): {:.2f} mbar, ".format(es)
-        #     + "Actual vapor pressure at surface (E): {:.2f} mbar, ".format(e)
-        #     + "Mixing ratio at surface (W): {:.2f} grams per kg, ".format(w)
-        #     + "Lifting Condensation Level (LCL): {:.2f} meters, ".format(lcl)
-        #     + "Temperature of the lifted parcel (T Parcel): {:.2f} °C)".format(
-        #         lifted_temp_500mb
-        #     )
-        # )
+        # Ensure lifted index is within the valid range [-7, 7]
+        lifted_index = max(-7, min(7, lifted_index))
+
+        # _LOGGER.debug(f"Vapor Pressure: {e}")
+        # _LOGGER.debug(f"Mixing Ratio: {w}")
+        # _LOGGER.debug(f"Lifting Condensation Level: {lcl}")
+        # _LOGGER.debug(f"Temperature of Lifted Parcel: {lifted_temp_500mb}")
+        # _LOGGER.debug(f"Lifted Index: {lifted_index}")
 
         return lifted_index
 
@@ -573,6 +570,13 @@ class AstronomicalRoutines:
         self._sun_previous_rising_astro = None
         self._sun_previous_setting_astro = None
 
+    def _test_data(self, data, keys) -> bool:
+        """Test that specific values in a dictionary are not None"""
+
+        if not all(data[key] is not None for key in keys):
+            return False
+        return True
+
     def utc_to_local_diff(self):
         """Returns the UTC Offset."""
 
@@ -903,9 +907,10 @@ class AstronomicalRoutines:
         """Returns sun next rising."""
 
         if (
-            self._sun_data.get("next_rising_astro", None) is None
-            or self._sun_data.get("next_rising_nautical", None) is None
-            or self._sun_data.get("next_rising_civil", None) is None
+            not self._test_data(
+                self._sun_data,
+                ["next_rising_astro", "next_rising_nautical", "next_rising_civil"],
+            )
             or self._forecast_time > self._sun_data["next_rising_astro"]
             or self._forecast_time > self._sun_data["next_rising_nautical"]
             or self._forecast_time > self._sun_data["next_rising_civil"]
@@ -924,9 +929,10 @@ class AstronomicalRoutines:
         """Returns sun next setting."""
 
         if (
-            self._sun_data.get("next_setting_astro", None) is None
-            or self._sun_data.get("next_setting_nautical", None) is None
-            or self._sun_data.get("next_setting_civil", None) is None
+            not self._test_data(
+                self._sun_data,
+                ["next_rising_astro", "next_rising_nautical", "next_rising_civil"],
+            )
             or self._forecast_time > self._sun_data["next_setting_astro"]
             or self._forecast_time > self._sun_data["next_setting_nautical"]
             or self._forecast_time > self._sun_data["next_setting_civil"]
@@ -1053,18 +1059,16 @@ class AstronomicalRoutines:
 
         # Get the distance in Earth radii
         self._moon_data["distance"] = (
-            self._moon.earth_distance  # in AU (Astronomical Units)
-        )
+            self._moon.earth_distance
+        )  # in AU (Astronomical Units)
 
         # Convert to kilometers
         self._moon_data["distance_km"] = (
-            self._moon_data["distance"] * 149597870.7  # 1 AU = 149597870.7 km
-        )
+            self._moon_data["distance"] * 149597870.7
+        )  # 1 AU = 149597870.7 km
 
         # Get the Moon's angular size (in degrees)
-        self._moon_data["angular_size"] = (
-            self._moon.radius * 2 * 57.29578  # 180 / pi
-        )
+        self._moon_data["angular_size"] = self._moon.radius * 2 * 57.29578  # 180 / pi
 
         # Average distance and angular size for comparison
         self._moon_data["avg_distance_km"] = (
@@ -1101,124 +1105,51 @@ class AstronomicalRoutines:
     # #########################################################################
     # Darkness
     # #########################################################################
-    def _astronomical_darkness(self) -> bool:
-        """Returns true during astronomical night."""
+    async def darkness_data(self) -> dict:
+        """Returns darkness data."""
 
-        if (
-            self._sun_data.get("next_setting_astro", None) is not None
-            and self._sun_data.get("next_rising_astro", None) is not None
-            and self._sun_data["next_setting_astro"]
-            > self._sun_data["next_rising_astro"]
+        if not self._test_data(
+            self._moon_data, ["next_setting", "next_rising", "previous_setting"]
         ):
-            return True
-        return False
+            _LOGGER.debug("DSD: moon data missing")
+            return False
 
-    def _moon_down(self) -> bool:
-        """Returns true while moon is set-"""
-
-        if (
-            self._moon_data.get("next_setting", None) is not None
-            and self._moon_data.get("next_rising", None) is not None
-            and self._moon_data["next_setting"] > self._moon_data["next_rising"]
+        if not self._test_data(
+            self._sun_data,
+            ["previous_setting_astro", "next_setting_astro", "next_rising_astro"],
         ):
-            return True
-        return False
+            _LOGGER.debug("DSD: sun data missing")
+            return False
 
-    def _deep_sky_darkness_moon_rises(self) -> bool:
-        """Returns true if moon rises during astronomical night."""
+        self._darkness_data["deep_sky_darkness_moon_rises"] = (
+            self._deep_sky_darkness_moon_rises()
+        )
+        self._darkness_data["deep_sky_darkness_moon_sets"] = (
+            self._deep_sky_darkness_moon_sets()
+        )
+        self._darkness_data["deep_sky_darkness_moon_always_up"] = (
+            self._deep_sky_darkness_moon_always_up()
+        )
+        self._darkness_data["deep_sky_darkness_moon_always_down"] = (
+            self._deep_sky_darkness_moon_always_down()
+        )
+        self._darkness_data["deep_sky_darkness"] = self._deep_sky_darkness()
+
+        if self._darkness_data is not None:
+            return self._darkness_data
+
+    async def night_duration_astronomical(self) -> float:
+        """Returns the remaining timespan of astronomical darkness."""
 
         start_timestamp = None
 
         # Are we already in darkness?
         if self._astronomical_darkness():
-            start_timestamp = self._sun_data.get("previous_setting_astro", None)
+            start_timestamp = self._sun_data["previous_setting_astro"]
         else:
-            start_timestamp = self._sun_data.get("next_setting_astro", None)
+            start_timestamp = self._sun_data["next_setting_astro"]
 
-        if (
-            self._moon_data.get("next_rising", None) is not None
-            and self._sun_data.get("next_rising_astro", None) is not None
-            and start_timestamp is not None
-            and self._moon_data["next_rising"] > start_timestamp
-            and self._moon_data["next_rising"] < self._sun_data["next_rising_astro"]
-        ):
-            _LOGGER.debug("DSD: Moon rises during astronomical night")
-            return True
-        return False
-
-    def _deep_sky_darkness_moon_sets(self) -> bool:
-        """Returns true if moon sets during astronomical night."""
-
-        start_timestamp = None
-
-        # Are we already in darkness?
-        if self._astronomical_darkness():
-            start_timestamp = self._sun_previous_setting_astro
-        else:
-            start_timestamp = self._sun_next_setting_astro
-
-        # Did Moon already set in darkness?
-        if self._moon_down() and self._astronomical_darkness():
-            start_timestamp_moon = self._moon_data.get("previous_setting", None)
-        else:
-            start_timestamp_moon = self._moon_data.get("next_setting", None)
-
-        if (
-            self._sun_data.get("next_rising_astro", None) is not None
-            and start_timestamp_moon is not None
-            and start_timestamp is not None
-            and start_timestamp_moon > start_timestamp
-            and start_timestamp_moon < self._sun_data["next_rising_astro"]
-        ):
-            _LOGGER.debug("DSD: Moon sets during astronomical night")
-            return True
-        return False
-
-    def _deep_sky_darkness_moon_always_up(self) -> bool:
-        """Returns true if moon is up during astronomical night."""
-
-        start_timestamp = None
-
-        # Are we already in darkness?
-        if self._astronomical_darkness():
-            start_timestamp = self._sun_data.get("previous_setting_astro", None)
-        else:
-            start_timestamp = self._sun_data.get("next_setting_astro", None)
-
-        if (
-            self._moon_data.get("next_rising", None) is not None
-            and self._moon_data.get("next_setting", None) is not None
-            and self._sun_data.get("next_rising_astro", None) is not None
-            and start_timestamp is not None
-            and self._moon_data["next_rising"] < start_timestamp
-            and self._moon_data["next_setting"] > self._sun_data["next_rising_astro"]
-        ):
-            _LOGGER.debug("DSD: Moon is up during astronomical night")
-            return True
-        return False
-
-    def _deep_sky_darkness_moon_always_down(self) -> bool:
-        """Returns true if moon is down during astronomical night."""
-
-        start_timestamp = None
-
-        # Are we already in darkness?
-        if self._astronomical_darkness():
-            start_timestamp = self._sun_data.get("previous_setting_astro", None)
-        else:
-            start_timestamp = self._sun_data.get("next_setting_astro", None)
-
-        if (
-            self._moon_data.get("previous_setting", None) is not None
-            and self._moon_data.get("next_rising", None) is not None
-            and self._sun_data.get("next_rising_astro", None) is not None
-            and start_timestamp is not None
-            and self._moon_data["previous_setting"] < start_timestamp
-            and self._moon_data["next_rising"] > self._sun_data["next_rising_astro"]
-        ):
-            _LOGGER.debug("DSD: Moon is down during astronomical night")
-            return True
-        return False
+        return (self._sun_data["next_rising_astro"] - start_timestamp).total_seconds()
 
     def _deep_sky_darkness(self) -> float:
         """Returns the remaining timespan of deep sky darkness."""
@@ -1279,49 +1210,101 @@ class AstronomicalRoutines:
 
         return dsd.total_seconds()
 
-    async def night_duration_astronomical(self) -> float:
-        """Returns the remaining timespan of astronomical darkness."""
+    def _astronomical_darkness(self) -> bool:
+        """Returns true during astronomical night."""
+
+        if self._sun_data["next_setting_astro"] > self._sun_data["next_rising_astro"]:
+            return True
+        return False
+
+    def _moon_down(self) -> bool:
+        """Returns true while moon is set-"""
+
+        if self._moon_data["next_setting"] > self._moon_data["next_rising"]:
+            return True
+        return False
+
+    def _deep_sky_darkness_moon_rises(self) -> bool:
+        """Returns true if moon rises during astronomical night."""
 
         start_timestamp = None
 
         # Are we already in darkness?
         if self._astronomical_darkness():
-            start_timestamp = self._sun_data.get(
-                "previous_setting_astro", None
-            )  # self._sun_previous_setting_astro
+            start_timestamp = self._sun_data["previous_setting_astro"]
         else:
-            start_timestamp = self._sun_data.get(
-                "next_setting_astro", None
-            )  # self._sun_next_setting_astro
+            start_timestamp = self._sun_data["next_setting_astro"]
 
         if (
-            self._sun_data.get("next_rising_astro", None) is not None
-            and start_timestamp is not None
+            self._moon_data["next_rising"] > start_timestamp
+            and self._moon_data["next_rising"] < self._sun_data["next_rising_astro"]
         ):
-            return (
-                self._sun_data["next_rising_astro"] - start_timestamp
-            ).total_seconds()
-        return 0
+            _LOGGER.debug("DSD: Moon rises during astronomical night")
+            return True
+        return False
 
-    async def darkness_data(self) -> dict:
-        """Returns darkness data."""
+    def _deep_sky_darkness_moon_sets(self) -> bool:
+        """Returns true if moon sets during astronomical night."""
 
-        self._darkness_data["deep_sky_darkness_moon_rises"] = (
-            self._deep_sky_darkness_moon_rises()
-        )
-        self._darkness_data["deep_sky_darkness_moon_sets"] = (
-            self._deep_sky_darkness_moon_sets()
-        )
-        self._darkness_data["deep_sky_darkness_moon_always_up"] = (
-            self._deep_sky_darkness_moon_always_up()
-        )
-        self._darkness_data["deep_sky_darkness_moon_always_down"] = (
-            self._deep_sky_darkness_moon_always_down()
-        )
-        self._darkness_data["deep_sky_darkness"] = self._deep_sky_darkness()
+        start_timestamp = None
 
-        if self._darkness_data is not None:
-            return self._darkness_data
+        # Are we already in darkness?
+        if self._astronomical_darkness():
+            start_timestamp = self._sun_data["previous_setting_astro"]
+        else:
+            start_timestamp = self._sun_data["next_setting_astro"]
+
+        # Did Moon already set in darkness?
+        if self._moon_down() and self._astronomical_darkness():
+            start_timestamp_moon = self._moon_data["previous_setting"]
+        else:
+            start_timestamp_moon = self._moon_data["next_setting"]
+
+        if (
+            start_timestamp_moon > start_timestamp
+            and start_timestamp_moon < self._sun_data["next_rising_astro"]
+        ):
+            _LOGGER.debug("DSD: Moon sets during astronomical night")
+            return True
+        return False
+
+    def _deep_sky_darkness_moon_always_up(self) -> bool:
+        """Returns true if moon is up during astronomical night."""
+
+        start_timestamp = None
+
+        # Are we already in darkness?
+        if self._astronomical_darkness():
+            start_timestamp = self._sun_data["previous_setting_astro"]
+        else:
+            start_timestamp = self._sun_data["next_setting_astro"]
+
+        if (
+            self._moon_data["next_rising"] < start_timestamp
+            and self._moon_data["next_setting"] > self._sun_data["next_rising_astro"]
+        ):
+            _LOGGER.debug("DSD: Moon is up during astronomical night")
+            return True
+        return False
+
+    def _deep_sky_darkness_moon_always_down(self) -> bool:
+        """Returns true if moon is down during astronomical night."""
+
+        start_timestamp = None
+
+        # Are we already in darkness?
+        if self._astronomical_darkness():
+            start_timestamp = self._sun_data["previous_setting_astro"]
+        else:
+            start_timestamp = self._sun_data["next_setting_astro"]
+
+        if (
+            self._moon_data["previous_setting"] < start_timestamp
+            and self._moon_data["next_rising"] > self._sun_data["next_rising_astro"]
+        ):
+            _LOGGER.debug("DSD: Moon is down during astronomical night")
+            return True
+        return False
 
     # async def sun_previous_rising_astro(self) -> datetime:
     #     """Returns sun previous astronomical rising."""

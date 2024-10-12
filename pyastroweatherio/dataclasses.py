@@ -281,14 +281,6 @@ class LocationData(BaseData):
         self._latitude = data["latitude"]
         self._longitude = data["longitude"]
         self._elevation = data["elevation"]
-        # self._sun_next_rising = data["sun_next_rising"]
-        # self._sun_next_rising_nautical = data["sun_next_rising_nautical"]
-        # self._sun_next_rising_astro = data["sun_next_rising_astro"]
-        # self._sun_next_setting = data["sun_next_setting"]
-        # self._sun_next_setting_nautical = data["sun_next_setting_nautical"]
-        # self._sun_next_setting_astro = data["sun_next_setting_astro"]
-        # self._sun_altitude = data["sun_altitude"]
-        # self._sun_azimuth = data["sun_azimuth"]
         self._sun_data = data["sun_data"]
         self._moon_data = data["moon_data"]
         self._darkness_data = data["darkness_data"]
@@ -298,9 +290,9 @@ class LocationData(BaseData):
         self._uptonight_bodies = data["uptonight_bodies"]
         self._uptonight_comets = data["uptonight_comets"]
 
-        pp(self._sun_data)
-        pp(self._moon_data)
-        pp(self._darkness_data)
+        # pp(self._sun_data)
+        # pp(self._moon_data)
+        # pp(self._darkness_data)
 
     @property
     def time_shift(self) -> int:
