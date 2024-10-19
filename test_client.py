@@ -375,6 +375,11 @@ async def main() -> None:
                     + f"{esc(COLOR_RED)}Moon next full Moon: {esc(COLOR_GREEN)}{str(row.moon_next_full_moon)}{esc('0')}"
                 )
                 print(
+                    f"{esc(COLOR_RED)}Moon Distance: {esc(COLOR_GREEN)}{str(row.moon_distance_km)}km, "
+                    + f"{esc(COLOR_RED)}Moon Angular Size: {esc(COLOR_GREEN)}{str(row.moon_angular_size)}', "
+                    + f"{esc(COLOR_RED)}Moon Relative Size: {esc(COLOR_GREEN)}{str(row.moon_relative_size)}%{esc('0')}"
+                )
+                print(
                     f"{esc(COLOR_RED)}Forecast Today: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today)}, "
                     + f"{esc(COLOR_RED)}Forecast Today Dayname: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_dayname)}, "
                     + f"{esc(COLOR_RED)}Forecast Today Desc: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_desc)}, "

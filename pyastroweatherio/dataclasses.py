@@ -74,6 +74,9 @@ class BaseData:
             return self._forecast_time.replace(microsecond=0, tzinfo=timezone.utc)
         return None
 
+    # #########################################################################
+    # Condition
+    # #########################################################################
     @property
     def condition_percentage(self) -> int:
         """Return condition based on cloud cover, seeing and transparency."""
@@ -290,10 +293,13 @@ class LocationData(BaseData):
         self._uptonight_bodies = data["uptonight_bodies"]
         self._uptonight_comets = data["uptonight_comets"]
 
-        # pp(self._sun_data)
-        # pp(self._moon_data)
-        # pp(self._darkness_data)
+        pp(self._sun_data)
+        pp(self._moon_data)
+        pp(self._darkness_data)
 
+    # #########################################################################
+    # Location
+    # #########################################################################
     @property
     def time_shift(self) -> int:
         """Return Forecast Timestamp."""
@@ -334,6 +340,9 @@ class LocationData(BaseData):
             return self._elevation
         return None
 
+    # #########################################################################
+    # Condition
+    # #########################################################################
     @property
     def seeing_plain(self) -> str:
         """Return Seeing."""
@@ -392,6 +401,48 @@ class LocationData(BaseData):
             return CONDITION_PLAIN[4].capitalize()
         return None
 
+    # #########################################################################
+    # Sun
+    # #########################################################################
+    # {
+    #   'altitude': 27.381166288165183,
+    #   'azimuth': 207.94331977147567,
+    #   'next_rising_astro': datetime.datetime(2024, 10, 20, 3, 55, 27, 530594, tzinfo=datetime.timezone.utc),
+    #   'next_rising_civil': datetime.datetime(2024, 10, 20, 5, 7, 56, 608, tzinfo=datetime.timezone.utc),
+    #   'next_rising_nautical': datetime.datetime(2024, 10, 20, 4, 31, 36, 483147, tzinfo=datetime.timezone.utc),
+    #   'next_setting_astro': datetime.datetime(2024, 10, 19, 17, 58, 53, 153284, tzinfo=datetime.timezone.utc),
+    #   'next_setting_civil': datetime.datetime(2024, 10, 19, 16, 46, 35, 140396, tzinfo=datetime.timezone.utc),
+    #   'next_setting_nautical': datetime.datetime(2024, 10, 19, 17, 22, 48, 817467, tzinfo=datetime.timezone.utc),
+    # 'previous_rising_astro': datetime.datetime(2024, 10, 19, 3, 54, 2, 160473, tzinfo=datetime.timezone.utc),
+    # 'previous_setting_astro': datetime.datetime(2024, 10, 18, 18, 0, 40, 209646, tzinfo=datetime.timezone.utc)
+    # }
+    @property
+    def sun_altitude(self) -> float:
+        """Return Sun Altitude."""
+
+        value = self._sun_data.get("altitude", None)
+        if value is not None:
+            return round(value, 3)
+        return None
+
+    @property
+    def sun_azimuth(self) -> float:
+        """Return sun Azimuth."""
+
+        value = self._sun_data.get("azimuth", None)
+        if value is not None:
+            return round(value, 3)
+        return None
+
+    @property
+    def sun_next_rising_astro(self) -> datetime:
+        """Return Sun Next Rising Astronomical."""
+
+        value = self._sun_data.get("next_rising_astro", None)
+        if value is not None and isinstance(value, datetime):
+            return value
+        return None
+
     @property
     def sun_next_rising(self) -> datetime:
         """Return Sun Next Rising Civil."""
@@ -411,10 +462,10 @@ class LocationData(BaseData):
         return None
 
     @property
-    def sun_next_rising_astro(self) -> datetime:
-        """Return Sun Next Rising Astronomical."""
+    def sun_next_setting_astro(self) -> datetime:
+        """Return Sun Next Setting Astronomical."""
 
-        value = self._sun_data.get("next_rising_astro", None)
+        value = self._sun_data.get("next_setting_astro", None)
         if value is not None and isinstance(value, datetime):
             return value
         return None
@@ -437,31 +488,79 @@ class LocationData(BaseData):
             return value
         return None
 
+    # #########################################################################
+    # Moon
+    # #########################################################################
+    # {
+    #   'altitude': -19.558854575167643,
+    #   'angular_size': 0.5461292228486443,
+    # 'avg_angular_size': 0.5181,
+    # 'avg_distance_km': 384400,
+    #   'azimuth': 354.94588859815667,
+    # 'distance': 0.002440521726384759,
+    #   'distance_km': 365096.8536642479,
+    #   'next_full_moon': datetime.datetime(2024, 11, 15, 21, 28, 28, 524917, tzinfo=datetime.timezone.utc),
+    #   'next_new_moon': datetime.datetime(2024, 11, 1, 12, 47, 6, 158960, tzinfo=datetime.timezone.utc),
+    #   'next_rising': datetime.datetime(2024, 10, 19, 16, 59, 32, 114508, tzinfo=datetime.timezone.utc),
+    #   'next_setting': datetime.datetime(2024, 10, 20, 9, 51, 3, 433953, tzinfo=datetime.timezone.utc),
+    #   'phase': 93.79664611816406,
+    # 'previous_rising': datetime.datetime(2024, 10, 18, 16, 31, 12, 195199, tzinfo=datetime.timezone.utc),
+    # 'previous_setting': datetime.datetime(2024, 10, 19, 8, 23, 51, 233716, tzinfo=datetime.timezone.utc),
+    # 'relative_distance': 0.9497836983981475,
+    #   'relative_size': 1.0541000247995451
+    # }
     @property
-    def sun_next_setting_astro(self) -> datetime:
-        """Return Sun Next Setting Astronomical."""
+    def moon_altitude(self) -> float:
+        """Return Moon Altitude."""
 
-        value = self._sun_data.get("next_setting_astro", None)
+        value = self._moon_data.get("altitude", None)
+        if value is not None:
+            return round(value, 3)
+        return None
+
+    @property
+    def moon_angular_size(self) -> float:
+        """Return Moon Angular Size in Minutes."""
+
+        value = self._moon_data.get("angular_size", None)
+        if value is not None:
+            return round(value, 3)
+        return None
+
+    @property
+    def moon_azimuth(self) -> float:
+        """Return Moon Azimuth."""
+
+        value = self._moon_data.get("azimuth", None)
+        if value is not None:
+            return round(value, 3)
+        return None
+
+    @property
+    def moon_distance_km(self) -> float:
+        """Return Moon Distance in km."""
+
+        value = self._moon_data.get("distance_km", None)
+        if value is not None:
+            return round(value, 0)
+        return None
+    
+    @property
+    def moon_next_full_moon(self) -> datetime:
+        """Return Moon Next Full Moon."""
+
+        value = self._moon_data.get("next_full_moon", None)
         if value is not None and isinstance(value, datetime):
             return value
         return None
 
     @property
-    def sun_altitude(self) -> float:
-        """Return Sun Altitude."""
+    def moon_next_new_moon(self) -> datetime:
+        """Return Moon Next New Moon."""
 
-        value = self._sun_data.get("altitude", None)
-        if value is not None:
-            return round(value, 3)
-        return None
-
-    @property
-    def sun_azimuth(self) -> float:
-        """Return sun Azimuth."""
-
-        value = self._sun_data.get("azimuth", None)
-        if value is not None:
-            return round(value, 3)
+        value = self._moon_data.get("next_new_moon", None)
+        if value is not None and isinstance(value, datetime):
+            return value
         return None
 
     @property
@@ -492,41 +591,17 @@ class LocationData(BaseData):
         return None
 
     @property
-    def moon_next_new_moon(self) -> datetime:
-        """Return Moon Next New Moon."""
+    def moon_relative_size(self) -> float:
+        """Return Moon Relative Size in %."""
 
-        value = self._moon_data.get("next_new_moon", None)
-        if value is not None and isinstance(value, datetime):
-            return value
-        return None
-
-    @property
-    def moon_next_full_moon(self) -> datetime:
-        """Return Moon Next Full Moon."""
-
-        value = self._moon_data.get("next_full_moon", None)
-        if value is not None and isinstance(value, datetime):
-            return value
-        return None
-
-    @property
-    def moon_altitude(self) -> float:
-        """Return Moon Altitude."""
-
-        value = self._moon_data.get("altitude", None)
+        value = self._moon_data.get("relative_size", None)
         if value is not None:
-            return round(value, 3)
+            return round(value * 100 - 100, 3)
         return None
 
-    @property
-    def moon_azimuth(self) -> float:
-        """Return Moon Azimuth."""
-
-        value = self._moon_data.get("azimuth", None)
-        if value is not None:
-            return round(value, 3)
-        return None
-
+    # #########################################################################
+    # Darkness
+    # #########################################################################
     @property
     def night_duration_astronomical(self) -> float:
         """Returns the remaining timespan of astronomical darkness."""
@@ -541,19 +616,11 @@ class LocationData(BaseData):
 
         return self._darkness_data.get("deep_sky_darkness_moon_rises", None)
 
-        # if self._deep_sky_darkness_moon_rises is not None:
-        #     return self._deep_sky_darkness_moon_rises
-        # return None
-
     @property
     def deep_sky_darkness_moon_sets(self) -> bool:
         """Returns true if moon sets during astronomical night."""
 
         return self._darkness_data.get("deep_sky_darkness_moon_sets", None)
-
-        # if self._deep_sky_darkness_moon_sets is not None:
-        #     return self._deep_sky_darkness_moon_sets
-        # return None
 
     @property
     def deep_sky_darkness_moon_always_up(self) -> bool:
@@ -561,19 +628,11 @@ class LocationData(BaseData):
 
         return self._darkness_data.get("deep_sky_darkness_moon_always_up", None)
 
-        # if self._deep_sky_darkness_moon_always_up is not None:
-        #     return self._deep_sky_darkness_moon_always_up
-        # return None
-
     @property
     def deep_sky_darkness_moon_always_down(self) -> bool:
         """Returns true if moon is down during astronomical night."""
 
         return self._darkness_data.get("deep_sky_darkness_moon_always_down", None)
-
-        # if self._deep_sky_darkness_moon_always_down is not None:
-        #     return self._deep_sky_darkness_moon_always_down
-        # return None
 
     @property
     def deep_sky_darkness(self) -> float:
@@ -581,10 +640,9 @@ class LocationData(BaseData):
 
         return self._darkness_data.get("deep_sky_darkness", None)
 
-        # if self._deep_sky_darkness is not None:
-        #     return self._deep_sky_darkness
-        # return None
-
+    # #########################################################################
+    # Deep Sky Forecast
+    # #########################################################################
     @property
     def deepsky_forecast_today(self) -> int:
         """Return Forecas Today in Percent."""
@@ -715,6 +773,9 @@ class LocationData(BaseData):
             return self._deepsky_forecast
         return None
 
+    # #########################################################################
+    # UpTonight
+    # #########################################################################
     @property
     def uptonight(self) -> int:
         """Return the number of best DSOs for tonight."""
@@ -731,6 +792,9 @@ class LocationData(BaseData):
             return self._uptonight
         return None
 
+    # #########################################################################
+    # UpTonight Bodies
+    # #########################################################################
     @property
     def uptonight_bodies(self) -> int:
         """Return the number of best BODIEs for tonight."""
@@ -747,6 +811,9 @@ class LocationData(BaseData):
             return self._uptonight_bodies
         return None
 
+    # #########################################################################
+    # UpTonight Comets
+    # #########################################################################
     @property
     def uptonight_comets(self) -> int:
         """Return the number of best comets for tonight."""

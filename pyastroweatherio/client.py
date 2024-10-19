@@ -31,6 +31,7 @@ from pyastroweatherio.const import (
     DEFAULT_TIMEZONE,
     FORECAST_TYPE_HOURLY,
     HEADERS,
+    LIFTED_INDEX_7TIMER_MAPPING,
     MAG_DEGRATION_MAX,
     SEEING,
     SEEING_MAX,
@@ -284,8 +285,13 @@ class AstroWeather:
                 ),
             )
         else:
-            lifted_index = details_seventimer["lifted_index"]
+            lifted_index = LIFTED_INDEX_7TIMER_MAPPING[
+                details_seventimer["lifted_index"]
+            ]
 
+        _base_data = {}
+        _location_data = {}
+        
         item = {
             # seventimer_init is "init" of 7timer astro data
             "seventimer_init": seventimer_init,  # init
@@ -500,7 +506,9 @@ class AstroWeather:
                     ),
                 )
             else:
-                lifted_index = details_seventimer["lifted_index"]
+                lifted_index = LIFTED_INDEX_7TIMER_MAPPING[
+                    details_seventimer["lifted_index"]
+                ]
 
             item["cloudcover"] = details_metno.get("cloud_area_fraction")
             item["cloud_area_fraction"] = details_metno.get("cloud_area_fraction")
