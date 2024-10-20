@@ -53,7 +53,14 @@ from pyastroweatherio.helper_functions import (
     AtmosphericRoutines,
     ConversionFunctions,
 )
-from pyastroweatherio.models import AtmosphereModel, ConditionModel, LocationModel
+from pyastroweatherio.models import (
+    AtmosphereModel,
+    ConditionModel,
+    LocationModel,
+    DSOUpTonightModel,
+    BODIESUpTonightModel,
+    COMETSUpTonightModel,
+)
 
 _LOGGER = logging.getLogger(__name__)
 _NOT_AVAILABLE = -9999
@@ -126,7 +133,9 @@ class AstroWeather:
         if self._test_datetime is not None:
             self._test_mode = True
 
+    # #########################################################################
     # Public functions
+    # #########################################################################
     async def get_location_data(
         self,
     ) -> None:
@@ -144,7 +153,9 @@ class AstroWeather:
 
         return await self._get_deepsky_forecast()
 
+    # #########################################################################
     # Private functions
+    # #########################################################################
     def _get_location(
         self,
         latitude,
@@ -161,8 +172,9 @@ class AstroWeather:
 
         try:
             return LocationModel(**location)
-        except ValidationError:
+        except ValidationError as ve:
             _LOGGER.error(f"Failed to parse location data: {location}")
+            _LOGGER.error(ve)
             return None
 
     async def _get_atmosphere(self, details_seventimer, details_metno) -> AtmosphereModel | None:
@@ -215,8 +227,9 @@ class AstroWeather:
 
         try:
             return AtmosphereModel(**atmosphere)
-        except ValidationError:
+        except ValidationError as ve:
             _LOGGER.error(f"Failed to parse atmosphere data: {atmosphere}")
+            _LOGGER.error(ve)
             return None
 
     async def _get_condition(
@@ -260,8 +273,9 @@ class AstroWeather:
 
         try:
             return ConditionModel(**condition)
-        except ValidationError:
+        except ValidationError as ve:
             _LOGGER.error(f"Failed to parse condition data: {condition}")
+            _LOGGER.error(ve)
             return None
 
     async def _calc_condition_percentage(
@@ -321,14 +335,17 @@ class AstroWeather:
 
         return condition
 
+    # #########################################################################
+    # Data for AstroWeather
+    # #########################################################################
     async def _get_location_data(self) -> None:
         """Return Forecast data"""
 
         cnv = ConversionFunctions()
         items = []
 
-        await self.retrieve_data_metno()
-        await self.retrieve_data_seventimer()
+        await self._retrieve_data_metno()
+        await self._retrieve_data_seventimer()
         now = datetime.now(UTC).replace(tzinfo=None)
 
         if self._test_datetime is not None:
@@ -442,8 +459,8 @@ class AstroWeather:
         cnv = ConversionFunctions()
         items = []
 
-        await self.retrieve_data_metno()
-        await self.retrieve_data_seventimer()
+        await self._retrieve_data_metno()
+        await self._retrieve_data_seventimer()
         now = datetime.now(UTC).replace(tzinfo=None)
 
         # Create items
@@ -544,7 +561,7 @@ class AstroWeather:
         cnv = ConversionFunctions()
         items = []
 
-        if self._forecast_data == None:
+        if self._forecast_data is None:
             await self._get_forecast_data(FORECAST_TYPE_HOURLY, 72)
 
         # Anchor timestamp
@@ -553,9 +570,9 @@ class AstroWeather:
         utc_to_local_diff = self._astro_routines.utc_to_local_diff()
         _LOGGER.debug("UTC to local diff: %s", str(utc_to_local_diff))
 
-        if self._forecast_data is None:
-            _LOGGER.error("Met.no forecast data not available")
-            return []
+        # if self._forecast_data is None:
+        #     _LOGGER.error("Met.no forecast data not available")
+        #     return []
 
         # Create forecast
         forecast_dayname = ""
@@ -575,7 +592,6 @@ class AstroWeather:
 
         start_indexes = []
         # Find start index for two nights and store the indexes
-        # _LOGGER.debug("Forecast data length: %s", str(len(self._forecast_data)))
         for index, details_forecast in enumerate(self._forecast_data):
             if details_forecast.forecast_time.hour % 24 == sun_next_rising.hour and len(start_indexes) == 0:
                 start_indexes.append(0)
@@ -602,26 +618,6 @@ class AstroWeather:
                     start_forecast_hour = details_forecast.forecast_time.hour
                     start_weather = details_forecast.weather6
                     start_precipitation_amount6 = details_forecast.precipitation_amount6
-
-                # _LOGGER.debug(
-                #     "Idex: %d, Hour of day: %d, cloud_area_fraction: %s %s %s, seeing: %s, transparency: %s, wind_speed: %s, condition: %s",
-                #     index,
-                #     details_forecast.forecast_time.hour,
-                #     str(details_forecast.cloud_area_fraction_high_percentage),
-                #     str(details_forecast.cloud_area_fraction_medium_percentage),
-                #     str(details_forecast.cloud_area_fraction_low_percentage),
-                #     str(details_forecast.seeing),
-                #     str(details_forecast.transparency),
-                #     str(details_forecast.wind10m_speed),
-                #     await self._calc_condition_percentage(
-                #         details_forecast.cloud_area_fraction_high_percentage,
-                #         details_forecast.cloud_area_fraction_medium_percentage,
-                #         details_forecast.cloud_area_fraction_low_percentage,
-                #         details_forecast.seeing,
-                #         details_forecast.transparency,
-                #         details_forecast.wind10m_speed,
-                #     ),
-                # )
 
                 # Calculate Condition
                 if len(interval_points) <= int(math.floor(night_duration_astronomical / 3600)):
@@ -667,12 +663,15 @@ class AstroWeather:
 
         return items
 
+    # #########################################################################
+    # UpTonight
+    # #########################################################################
     async def _get_deepsky_objects(self):
         """Return Deepsky Objects for today."""
 
         items = []
 
-        await self.retrieve_data_uptonight()
+        await self._retrieve_data_uptonight()
 
         # Create list of deep sky objects
         if self._weather_data_uptonight is not None:
@@ -714,9 +713,13 @@ class AstroWeather:
                     "visual_magnitude": dso_visual_magnitude.get(str(row), ""),
                     "meridian_transit": dso_meridian_transit_utc,
                     "meridian_antitransit": dso_meridian_antitransit_utc,
-                    "foto": dso_foto.get(str(row), ""),
+                    "foto": dso_foto.get(str(row), 0),
                 }
-                items.append(DSOUpTonight(item))
+                try:
+                    items.append(DSOUpTonightModel(**item))
+                except ValidationError as ve:
+                    _LOGGER.error(f"Failed to parse deep sky object data: {item}")
+                    _LOGGER.error(ve)
 
             return items
         return None
@@ -726,7 +729,7 @@ class AstroWeather:
 
         items = []
 
-        await self.retrieve_data_uptonight()
+        await self._retrieve_data_uptonight()
 
         # Create list of bodies
         if self._weather_data_uptonight_bodies is not None:
@@ -762,9 +765,13 @@ class AstroWeather:
                     "max_altitude_time": body_max_altitude_time_utc,
                     "visual_magnitude": body_visual_magnitude.get(str(row), ""),
                     "meridian_transit": body_meridian_transit_utc,
-                    "foto": body_foto.get(str(row), ""),
+                    "foto": body_foto.get(str(row), 0),
                 }
-                items.append(BODIESUpTonight(item))
+                try:
+                    items.append(BODIESUpTonightModel(**item))
+                except ValidationError as ve:
+                    _LOGGER.error(f"Failed to parse bodies data: {item}")
+                    _LOGGER.error(ve)
 
             return items
         return None
@@ -774,7 +781,7 @@ class AstroWeather:
 
         items = []
 
-        await self.retrieve_data_uptonight()
+        await self._retrieve_data_uptonight()
 
         # Create list of comets
         if self._weather_data_uptonight_comets is not None:
@@ -809,210 +816,19 @@ class AstroWeather:
                     "visual_magnitude": visual_magnitude.get(str(row), ""),
                     "altitude": altitude.get(str(row), ""),
                     "azimuth": azimuth.get(str(row), ""),
-                    # "ra": body_azimuth.get(str(row), ""),
-                    # "dec": body_azimuth.get(str(row), ""),
                     "rise_time": rise_time_local_utc,
                     "set_time": set_time_local_utc,
                 }
-                items.append(COMETSUpTonight(item))
+                try:
+                    items.append(COMETSUpTonightModel(**item))
+                except ValidationError as ve:
+                    _LOGGER.error(f"Failed to parse comets data: {item}")
+                    _LOGGER.error(ve)
 
             return items
         return None
 
-    async def retrieve_data_seventimer(self):
-        """Retrieves current data from 7timer."""
-
-        if ((datetime.now() - self._weather_data_seventimer_timestamp).total_seconds()) > DEFAULT_CACHE_TIMEOUT:
-            self._weather_data_seventimer_timestamp = datetime.now()
-            _LOGGER.debug("Updating data from 7Timer")
-
-            astro_dataseries = {}
-
-            # Testing
-            if not self._experimental_features:
-                if self._test_mode:
-                    if os.path.isfile("debug/astro.json"):
-                        _LOGGER.debug("Reading 7Timer from file")
-                        with open("debug/astro.json") as json_file:
-                            astro_dataseries_json = json.load(json_file)
-                            astro_dataseries = astro_dataseries_json.get("dataseries", {})
-                            json_data_astro = {"init": astro_dataseries_json.get("init")}
-                    else:
-                        json_data_astro = await self.async_request_seventimer("astro", "get")
-                        astro_dataseries = json_data_astro.get("dataseries", {})
-                else:
-                    json_data_astro = await self.async_request_seventimer("astro", "get")
-                    astro_dataseries = json_data_astro.get("dataseries", {})
-
-            if astro_dataseries != {} and not self._experimental_features:
-                self._weather_data_seventimer = astro_dataseries
-                self._weather_data_seventimer_init = json_data_astro.get("init")
-            else:
-                # Fake 7timer weather data if service is broken
-                # This eliminates consideration of seeing, transparency, and lifted_index
-                # and switches automatically to experimental functions.
-                self._weather_data_seventimer = []
-                for index in range(0, 20):
-                    self._weather_data_seventimer.append(
-                        {
-                            "timepoint": index * 3,
-                            "seeing": _NOT_AVAILABLE,
-                            "transparency": _NOT_AVAILABLE,
-                            "lifted_index": _NOT_AVAILABLE,
-                        }
-                    )
-                self._weather_data_seventimer_init = datetime.now(UTC).replace(tzinfo=None).strftime("%Y%m%d%H")
-        else:
-            _LOGGER.debug("Using cached data for 7Timer")
-
-    async def async_request_seventimer(self, product="astro", method="get") -> dict:
-        """Make a request against the 7timer API."""
-
-        use_running_session = self._session and not self._session.closed
-
-        if use_running_session:
-            session = self._session
-        else:
-            session = ClientSession(timeout=ClientTimeout(total=DEFAULT_TIMEOUT))
-
-        # BASE_URL_SEVENTIMER = "https://www.7timer.info/bin/api.pl?lon=XX.XX&lat=YY.YY&product=astro&output=json"
-        url = (
-            str(f"{BASE_URL_SEVENTIMER}")
-            + "?lon="
-            + str("%.1f" % round(self._longitude, 2))
-            + "&lat="
-            + str("%.1f" % round(self._latitude, 2))
-            + "&product="
-            + str(product)
-            + "&output=json"
-        )
-        try:
-            _LOGGER.debug(f"Query url: {url}")
-            async with session.request(method, url, headers=HEADERS, ssl=False) as resp:
-                resp.raise_for_status()
-                plain = str(await resp.text()).replace("\n", " ")
-                data = json.loads(plain)
-
-                if self._test_mode:
-                    json_string = json.dumps(data)
-                    with open("debug/" + product + ".json", "w") as outfile:
-                        outfile.write(json_string)
-
-                return data
-        except JSONDecodeError as jsonerr:
-            _LOGGER.error(f"JSON decode error, expecting value: {jsonerr}")
-            return {}
-        except asyncio.TimeoutError as tex:
-            _LOGGER.error(f"Request to endpoint timed out: {tex}")
-            return {}
-        except ClientError as err:
-            _LOGGER.error(f"Error requesting data: {err}")
-            return {}
-
-        finally:
-            if not use_running_session:
-                await session.close()
-
-    def _get_data_seventimer_timer(self, anchor_timestamp, datetime):
-        """Return 7Timer datapoint of interest."""
-
-        seventimer_index = 0
-        for index, row7 in enumerate(self._weather_data_seventimer):
-            if anchor_timestamp + timedelta(hours=row7["timepoint"]) > datetime:
-                seventimer_index = index - 1
-                break
-            # index += 1
-        if seventimer_index >= len(self._weather_data_seventimer):
-            return {
-                "timepoint": row7["timepoint"],
-                "seeing": _NOT_AVAILABLE,
-                "transparency": _NOT_AVAILABLE,
-                "lifted_index": _NOT_AVAILABLE,
-            }
-        else:
-            return self._weather_data_seventimer[seventimer_index]
-
-    async def retrieve_data_metno(self):
-        """Retrieves current data from met."""
-
-        if ((datetime.now() - self._weather_data_metno_timestamp).total_seconds()) > DEFAULT_CACHE_TIMEOUT:
-            self._weather_data_metno_timestamp = datetime.now()
-            _LOGGER.debug("Updating data from Met.no")
-
-            dataseries = None
-
-            # Testing
-            if self._test_mode:
-                if os.path.isfile("debug/met.json"):
-                    _LOGGER.debug("Reading Met.no data from file")
-                    with open("debug/met.json") as json_file:
-                        dataseries = json.load(json_file).get("properties", {}).get("timeseries")
-                else:
-                    json_data_metno = await self.async_request_met("met", "get")
-                    dataseries = json_data_metno.get("properties", {}).get("timeseries")
-            else:
-                json_data_metno = await self.async_request_met("met", "get")
-                dataseries = json_data_metno.get("properties", {}).get("timeseries")
-
-            if dataseries is not None:
-                if len(dataseries) > 0:
-                    self._weather_data_metno = dataseries
-                    self._weather_data_metno_init = dataseries[0].get("time")
-        else:
-            _LOGGER.debug("Using cached data for Met.no")
-
-    async def async_request_met(self, product="met", method="get") -> dict:
-        """Make a request against the 7timer API."""
-
-        use_running_session = self._session and not self._session.closed
-
-        if use_running_session:
-            session = self._session
-        else:
-            session = ClientSession(
-                timeout=ClientTimeout(total=DEFAULT_TIMEOUT),
-            )
-
-        # BASE_URL_MET = "https://api.met.no/weatherapi/locationforecast/2.0/complete?altitude=XX&lat=XX.XX&lon=XX.XX"
-        url = (
-            str(f"{BASE_URL_MET}")
-            + "?lon="
-            + str("%.1f" % round(self._location_data.longitude, 2))
-            + "&lat="
-            + str("%.1f" % round(self._location_data.latitude, 2))
-            + "&altitude="
-            + str(int(self._location_data.elevation))
-        )
-        print(url)
-        try:
-            _LOGGER.debug(f"Query url: {url}")
-            async with session.request(method, url, headers=HEADERS) as resp:
-                resp.raise_for_status()
-                # plain = str(await resp.text()).replace("\n", " ")
-                # data = json.loads(plain)
-                data = await resp.json()
-
-                if self._test_mode:
-                    json_string = json.dumps(data)
-                    with open("debug/" + product + ".json", "w") as outfile:
-                        outfile.write(json_string)
-
-                return data
-        except JSONDecodeError as jsonerr:
-            _LOGGER.error(f"JSON decode error, expecting value: {jsonerr}")
-            return {}
-        except asyncio.TimeoutError as tex:
-            _LOGGER.error(f"Request to endpoint timed out: {tex}")
-            return {}
-        except ClientError as err:
-            _LOGGER.error(f"Error requesting data: {err}")
-            return {}
-
-        finally:
-            if not use_running_session:
-                await session.close()
-
-    async def retrieve_data_uptonight(self):
+    async def _retrieve_data_uptonight(self):
         """Retrieves current data from uptonight"""
 
         if ((datetime.now() - self._data_uptonight_timestamp).total_seconds()) > DEFAULT_CACHE_TIMEOUT:
@@ -1064,3 +880,202 @@ class AstroWeather:
             self._weather_data_uptonight_comets = dataseries_comets
         else:
             _LOGGER.debug("Using cached data for uptonight")
+
+    # #########################################################################
+    # 7Timer
+    # #########################################################################
+    async def _retrieve_data_seventimer(self):
+        """Retrieves current data from 7timer."""
+
+        if ((datetime.now() - self._weather_data_seventimer_timestamp).total_seconds()) > DEFAULT_CACHE_TIMEOUT:
+            self._weather_data_seventimer_timestamp = datetime.now()
+            _LOGGER.debug("Updating data from 7Timer")
+
+            astro_dataseries = {}
+
+            # Testing
+            if not self._experimental_features:
+                if self._test_mode:
+                    if os.path.isfile("debug/astro.json"):
+                        _LOGGER.debug("Reading 7Timer from file")
+                        with open("debug/astro.json") as json_file:
+                            astro_dataseries_json = json.load(json_file)
+                            astro_dataseries = astro_dataseries_json.get("dataseries", {})
+                            json_data_astro = {"init": astro_dataseries_json.get("init")}
+                    else:
+                        json_data_astro = await self._async_request_seventimer("astro", "get")
+                        astro_dataseries = json_data_astro.get("dataseries", {})
+                else:
+                    json_data_astro = await self._async_request_seventimer("astro", "get")
+                    astro_dataseries = json_data_astro.get("dataseries", {})
+
+            if astro_dataseries != {} and not self._experimental_features:
+                self._weather_data_seventimer = astro_dataseries
+                self._weather_data_seventimer_init = json_data_astro.get("init")
+            else:
+                # Fake 7timer weather data if service is broken
+                # This eliminates consideration of seeing, transparency, and lifted_index
+                # and switches automatically to experimental functions.
+                self._weather_data_seventimer = []
+                for index in range(0, 20):
+                    self._weather_data_seventimer.append(
+                        {
+                            "timepoint": index * 3,
+                            "seeing": _NOT_AVAILABLE,
+                            "transparency": _NOT_AVAILABLE,
+                            "lifted_index": _NOT_AVAILABLE,
+                        }
+                    )
+                self._weather_data_seventimer_init = datetime.now(UTC).replace(tzinfo=None).strftime("%Y%m%d%H")
+        else:
+            _LOGGER.debug("Using cached data for 7Timer")
+
+    async def _async_request_seventimer(self, product="astro", method="get") -> dict:
+        """Make a request against the 7timer API."""
+
+        use_running_session = self._session and not self._session.closed
+
+        if use_running_session:
+            session = self._session
+        else:
+            session = ClientSession(timeout=ClientTimeout(total=DEFAULT_TIMEOUT))
+
+        # BASE_URL_SEVENTIMER = "https://www.7timer.info/bin/api.pl?lon=XX.XX&lat=YY.YY&product=astro&output=json"
+        url = (
+            str(f"{BASE_URL_SEVENTIMER}")
+            + "?lon="
+            + str("%.1f" % round(self._location_data.longitude, 2))
+            + "&lat="
+            + str("%.1f" % round(self._location_data.latitude, 2))
+            + "&product="
+            + str(product)
+            + "&output=json"
+        )
+        try:
+            _LOGGER.debug(f"Query url: {url}")
+            async with session.request(method, url, headers=HEADERS, ssl=False) as resp:
+                resp.raise_for_status()
+                plain = str(await resp.text()).replace("\n", " ")
+                data = json.loads(plain)
+
+                if self._test_mode:
+                    json_string = json.dumps(data)
+                    with open("debug/" + product + ".json", "w") as outfile:
+                        outfile.write(json_string)
+
+                return data
+        except JSONDecodeError as jsonerr:
+            _LOGGER.error(f"JSON decode error, expecting value: {jsonerr}")
+            return {}
+        except asyncio.TimeoutError as tex:
+            _LOGGER.error(f"Request to endpoint timed out: {tex}")
+            return {}
+        except ClientError as err:
+            _LOGGER.error(f"Error requesting data: {err}")
+            return {}
+
+        finally:
+            if not use_running_session:
+                await session.close()
+
+    def _get_data_seventimer_timer(self, anchor_timestamp, datetime):
+        """Return 7Timer datapoint of interest."""
+
+        seventimer_index = 0
+        for index, row7 in enumerate(self._weather_data_seventimer):
+            if anchor_timestamp + timedelta(hours=row7["timepoint"]) > datetime:
+                seventimer_index = index - 1
+                break
+            # index += 1
+        if seventimer_index >= len(self._weather_data_seventimer):
+            return {
+                "timepoint": row7["timepoint"],
+                "seeing": _NOT_AVAILABLE,
+                "transparency": _NOT_AVAILABLE,
+                "lifted_index": _NOT_AVAILABLE,
+            }
+        else:
+            return self._weather_data_seventimer[seventimer_index]
+
+    # #########################################################################
+    # Met.no
+    # #########################################################################
+    async def _retrieve_data_metno(self):
+        """Retrieves current data from met."""
+
+        if ((datetime.now() - self._weather_data_metno_timestamp).total_seconds()) > DEFAULT_CACHE_TIMEOUT:
+            self._weather_data_metno_timestamp = datetime.now()
+            _LOGGER.debug("Updating data from Met.no")
+
+            dataseries = None
+
+            # Testing
+            if self._test_mode:
+                if os.path.isfile("debug/met.json"):
+                    _LOGGER.debug("Reading Met.no data from file")
+                    with open("debug/met.json") as json_file:
+                        dataseries = json.load(json_file).get("properties", {}).get("timeseries")
+                else:
+                    json_data_metno = await self._async_request_met("met", "get")
+                    dataseries = json_data_metno.get("properties", {}).get("timeseries")
+            else:
+                json_data_metno = await self._async_request_met("met", "get")
+                dataseries = json_data_metno.get("properties", {}).get("timeseries")
+
+            if dataseries is not None:
+                if len(dataseries) > 0:
+                    self._weather_data_metno = dataseries
+                    self._weather_data_metno_init = dataseries[0].get("time")
+        else:
+            _LOGGER.debug("Using cached data for Met.no")
+
+    async def _async_request_met(self, product="met", method="get") -> dict:
+        """Make a request against the 7timer API."""
+
+        use_running_session = self._session and not self._session.closed
+
+        if use_running_session:
+            session = self._session
+        else:
+            session = ClientSession(
+                timeout=ClientTimeout(total=DEFAULT_TIMEOUT),
+            )
+
+        # BASE_URL_MET = "https://api.met.no/weatherapi/locationforecast/2.0/complete?altitude=XX&lat=XX.XX&lon=XX.XX"
+        url = (
+            str(f"{BASE_URL_MET}")
+            + "?lon="
+            + str("%.1f" % round(self._location_data.longitude, 2))
+            + "&lat="
+            + str("%.1f" % round(self._location_data.latitude, 2))
+            + "&altitude="
+            + str(int(self._location_data.elevation))
+        )
+
+        try:
+            _LOGGER.debug(f"Query url: {url}")
+            async with session.request(method, url, headers=HEADERS) as resp:
+                resp.raise_for_status()
+                # plain = str(await resp.text()).replace("\n", " ")
+                # data = json.loads(plain)
+                data = await resp.json()
+
+                if self._test_mode:
+                    json_string = json.dumps(data)
+                    with open("debug/" + product + ".json", "w") as outfile:
+                        outfile.write(json_string)
+
+                return data
+        except JSONDecodeError as jsonerr:
+            _LOGGER.error(f"JSON decode error, expecting value: {jsonerr}")
+            return {}
+        except asyncio.TimeoutError as tex:
+            _LOGGER.error(f"Request to endpoint timed out: {tex}")
+            return {}
+        except ClientError as err:
+            _LOGGER.error(f"Error requesting data: {err}")
+            return {}
+
+        finally:
+            if not use_running_session:
+                await session.close()

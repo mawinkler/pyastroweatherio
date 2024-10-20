@@ -2,7 +2,8 @@
 
 import math
 from datetime import datetime, timezone
-from pprint import pprint as pp
+
+# from pprint import pprint as pp
 
 from pyastroweatherio.const import (
     CONDITION,
@@ -30,8 +31,6 @@ class ConditionData:
         self._forecast_time = data["forecast_time"]
 
         self._condition_data = data["condition_data"]
-
-        pp(self._condition_data)
 
     @property
     def seventimer_init(self) -> datetime:
@@ -288,10 +287,8 @@ class LocationData(ConditionData):
         super().__init__(data)
         self._time_shift = data["time_shift"]
         self._forecast_length = data["forecast_length"]
+
         self._location_data = data["location_data"]
-        # self._latitude = data["latitude"]
-        # self._longitude = data["longitude"]
-        # self._elevation = data["elevation"]
         self._sun_data = data["sun_data"]
         self._moon_data = data["moon_data"]
         self._darkness_data = data["darkness_data"]
@@ -300,10 +297,6 @@ class LocationData(ConditionData):
         self._uptonight = data["uptonight"]
         self._uptonight_bodies = data["uptonight_bodies"]
         self._uptonight_comets = data["uptonight_comets"]
-
-        pp(self._sun_data)
-        pp(self._moon_data)
-        pp(self._darkness_data)
 
     # #########################################################################
     # Location
@@ -930,7 +923,7 @@ class DSOUpTonight:
         return None
 
     @property
-    def size(self) -> str:
+    def size(self) -> float:
         """Return size of the object."""
 
         if self._size is not None:
@@ -962,7 +955,7 @@ class DSOUpTonight:
         return None
 
     @property
-    def foto(self) -> str:
+    def foto(self) -> float:
         """Return fraction of time observable of the object."""
 
         if self._foto is not None:
@@ -1031,7 +1024,7 @@ class BODIESUpTonight:
         return None
 
     @property
-    def foto(self) -> str:
+    def foto(self) -> float:
         """Return fraction of time observable of the body."""
 
         if self._foto is not None:
@@ -1050,8 +1043,6 @@ class COMETSUpTonight:
         self._visual_magnitude = data["visual_magnitude"]
         self._altitude = data["altitude"]
         self._azimuth = data["azimuth"]
-        # self._ra = data["ra"]
-        # self._dec = data["dec"]
         self._rise_time = data["rise_time"]
         self._set_time = data["set_time"]
 

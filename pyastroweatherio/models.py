@@ -11,6 +11,8 @@ from pyastroweatherio.const import (
 
 
 class LocationModel(BaseModel):
+    """Model for the location"""
+
     latitude: float = Field(default=DEFAULT_LATITUDE)
     longitude: float = Field(default=DEFAULT_LONGITUDE)
     elevation: float = Field(default=DEFAULT_ELEVATION)
@@ -18,6 +20,8 @@ class LocationModel(BaseModel):
 
 
 class ConditionModel(BaseModel):
+    """Model for weather conditions"""
+
     cloudcover: float
     cloud_area_fraction: float
     cloud_area_fraction_high: float
@@ -40,12 +44,16 @@ class ConditionModel(BaseModel):
 
 
 class AtmosphereModel(BaseModel):
+    """Model for atmosperic conditions"""
+
     seeing: float
     transparency: float
     lifted_index: float
 
 
 class SunModel(BaseModel):
+    """Model for Sun data"""
+
     altitude: float
     azimuth: float
     next_rising_astro: datetime
@@ -59,6 +67,8 @@ class SunModel(BaseModel):
 
 
 class MoonModel(BaseModel):
+    """Model for Moon data"""
+
     altitude: float
     angular_size: float
     avg_angular_size: float
@@ -78,8 +88,50 @@ class MoonModel(BaseModel):
 
 
 class DarknessModel(BaseModel):
+    """Model for deep sky darkness"""
+
     deep_sky_darkness_moon_rises: bool
     deep_sky_darkness_moon_sets: bool
     deep_sky_darkness_moon_always_up: bool
     deep_sky_darkness_moon_always_down: bool
     deep_sky_darkness: float
+
+
+class DSOUpTonightModel(BaseModel):
+    """Model for DSO objects"""
+
+    id: str
+    target_name: str
+    type: str
+    constellation: str
+    size: float
+    visual_magnitude: float
+    meridian_transit: datetime | str
+    meridian_antitransit: datetime | str
+    foto: float
+
+
+class BODIESUpTonightModel(BaseModel):
+    """Model for bodies"""
+
+    target_name: str
+    max_altitude: float
+    azimuth: float
+    max_altitude_time: datetime
+    visual_magnitude: float
+    meridian_transit: datetime | str
+    foto: float
+
+
+class COMETSUpTonightModel(BaseModel):
+    """Model for comets"""
+
+    designation: str
+    distance_au_earth: float
+    distance_au_sun: float
+    absolute_magnitude: float
+    visual_magnitude: float
+    altitude: float
+    azimuth: float
+    rise_time: datetime
+    set_time: datetime

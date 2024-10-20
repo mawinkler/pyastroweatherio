@@ -617,8 +617,9 @@ class AstronomicalRoutines:
         if self._sun_data is not None:
             try:
                 return SunModel(**self._sun_data)
-            except ValidationError:
+            except ValidationError as ve:
                 _LOGGER.error(f"Failed to parse Sun data: {self._sun_data}")
+                _LOGGER.error(ve)
                 return None
         return None
 
@@ -893,8 +894,9 @@ class AstronomicalRoutines:
         if self._moon_data is not None:
             try:
                 return MoonModel(**self._moon_data)
-            except ValidationError:
+            except ValidationError as ve:
                 _LOGGER.error(f"Failed to parse Moon data: {self._moon_data}")
+                _LOGGER.error(ve)
                 return None
         return None
 
@@ -1004,14 +1006,6 @@ class AstronomicalRoutines:
         self._moon_data["relative_distance"] = self._moon_data["distance_km"] / self._moon_data["avg_distance_km"]
         self._moon_data["relative_size"] = self._moon_data["angular_size"] / self._moon_data["avg_angular_size"]
 
-        # Output
-        print(f"Moon distance from observer: {self._moon_data["distance_km"]:.2f} km")
-        print(f"Relative distance compared to average: {self._moon_data["relative_distance"]:.3f}")
-        print(f"Moon size: {self._moon_data["angular_size"]:.4f} degrees")
-        print(f"Moon size: {self._moon_data["angular_size"] * 60:.4f} minutes")
-        print(f"Relative size compared to average: {self._moon_data["relative_size"]:.3f}")
-        print(self._moon_data)
-
     # #########################################################################
     # Darkness
     # #########################################################################
@@ -1037,8 +1031,9 @@ class AstronomicalRoutines:
 
         try:
             return DarknessModel(**self._darkness_data)
-        except ValidationError:
+        except ValidationError as ve:
             _LOGGER.error(f"Failed to parse darkness data: {self._darkness_data}")
+            _LOGGER.error(ve)
             return None
 
     async def night_duration_astronomical(self) -> float:
