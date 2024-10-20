@@ -1,8 +1,7 @@
 """Defines the Data Classes used."""
 
-from datetime import datetime, timezone
 import math
-
+from datetime import datetime, timezone
 from pprint import pprint as pp
 
 from pyastroweatherio.const import (
@@ -22,7 +21,7 @@ from pyastroweatherio.const import (
 )
 
 
-class BaseData:
+class ConditionData:
     """A representation of the base class for AstroWeather Data."""
 
     def __init__(self, data):
@@ -30,25 +29,9 @@ class BaseData:
         self._seventimer_timepoint = data["seventimer_timepoint"]
         self._forecast_time = data["forecast_time"]
 
-        self._cloudcover = data["cloudcover"]
-        self._cloud_area_fraction = data["cloud_area_fraction"]
-        self._cloud_area_fraction_high = data["cloud_area_fraction_high"]
-        self._cloud_area_fraction_low = data["cloud_area_fraction_low"]
-        self._cloud_area_fraction_medium = data["cloud_area_fraction_medium"]
-        self._fog_area_fraction = data["fog_area_fraction"]
-        self._seeing = data["seeing"]
-        self._transparency = data["transparency"]
-        self._condition_percentage = data["condition_percentage"]
-        self._lifted_index = data["lifted_index"]
-        self._rh2m = data["rh2m"]
-        self._wind_speed = data["wind_speed"]
-        self._wind_from_direction = data["wind_from_direction"]
-        self._temp2m = data["temp2m"]
-        self._dewpoint2m = data["dewpoint2m"]
-        self._weather = data["weather"]
-        self._weather6 = data["weather6"]
-        self._precipitation_amount = data["precipitation_amount"]
-        self._precipitation_amount6 = data["precipitation_amount6"]
+        self._condition_data = data["condition_data"]
+
+        pp(self._condition_data)
 
     @property
     def seventimer_init(self) -> datetime:
@@ -81,144 +64,162 @@ class BaseData:
     def condition_percentage(self) -> int:
         """Return condition based on cloud cover, seeing and transparency."""
 
-        if self._condition_percentage is not None:
-            return int(self._condition_percentage)
+        value = self._condition_data.condition_percentage
+        if value is not None:
+            return int(value)
         return None
 
     @property
     def cloudcover(self) -> int:
         """Return Cloud Coverage."""
 
-        if self._cloudcover is not None:
-            return int(self._cloudcover)
+        value = self._condition_data.cloudcover
+        if value is not None:
+            return int(value)
         return None
 
     @property
     def cloudcover_percentage(self) -> int:
         """Return Cloud Cover Percentage."""
 
-        if self._cloudcover is not None:
-            return int(self._cloudcover)
+        value = self._condition_data.cloudcover
+        if value is not None:
+            return int(value)
         return None
 
     @property
     def cloudless_percentage(self) -> int:
         """Return Cloudless Percentage."""
 
-        if self._cloudcover is not None:
-            return 100 - int(self._cloudcover)
+        value = self._condition_data.cloudcover
+        if value is not None:
+            return 100 - int(value)
         return None
 
     @property
     def cloud_area_fraction_percentage(self) -> int:
         """Return Cloud Cover Percentage."""
 
-        if self._cloud_area_fraction is not None:
-            return int(self._cloud_area_fraction)
+        value = self._condition_data.cloud_area_fraction
+        if value is not None:
+            return int(value)
         return None
 
     @property
     def cloud_area_fraction_high_percentage(self) -> int:
         """Return Cloud Cover Percentage."""
 
-        if self._cloud_area_fraction_high is not None:
-            return int(self._cloud_area_fraction_high)
+        value = self._condition_data.cloud_area_fraction_high
+        if value is not None:
+            return int(value)
         return None
 
     @property
     def cloud_area_fraction_medium_percentage(self) -> int:
         """Return Cloud Cover Percentage."""
 
-        if self._cloud_area_fraction_medium is not None:
-            return int(self._cloud_area_fraction_medium)
+        value = self._condition_data.cloud_area_fraction_medium
+        if value is not None:
+            return int(value)
         return None
 
     @property
     def cloud_area_fraction_low_percentage(self) -> int:
         """Return Cloud Cover Percentage."""
 
-        if self._cloud_area_fraction_low is not None:
-            return int(self._cloud_area_fraction_low)
+        value = self._condition_data.cloud_area_fraction_low
+        if value is not None:
+            return int(value)
         return None
 
     @property
     def fog_area_fraction_percentage(self) -> int:
         """Return Fog Area Percentage."""
 
-        if self._fog_area_fraction is not None:
-            return int(self._fog_area_fraction)
+        value = self._condition_data.fog_area_fraction
+        if value is not None:
+            return int(value)
         return None
 
     @property
     def seeing(self) -> float:
         """Return Seeing."""
 
-        if self._seeing is not None:
-            return round(self._seeing, 2)
+        value = self._condition_data.seeing
+        if value is not None:
+            return round(value, 2)
         return None
 
     @property
     def seeing_percentage(self) -> int:
         """Return Seeing."""
 
-        if self._seeing is not None:
-            return int(100 - self._seeing * 100 / SEEING_MAX)
+        value = self._condition_data.seeing
+        if value is not None:
+            return int(100 - value * 100 / SEEING_MAX)
         return None
 
     @property
     def transparency(self) -> float:
         """Return Transparency."""
 
-        if self._transparency is not None:
-            return round(self._transparency, 2)
+        value = self._condition_data.transparency
+        if value is not None:
+            return round(value, 2)
         return None
 
     @property
     def transparency_percentage(self) -> int:
         """Return Transparency."""
 
-        if self._transparency is not None:
-            return int(100 - self._transparency * 100 / MAG_DEGRATION_MAX)
+        value = self._condition_data.transparency
+        if value is not None:
+            return int(100 - value * 100 / MAG_DEGRATION_MAX)
         return None
 
     @property
     def lifted_index(self) -> float:
         """Return Lifted Index."""
 
-        if self._lifted_index is not None:
-            return round(self._lifted_index, 2)
+        value = self._condition_data.lifted_index
+        if value is not None:
+            return round(value, 2)
         return None
 
     @property
     def rh2m(self) -> int:
         """Return 2m Relative Humidity."""
 
-        if self._rh2m is not None:
-            return self._rh2m
+        value = self._condition_data.rh2m
+        if value is not None:
+            return value
         return None
 
     @property
     def wind10m_speed(self) -> float:
         """Return 10m Wind Speed."""
 
-        if self._wind_speed is not None:
-            return self._wind_speed
+        value = self._condition_data.wind_speed
+        if value is not None:
+            return value
         return None
 
     @property
     def calm_percentage(self) -> int:
         """Return 10m Wind Speed."""
 
-        if self._wind_speed is not None:
-            return int(100 - self._wind_speed * (100 / WIND10M_MAX))
+        value = self._condition_data.wind_speed
+        if value is not None:
+            return int(100 - value * (100 / WIND10M_MAX))
         return None
 
     @property
     def wind10m_direction(self) -> str:
         """Return 10m Wind Direction."""
 
-        if self._wind_from_direction is not None:
-            direction = self._wind_from_direction
+        value = self._condition_data.wind_from_direction
+        if value is not None:
+            direction = value
             direction += 22.5
             direction = direction % 360
             direction = int(direction / 45)  # values 0 to 7
@@ -229,61 +230,68 @@ class BaseData:
     def temp2m(self) -> int:
         """Return 2m Temperature."""
 
-        if self._temp2m is not None:
-            return self._temp2m
+        value = self._condition_data.temp2m
+        if value is not None:
+            return value
         return None
 
     @property
     def dewpoint2m(self) -> float:
         """Return 2m Dew Point."""
 
-        if self._dewpoint2m is not None:
-            return round(self._dewpoint2m, 1)
+        value = self._condition_data.dewpoint2m
+        if value is not None:
+            return round(value, 1)
         return None
 
     @property
     def weather(self) -> str:
         """Return Current Weather."""
 
-        if self._weather is not None:
-            return self._weather.replace("_", " ").capitalize()
+        value = self._condition_data.weather
+        if value is not None:
+            return value.replace("_", " ").capitalize()
         return None
 
     @property
     def weather6(self) -> str:
         """Return Current Weather."""
 
-        if self._weather6 is not None:
-            return self._weather6.replace("_", " ").capitalize()
+        value = self._condition_data.weather6
+        if value is not None:
+            return value.replace("_", " ").capitalize()
         return None
 
     @property
     def precipitation_amount(self) -> float:
         """Return Current Precipitation Amount."""
 
-        if self._precipitation_amount is not None:
-            return self._precipitation_amount
+        value = self._condition_data.precipitation_amount
+        if value is not None:
+            return value
         return None
 
     @property
     def precipitation_amount6(self) -> float:
         """Return Precipitation Amount in next 6 hours."""
 
-        if self._precipitation_amount6 is not None:
-            return self._precipitation_amount6
+        value = self._condition_data.precipitation_amount6
+        if value is not None:
+            return value
         return None
 
 
-class LocationData(BaseData):
+class LocationData(ConditionData):
     """A representation of the Location AstroWeather Data."""
 
     def __init__(self, data):
         super().__init__(data)
         self._time_shift = data["time_shift"]
         self._forecast_length = data["forecast_length"]
-        self._latitude = data["latitude"]
-        self._longitude = data["longitude"]
-        self._elevation = data["elevation"]
+        self._location_data = data["location_data"]
+        # self._latitude = data["latitude"]
+        # self._longitude = data["longitude"]
+        # self._elevation = data["elevation"]
         self._sun_data = data["sun_data"]
         self._moon_data = data["moon_data"]
         self._darkness_data = data["darkness_data"]
@@ -320,24 +328,24 @@ class LocationData(BaseData):
     def latitude(self) -> float:
         """Return Latitude."""
 
-        if self._latitude is not None:
-            return self._latitude
+        if self._location_data.latitude is not None:
+            return self._location_data.latitude
         return None
 
     @property
     def longitude(self) -> float:
         """Return Longitude."""
 
-        if self._longitude is not None:
-            return self._longitude
+        if self._location_data.longitude is not None:
+            return self._location_data.longitude
         return None
 
     @property
     def elevation(self) -> float:
         """Return Elevation."""
 
-        if self._elevation is not None:
-            return self._elevation
+        if self._location_data.elevation is not None:
+            return self._location_data.elevation
         return None
 
     # #########################################################################
@@ -353,10 +361,11 @@ class LocationData(BaseData):
     def wind10m_speed_plain(self) -> str:
         """Return wind speed plain."""
 
-        if self._wind_speed is not None:
+        value = self._condition_data.wind_speed
+        if value is not None:
             wind_speed_value = 0
             for (start, end), derate in zip(WIND10M_RANGE, WIND10M_VALUE):
-                if start <= self._wind_speed <= end:
+                if start <= value <= end:
                     wind_speed_value = derate
 
             return WIND10M_PLAIN[max(0, min(7, wind_speed_value - 1))]
@@ -366,10 +375,11 @@ class LocationData(BaseData):
     def lifted_index_plain(self) -> str:
         """Return Lifted Index plain."""
 
-        if self._lifted_index is not None:
+        value = self._condition_data.lifted_index
+        if value is not None:
             lifted_index_value = 0
             for (start, end), derate in zip(LIFTED_INDEX_RANGE, LIFTED_INDEX_VALUE):
-                if start <= self._lifted_index <= end:
+                if start <= value <= end:
                     lifted_index_value = derate
 
             return LIFTED_INDEX_PLAIN[max(0, min(7, lifted_index_value - 1))]
@@ -404,23 +414,11 @@ class LocationData(BaseData):
     # #########################################################################
     # Sun
     # #########################################################################
-    # {
-    #   'altitude': 27.381166288165183,
-    #   'azimuth': 207.94331977147567,
-    #   'next_rising_astro': datetime.datetime(2024, 10, 20, 3, 55, 27, 530594, tzinfo=datetime.timezone.utc),
-    #   'next_rising_civil': datetime.datetime(2024, 10, 20, 5, 7, 56, 608, tzinfo=datetime.timezone.utc),
-    #   'next_rising_nautical': datetime.datetime(2024, 10, 20, 4, 31, 36, 483147, tzinfo=datetime.timezone.utc),
-    #   'next_setting_astro': datetime.datetime(2024, 10, 19, 17, 58, 53, 153284, tzinfo=datetime.timezone.utc),
-    #   'next_setting_civil': datetime.datetime(2024, 10, 19, 16, 46, 35, 140396, tzinfo=datetime.timezone.utc),
-    #   'next_setting_nautical': datetime.datetime(2024, 10, 19, 17, 22, 48, 817467, tzinfo=datetime.timezone.utc),
-    # 'previous_rising_astro': datetime.datetime(2024, 10, 19, 3, 54, 2, 160473, tzinfo=datetime.timezone.utc),
-    # 'previous_setting_astro': datetime.datetime(2024, 10, 18, 18, 0, 40, 209646, tzinfo=datetime.timezone.utc)
-    # }
     @property
     def sun_altitude(self) -> float:
         """Return Sun Altitude."""
 
-        value = self._sun_data.get("altitude", None)
+        value = self._sun_data.altitude
         if value is not None:
             return round(value, 3)
         return None
@@ -429,7 +427,7 @@ class LocationData(BaseData):
     def sun_azimuth(self) -> float:
         """Return sun Azimuth."""
 
-        value = self._sun_data.get("azimuth", None)
+        value = self._sun_data.azimuth
         if value is not None:
             return round(value, 3)
         return None
@@ -438,8 +436,8 @@ class LocationData(BaseData):
     def sun_next_rising_astro(self) -> datetime:
         """Return Sun Next Rising Astronomical."""
 
-        value = self._sun_data.get("next_rising_astro", None)
-        if value is not None and isinstance(value, datetime):
+        value = self._sun_data.next_rising_astro
+        if value is not None:
             return value
         return None
 
@@ -447,8 +445,8 @@ class LocationData(BaseData):
     def sun_next_rising(self) -> datetime:
         """Return Sun Next Rising Civil."""
 
-        value = self._sun_data.get("next_rising_civil", None)
-        if value is not None and isinstance(value, datetime):
+        value = self._sun_data.next_rising_civil
+        if value is not None:
             return value
         return None
 
@@ -456,8 +454,8 @@ class LocationData(BaseData):
     def sun_next_rising_nautical(self) -> datetime:
         """Return Sun Next Rising Nautical."""
 
-        value = self._sun_data.get("next_rising_nautical", None)
-        if value is not None and isinstance(value, datetime):
+        value = self._sun_data.next_rising_nautical
+        if value is not None:
             return value
         return None
 
@@ -465,8 +463,8 @@ class LocationData(BaseData):
     def sun_next_setting_astro(self) -> datetime:
         """Return Sun Next Setting Astronomical."""
 
-        value = self._sun_data.get("next_setting_astro", None)
-        if value is not None and isinstance(value, datetime):
+        value = self._sun_data.next_setting_astro
+        if value is not None:
             return value
         return None
 
@@ -474,8 +472,8 @@ class LocationData(BaseData):
     def sun_next_setting(self) -> datetime:
         """Return Next Setting Civil."""
 
-        value = self._sun_data.get("next_setting_civil", None)
-        if value is not None and isinstance(value, datetime):
+        value = self._sun_data.next_setting_civil
+        if value is not None:
             return value
         return None
 
@@ -483,37 +481,19 @@ class LocationData(BaseData):
     def sun_next_setting_nautical(self) -> datetime:
         """Return Sun Next Setting Nautical."""
 
-        value = self._sun_data.get("next_setting_nautical", None)
-        if value is not None and isinstance(value, datetime):
+        value = self._sun_data.next_setting_nautical
+        if value is not None:
             return value
         return None
 
     # #########################################################################
     # Moon
     # #########################################################################
-    # {
-    #   'altitude': -19.558854575167643,
-    #   'angular_size': 0.5461292228486443,
-    # 'avg_angular_size': 0.5181,
-    # 'avg_distance_km': 384400,
-    #   'azimuth': 354.94588859815667,
-    # 'distance': 0.002440521726384759,
-    #   'distance_km': 365096.8536642479,
-    #   'next_full_moon': datetime.datetime(2024, 11, 15, 21, 28, 28, 524917, tzinfo=datetime.timezone.utc),
-    #   'next_new_moon': datetime.datetime(2024, 11, 1, 12, 47, 6, 158960, tzinfo=datetime.timezone.utc),
-    #   'next_rising': datetime.datetime(2024, 10, 19, 16, 59, 32, 114508, tzinfo=datetime.timezone.utc),
-    #   'next_setting': datetime.datetime(2024, 10, 20, 9, 51, 3, 433953, tzinfo=datetime.timezone.utc),
-    #   'phase': 93.79664611816406,
-    # 'previous_rising': datetime.datetime(2024, 10, 18, 16, 31, 12, 195199, tzinfo=datetime.timezone.utc),
-    # 'previous_setting': datetime.datetime(2024, 10, 19, 8, 23, 51, 233716, tzinfo=datetime.timezone.utc),
-    # 'relative_distance': 0.9497836983981475,
-    #   'relative_size': 1.0541000247995451
-    # }
     @property
     def moon_altitude(self) -> float:
         """Return Moon Altitude."""
 
-        value = self._moon_data.get("altitude", None)
+        value = self._moon_data.altitude
         if value is not None:
             return round(value, 3)
         return None
@@ -522,7 +502,7 @@ class LocationData(BaseData):
     def moon_angular_size(self) -> float:
         """Return Moon Angular Size in Minutes."""
 
-        value = self._moon_data.get("angular_size", None)
+        value = self._moon_data.angular_size
         if value is not None:
             return round(value, 3)
         return None
@@ -531,7 +511,7 @@ class LocationData(BaseData):
     def moon_azimuth(self) -> float:
         """Return Moon Azimuth."""
 
-        value = self._moon_data.get("azimuth", None)
+        value = self._moon_data.azimuth
         if value is not None:
             return round(value, 3)
         return None
@@ -540,17 +520,17 @@ class LocationData(BaseData):
     def moon_distance_km(self) -> float:
         """Return Moon Distance in km."""
 
-        value = self._moon_data.get("distance_km", None)
+        value = self._moon_data.distance_km
         if value is not None:
             return round(value, 0)
         return None
-    
+
     @property
     def moon_next_full_moon(self) -> datetime:
         """Return Moon Next Full Moon."""
 
-        value = self._moon_data.get("next_full_moon", None)
-        if value is not None and isinstance(value, datetime):
+        value = self._moon_data.next_full_moon
+        if value is not None:
             return value
         return None
 
@@ -558,8 +538,8 @@ class LocationData(BaseData):
     def moon_next_new_moon(self) -> datetime:
         """Return Moon Next New Moon."""
 
-        value = self._moon_data.get("next_new_moon", None)
-        if value is not None and isinstance(value, datetime):
+        value = self._moon_data.next_new_moon
+        if value is not None:
             return value
         return None
 
@@ -567,8 +547,8 @@ class LocationData(BaseData):
     def moon_next_rising(self) -> datetime:
         """Return Moon Next Rising."""
 
-        value = self._moon_data.get("next_rising", None)
-        if value is not None and isinstance(value, datetime):
+        value = self._moon_data.next_rising
+        if value is not None:
             return value
         return None
 
@@ -576,8 +556,8 @@ class LocationData(BaseData):
     def moon_next_setting(self) -> datetime:
         """Return Moon Next Setting."""
 
-        value = self._moon_data.get("next_setting", None)
-        if value is not None and isinstance(value, datetime):
+        value = self._moon_data.next_setting
+        if value is not None:
             return value
         return None
 
@@ -585,7 +565,7 @@ class LocationData(BaseData):
     def moon_phase(self) -> float:
         """Return Moon Phase."""
 
-        value = self._moon_data.get("phase", None)
+        value = self._moon_data.phase
         if value is not None:
             return round(value, 1)
         return None
@@ -594,7 +574,7 @@ class LocationData(BaseData):
     def moon_relative_size(self) -> float:
         """Return Moon Relative Size in %."""
 
-        value = self._moon_data.get("relative_size", None)
+        value = self._moon_data.relative_size
         if value is not None:
             return round(value * 100 - 100, 3)
         return None
@@ -614,31 +594,31 @@ class LocationData(BaseData):
     def deep_sky_darkness_moon_rises(self) -> bool:
         """Returns true if moon rises during astronomical night."""
 
-        return self._darkness_data.get("deep_sky_darkness_moon_rises", None)
+        return self._darkness_data.deep_sky_darkness_moon_rises
 
     @property
     def deep_sky_darkness_moon_sets(self) -> bool:
         """Returns true if moon sets during astronomical night."""
 
-        return self._darkness_data.get("deep_sky_darkness_moon_sets", None)
+        return self._darkness_data.deep_sky_darkness_moon_sets
 
     @property
     def deep_sky_darkness_moon_always_up(self) -> bool:
         """Returns true if moon is up during astronomical night."""
 
-        return self._darkness_data.get("deep_sky_darkness_moon_always_up", None)
+        return self._darkness_data.deep_sky_darkness_moon_always_up
 
     @property
     def deep_sky_darkness_moon_always_down(self) -> bool:
         """Returns true if moon is down during astronomical night."""
 
-        return self._darkness_data.get("deep_sky_darkness_moon_always_down", None)
+        return self._darkness_data.deep_sky_darkness_moon_always_down
 
     @property
     def deep_sky_darkness(self) -> float:
         """Returns the remaining timespan of deep sky darkness."""
 
-        return self._darkness_data.get("deep_sky_darkness", None)
+        return self._darkness_data.deep_sky_darkness
 
     # #########################################################################
     # Deep Sky Forecast
@@ -652,12 +632,7 @@ class LocationData(BaseData):
             if len(self._deepsky_forecast) > 0:
                 for nightly_condition in self._deepsky_forecast[0].nightly_conditions:
                     nightly_condition_sum += nightly_condition
-                return int(
-                    round(
-                        nightly_condition_sum
-                        / len(self._deepsky_forecast[0].nightly_conditions)
-                    )
-                )
+                return int(round(nightly_condition_sum / len(self._deepsky_forecast[0].nightly_conditions)))
         return None
 
     @property
@@ -678,9 +653,7 @@ class LocationData(BaseData):
             out = ""
             if len(self._deepsky_forecast) > 0:
                 for nightly_condition in self._deepsky_forecast[0].nightly_conditions:
-                    out += CONDITION[
-                        4 - math.floor(nightly_condition / 20)
-                    ].capitalize()
+                    out += CONDITION[4 - math.floor(nightly_condition / 20)].capitalize()
             return out
         return None
 
@@ -713,12 +686,7 @@ class LocationData(BaseData):
             if len(self._deepsky_forecast) > 1:
                 for nightly_condition in self._deepsky_forecast[1].nightly_conditions:
                     nightly_condition_sum += nightly_condition
-                return int(
-                    round(
-                        nightly_condition_sum
-                        / len(self._deepsky_forecast[1].nightly_conditions)
-                    )
-                )
+                return int(round(nightly_condition_sum / len(self._deepsky_forecast[1].nightly_conditions)))
         return None
 
     @property
@@ -739,9 +707,7 @@ class LocationData(BaseData):
             out = ""
             if len(self._deepsky_forecast) > 1:
                 for nightly_condition in self._deepsky_forecast[1].nightly_conditions:
-                    out += CONDITION[
-                        4 - math.floor(nightly_condition / 20)
-                    ].capitalize()
+                    out += CONDITION[4 - math.floor(nightly_condition / 20)].capitalize()
             return out
         return None
 
@@ -831,7 +797,7 @@ class LocationData(BaseData):
         return None
 
 
-class ForecastData(BaseData):
+class ForecastData(ConditionData):
     """A representation of 3-Hour Based Forecast AstroWeather Data."""
 
     def __init__(self, data):

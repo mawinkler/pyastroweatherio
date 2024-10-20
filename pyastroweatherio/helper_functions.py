@@ -1,29 +1,26 @@
 """Contains Helper functions for AstroWeather."""
 
-from datetime import UTC, datetime, timedelta
 import logging
 import math
+from datetime import UTC, datetime, timedelta
 from math import degrees as deg
-from zoneinfo import ZoneInfo
 
 import ephem
 from ephem import degree
+from pydantic import ValidationError
+from zoneinfo import ZoneInfo
 
 # import metpy.calc as mpcalc
 # from metpy.units import units
 # import numpy as np
-
 from pyastroweatherio.const import (
     ASTRONOMICAL_DUSK_DAWN,
     CIVIL_DUSK_DAWN,
-    DEFAULT_ELEVATION,
-    DEFAULT_LATITUDE,
-    DEFAULT_LONGITUDE,
-    DEFAULT_TIMEZONE,
     MAG_DEGRATION_MAX,
     NAUTICAL_DUSK_DAWN,
     SEEING_MAX,
 )
+from pyastroweatherio.models import DarknessModel, MoonModel, SunModel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,9 +60,7 @@ class AtmosphericRoutines:
     # #####################################################
     # Calculate lifted index
     # #####################################################
-    async def calculate_lifted_index(
-        self, temperature, altitude, dew_point_temperature, air_pressure_at_sea_level
-    ):
+    async def calculate_lifted_index(self, temperature, altitude, dew_point_temperature, air_pressure_at_sea_level):
         """Calculate atmospheric lifted index."""
         # https://en.wikipedia.org/wiki/Lifted_index
 
@@ -89,9 +84,7 @@ class AtmosphericRoutines:
 
         # Calculate actual Vapor Pressure at surface
         # Checked with https://www.weather.gov/epz/wxcalc_vaporpressure
-        e = self._calculate_vapor_pressure(
-            dew_point_temperature
-        )  # 6.112 * (10 ** (7.5 * (Td - Tn) / (Td - 35.85)))
+        e = self._calculate_vapor_pressure(dew_point_temperature)  # 6.112 * (10 ** (7.5 * (Td - Tn) / (Td - 35.85)))
 
         # Calculate Mixing Ratio at Surface in grams per kilogram
         # Checked with https://www.weather.gov/epz/wxcalc_mixingratio
@@ -193,9 +186,7 @@ class AtmosphericRoutines:
         )
 
         # Convert transparency to magnitude degradation
-        magnitude_degradation = self._transparency_to_magnitude_degradation(
-            transparency
-        )
+        magnitude_degradation = self._transparency_to_magnitude_degradation(transparency)
 
         # _LOGGER.debug(
         #     "Magnitude Degradation: {:.2f} mag (".format(magnitude_degradation)
@@ -268,22 +259,13 @@ class AtmosphericRoutines:
         # Constants
         C = 6.5  # 1.7
 
-        water_vapor_pressure = self._calculate_water_vapor_pressure(
-            dew_point_temperature, humidity
-        )
+        water_vapor_pressure = self._calculate_water_vapor_pressure(dew_point_temperature, humidity)
 
         # adjusted_pressure = air_pressure_at_sea_level * math.exp(-0.00012 * altitude)
-        adjusted_pressure = self._calculate_adjusted_pressure(
-            air_pressure_at_sea_level, altitude
-        )
+        adjusted_pressure = self._calculate_adjusted_pressure(air_pressure_at_sea_level, altitude)
         relative_pressure = adjusted_pressure / air_pressure_at_sea_level
 
-        seeing_factor = (
-            C
-            * (water_vapor_pressure / 10) ** 0.25
-            * (wind_speed / 10) ** 0.75
-            * relative_pressure
-        )
+        seeing_factor = C * (water_vapor_pressure / 10) ** 0.25 * (wind_speed / 10) ** 0.75 * relative_pressure
         seeing = 0.98 / seeing_factor
 
         # _LOGGER.debug(
@@ -313,9 +295,9 @@ class AtmosphericRoutines:
         molar_mass_air = 0.02896  # Molar mass of Earth's air in kg/mol
         gas_constant = 8.31447  # Universal gas constant in J/(mol*K)
 
-        pressure_adjusted = pressure_sea_level * (
-            1 - (lapse_rate * altitude) / temperature_sea_level
-        ) ** ((gravity * molar_mass_air) / (gas_constant * lapse_rate))
+        pressure_adjusted = pressure_sea_level * (1 - (lapse_rate * altitude) / temperature_sea_level) ** (
+            (gravity * molar_mass_air) / (gas_constant * lapse_rate)
+        )
 
         return pressure_adjusted
 
@@ -426,9 +408,7 @@ class AtmosphericRoutines:
         B = 0.00029
 
         # Calculate Lifting Condensation Level using the Clausius-Clapeyron equation
-        lcl = (A * w) / (
-            (air_pressure_at_sea_level - w) * (1 - B * air_pressure_at_sea_level)
-        )
+        lcl = (A * w) / ((air_pressure_at_sea_level - w) * (1 - B * air_pressure_at_sea_level))
 
         return lcl
 
@@ -537,19 +517,13 @@ class AstronomicalRoutines:
 
     def __init__(
         self,
-        latitude=DEFAULT_LATITUDE,
-        longitude=DEFAULT_LONGITUDE,
-        elevation=DEFAULT_ELEVATION,
-        timezone_info=DEFAULT_TIMEZONE,
+        location_data,
         forecast_time=None,
     ):
-        self._latitude = latitude
-        self._longitude = longitude
-        self._elevation = elevation
-        self._timezone_info = timezone_info
+        self._location_data = location_data
         self._test_mode = False
 
-        _LOGGER.debug("Timezone: %s", self._timezone_info)
+        _LOGGER.debug("Timezone: %s", self._location_data.timezone_info)
         if forecast_time is None:
             self._forecast_time = datetime.now(UTC).replace(tzinfo=UTC)
         else:
@@ -581,7 +555,7 @@ class AstronomicalRoutines:
         """Returns the UTC Offset."""
 
         # Get the current time in the specified timezone
-        now = datetime.now(ZoneInfo(self._timezone_info))
+        now = datetime.now(ZoneInfo(self._location_data.timezone_info))
 
         # Get the offset in seconds
         offset_seconds = now.utcoffset().total_seconds()
@@ -611,9 +585,9 @@ class AstronomicalRoutines:
         """Retrieves the ephem sun observer for the current location."""
 
         observer = ephem.Observer()
-        observer.lon = str(self._longitude)  # * degree
-        observer.lat = str(self._latitude)  # * degree
-        observer.elevation = self._elevation
+        observer.lon = str(self._location_data.longitude)  # * degree
+        observer.lat = str(self._location_data.latitude)  # * degree
+        observer.elevation = self._location_data.elevation
         observer.horizon = below_horizon * degree
         observer.pressure = 0
         observer.epoch = datetime.now().strftime("%Y/%m/%d")
@@ -623,9 +597,9 @@ class AstronomicalRoutines:
         """Retrieves the ephem mon observer for the current location."""
 
         observer = ephem.Observer()
-        observer.lon = str(self._longitude)  # * degree
-        observer.lat = str(self._latitude)  # * degree
-        observer.elevation = self._elevation
+        observer.lon = str(self._location_data.longitude)  # * degree
+        observer.lat = str(self._location_data.latitude)  # * degree
+        observer.elevation = self._location_data.elevation
         # Naval Observatory Risings and Settings
         # Set horizon to minus 34 arcminutes
         # https://aa.usno.navy.mil/data/RS_OneDay
@@ -638,10 +612,15 @@ class AstronomicalRoutines:
     # Sun
     # #########################################################################
     async def sun_data(self) -> dict:
-        """Returns moon data."""
+        """Returns sun data."""
 
         if self._sun_data is not None:
-            return self._sun_data
+            try:
+                return SunModel(**self._sun_data)
+            except ValidationError:
+                _LOGGER.error(f"Failed to parse Sun data: {self._sun_data}")
+                return None
+        return None
 
     async def sun_next_rising(self) -> datetime:
         """Returns sun next rising."""
@@ -708,9 +687,7 @@ class AstronomicalRoutines:
         # Rise and Setting (Civil)
         try:
             self._sun_data["next_rising_civil"] = (
-                self._sun_observer.next_rising(ephem.Sun(), use_center=True)
-                .datetime()
-                .replace(tzinfo=UTC)
+                self._sun_observer.next_rising(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the next rising
@@ -721,20 +698,16 @@ class AstronomicalRoutines:
                 timestamp += timedelta(minutes=1440)
                 self._sun_observer.date = timestamp
                 try:
-                    self._sun_data["next_rising_civil"] = (
-                        self._sun_observer.next_rising(
-                            ephem.Sun(), use_center=True
-                        ).datetime()
-                    )
+                    self._sun_data["next_rising_civil"] = self._sun_observer.next_rising(
+                        ephem.Sun(), use_center=True
+                    ).datetime()
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
                     continue
                 break
 
         try:
             self._sun_data["next_setting_civil"] = (
-                self._sun_observer.next_setting(ephem.Sun(), use_center=True)
-                .datetime()
-                .replace(tzinfo=UTC)
+                self._sun_observer.next_setting(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the next setting
@@ -745,11 +718,9 @@ class AstronomicalRoutines:
                 timestamp += timedelta(minutes=1440)
                 self._sun_observer.date = timestamp
                 try:
-                    self._sun_data["next_setting_civil"] = (
-                        self._sun_observer.next_setting(
-                            ephem.Sun(), use_center=True
-                        ).datetime()
-                    )
+                    self._sun_data["next_setting_civil"] = self._sun_observer.next_setting(
+                        ephem.Sun(), use_center=True
+                    ).datetime()
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
                     continue
                 break
@@ -761,9 +732,7 @@ class AstronomicalRoutines:
 
         try:
             self._sun_data["next_rising_nautical"] = (
-                self._sun_observer_nautical.next_rising(ephem.Sun(), use_center=True)
-                .datetime()
-                .replace(tzinfo=UTC)
+                self._sun_observer_nautical.next_rising(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the next astronomical rising
@@ -775,9 +744,7 @@ class AstronomicalRoutines:
                 self._sun_observer_nautical.date = timestamp
                 try:
                     self._sun_data["next_rising_nautical"] = (
-                        self._sun_observer_nautical.next_rising(
-                            ephem.Sun(), use_center=True
-                        )
+                        self._sun_observer_nautical.next_rising(ephem.Sun(), use_center=True)
                         .datetime()
                         .replace(tzinfo=UTC)
                     )
@@ -787,9 +754,7 @@ class AstronomicalRoutines:
 
         try:
             self._sun_data["next_setting_nautical"] = (
-                self._sun_observer_nautical.next_setting(ephem.Sun(), use_center=True)
-                .datetime()
-                .replace(tzinfo=UTC)
+                self._sun_observer_nautical.next_setting(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the next astronomical setting
@@ -801,9 +766,7 @@ class AstronomicalRoutines:
                 self._sun_observer_nautical.date = timestamp
                 try:
                     self._sun_data["next_setting_nautical"] = (
-                        self._sun_observer_nautical.next_setting(
-                            ephem.Sun(), use_center=True
-                        )
+                        self._sun_observer_nautical.next_setting(ephem.Sun(), use_center=True)
                         .datetime()
                         .replace(tzinfo=UTC)
                     )
@@ -818,9 +781,7 @@ class AstronomicalRoutines:
 
         try:
             self._sun_data["next_rising_astro"] = (
-                self._sun_observer_astro.next_rising(ephem.Sun(), use_center=True)
-                .datetime()
-                .replace(tzinfo=UTC)
+                self._sun_observer_astro.next_rising(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the next astronomical rising
@@ -832,9 +793,7 @@ class AstronomicalRoutines:
                 self._sun_observer_astro.date = timestamp
                 try:
                     self._sun_data["next_rising_astro"] = (
-                        self._sun_observer_astro.next_rising(
-                            ephem.Sun(), use_center=True
-                        )
+                        self._sun_observer_astro.next_rising(ephem.Sun(), use_center=True)
                         .datetime()
                         .replace(tzinfo=UTC)
                     )
@@ -844,9 +803,7 @@ class AstronomicalRoutines:
 
         try:
             self._sun_data["previous_rising_astro"] = (
-                self._sun_observer_astro.previous_rising(ephem.Sun(), use_center=True)
-                .datetime()
-                .replace(tzinfo=UTC)
+                self._sun_observer_astro.previous_rising(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the previous astronomical rising
@@ -858,9 +815,7 @@ class AstronomicalRoutines:
                 self._sun_observer_astro.date = timestamp
                 try:
                     self._sun_data["previous_rising_astro"] = (
-                        self._sun_observer_astro.previous_rising(
-                            ephem.Sun(), use_center=True
-                        )
+                        self._sun_observer_astro.previous_rising(ephem.Sun(), use_center=True)
                         .datetime()
                         .replace(tzinfo=UTC)
                     )
@@ -870,9 +825,7 @@ class AstronomicalRoutines:
 
         try:
             self._sun_data["next_setting_astro"] = (
-                self._sun_observer_astro.next_setting(ephem.Sun(), use_center=True)
-                .datetime()
-                .replace(tzinfo=UTC)
+                self._sun_observer_astro.next_setting(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the next astronomical setting
@@ -884,9 +837,7 @@ class AstronomicalRoutines:
                 self._sun_observer_astro.date = timestamp
                 try:
                     self._sun_data["next_setting_astro"] = (
-                        self._sun_observer_astro.next_setting(
-                            ephem.Sun(), use_center=True
-                        )
+                        self._sun_observer_astro.next_setting(ephem.Sun(), use_center=True)
                         .datetime()
                         .replace(tzinfo=UTC)
                     )
@@ -896,9 +847,7 @@ class AstronomicalRoutines:
 
         try:
             self._sun_data["previous_setting_astro"] = (
-                self._sun_observer_astro.previous_setting(ephem.Sun(), use_center=True)
-                .datetime()
-                .replace(tzinfo=UTC)
+                self._sun_observer_astro.previous_setting(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             # Search for the previous astronomical setting
@@ -910,9 +859,7 @@ class AstronomicalRoutines:
                 self._sun_observer_astro.date = timestamp
                 try:
                     self._sun_data["previous_setting_astro"] = (
-                        self._sun_observer_astro.previous_setting(
-                            ephem.Sun(), use_center=True
-                        )
+                        self._sun_observer_astro.previous_setting(ephem.Sun(), use_center=True)
                         .datetime()
                         .replace(tzinfo=UTC)
                     )
@@ -944,7 +891,12 @@ class AstronomicalRoutines:
         """Returns moon data."""
 
         if self._moon_data is not None:
-            return self._moon_data
+            try:
+                return MoonModel(**self._moon_data)
+            except ValidationError:
+                _LOGGER.error(f"Failed to parse Moon data: {self._moon_data}")
+                return None
+        return None
 
     def _calculate_moon(self):
         """Calculates moon rising and setting."""
@@ -960,36 +912,28 @@ class AstronomicalRoutines:
 
         try:
             self._moon_data["next_rising"] = (
-                self._moon_observer.next_rising(ephem.Moon())
-                .datetime()
-                .replace(tzinfo=UTC)
+                self._moon_observer.next_rising(ephem.Moon()).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             pass
 
         try:
             self._moon_data["next_setting"] = (
-                self._moon_observer.next_setting(ephem.Moon())
-                .datetime()
-                .replace(tzinfo=UTC)
+                self._moon_observer.next_setting(ephem.Moon()).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             pass
 
         try:
             self._moon_data["previous_rising"] = (
-                self._moon_observer.previous_rising(ephem.Moon())
-                .datetime()
-                .replace(tzinfo=UTC)
+                self._moon_observer.previous_rising(ephem.Moon()).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             pass
 
         try:
             self._moon_data["previous_setting"] = (
-                self._moon_observer.previous_setting(ephem.Moon())
-                .datetime()
-                .replace(tzinfo=UTC)
+                self._moon_observer.previous_setting(ephem.Moon()).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             pass
@@ -1008,14 +952,10 @@ class AstronomicalRoutines:
         #     pass
 
         # Next new Moon
-        self._moon_data["next_new_moon"] = (
-            ephem.next_new_moon(self._forecast_time).datetime().replace(tzinfo=UTC)
-        )
+        self._moon_data["next_new_moon"] = ephem.next_new_moon(self._forecast_time).datetime().replace(tzinfo=UTC)
 
         # Next full Moon
-        self._moon_data["next_full_moon"] = (
-            ephem.next_full_moon(self._forecast_time).datetime().replace(tzinfo=UTC)
-        )
+        self._moon_data["next_full_moon"] = ephem.next_full_moon(self._forecast_time).datetime().replace(tzinfo=UTC)
 
         # Moon phase
         self._moon_data["phase"] = self._moon.phase
@@ -1048,42 +988,28 @@ class AstronomicalRoutines:
             self._moon = ephem.Moon()
 
         # Get the distance in Earth radii
-        self._moon_data["distance"] = (
-            self._moon.earth_distance
-        )  # in AU (Astronomical Units)
+        self._moon_data["distance"] = self._moon.earth_distance  # in AU (Astronomical Units)
 
         # Convert to kilometers
-        self._moon_data["distance_km"] = (
-            self._moon_data["distance"] * 149597870.7
-        )  # 1 AU = 149597870.7 km
+        self._moon_data["distance_km"] = self._moon_data["distance"] * 149597870.7  # 1 AU = 149597870.7 km
 
         # Get the Moon's angular size (in degrees)
         self._moon_data["angular_size"] = self._moon.radius * 2 * 57.29578  # 180 / pi
 
         # Average distance and angular size for comparison
-        self._moon_data["avg_distance_km"] = (
-            384400  # Average distance of the Moon from Earth in km
-        )
+        self._moon_data["avg_distance_km"] = 384400  # Average distance of the Moon from Earth in km
         self._moon_data["avg_angular_size"] = 0.5181  # Average angular size in degrees
 
         # Relative distance and size compared to average
-        self._moon_data["relative_distance"] = (
-            self._moon_data["distance_km"] / self._moon_data["avg_distance_km"]
-        )
-        self._moon_data["relative_size"] = (
-            self._moon_data["angular_size"] / self._moon_data["avg_angular_size"]
-        )
+        self._moon_data["relative_distance"] = self._moon_data["distance_km"] / self._moon_data["avg_distance_km"]
+        self._moon_data["relative_size"] = self._moon_data["angular_size"] / self._moon_data["avg_angular_size"]
 
         # Output
         print(f"Moon distance from observer: {self._moon_data["distance_km"]:.2f} km")
-        print(
-            f"Relative distance compared to average: {self._moon_data["relative_distance"]:.3f}"
-        )
+        print(f"Relative distance compared to average: {self._moon_data["relative_distance"]:.3f}")
         print(f"Moon size: {self._moon_data["angular_size"]:.4f} degrees")
         print(f"Moon size: {self._moon_data["angular_size"] * 60:.4f} minutes")
-        print(
-            f"Relative size compared to average: {self._moon_data["relative_size"]:.3f}"
-        )
+        print(f"Relative size compared to average: {self._moon_data["relative_size"]:.3f}")
         print(self._moon_data)
 
     # #########################################################################
@@ -1092,9 +1018,7 @@ class AstronomicalRoutines:
     async def darkness_data(self) -> dict:
         """Returns darkness data."""
 
-        if not self._test_data(
-            self._moon_data, ["next_setting", "next_rising", "previous_setting"]
-        ):
+        if not self._test_data(self._moon_data, ["next_setting", "next_rising", "previous_setting"]):
             _LOGGER.debug("DSD: moon data missing")
             return False
 
@@ -1105,22 +1029,17 @@ class AstronomicalRoutines:
             _LOGGER.debug("DSD: sun data missing")
             return False
 
-        self._darkness_data["deep_sky_darkness_moon_rises"] = (
-            self._deep_sky_darkness_moon_rises()
-        )
-        self._darkness_data["deep_sky_darkness_moon_sets"] = (
-            self._deep_sky_darkness_moon_sets()
-        )
-        self._darkness_data["deep_sky_darkness_moon_always_up"] = (
-            self._deep_sky_darkness_moon_always_up()
-        )
-        self._darkness_data["deep_sky_darkness_moon_always_down"] = (
-            self._deep_sky_darkness_moon_always_down()
-        )
+        self._darkness_data["deep_sky_darkness_moon_rises"] = self._deep_sky_darkness_moon_rises()
+        self._darkness_data["deep_sky_darkness_moon_sets"] = self._deep_sky_darkness_moon_sets()
+        self._darkness_data["deep_sky_darkness_moon_always_up"] = self._deep_sky_darkness_moon_always_up()
+        self._darkness_data["deep_sky_darkness_moon_always_down"] = self._deep_sky_darkness_moon_always_down()
         self._darkness_data["deep_sky_darkness"] = self._deep_sky_darkness()
 
-        if self._darkness_data is not None:
-            return self._darkness_data
+        try:
+            return DarknessModel(**self._darkness_data)
+        except ValidationError:
+            _LOGGER.error(f"Failed to parse darkness data: {self._darkness_data}")
+            return None
 
     async def night_duration_astronomical(self) -> float:
         """Returns the remaining timespan of astronomical darkness."""
@@ -1151,10 +1070,7 @@ class AstronomicalRoutines:
                     dsd = self._sun_data["next_rising_astro"] - self._forecast_time
                     _LOGGER.debug(f"DSD: Sun down, Moon is down {dsd}")
                 else:
-                    dsd = (
-                        self._sun_data["next_rising_astro"]
-                        - self._moon_data["next_setting"]
-                    )
+                    dsd = self._sun_data["next_rising_astro"] - self._moon_data["next_setting"]
                     _LOGGER.debug(f"DSD: Sun down, Moon sets {dsd}")
 
             if self._deep_sky_darkness_moon_always_down():
@@ -1166,24 +1082,15 @@ class AstronomicalRoutines:
         if not self._astronomical_darkness():
             _LOGGER.debug("DSD: At sunlight")
             if self._deep_sky_darkness_moon_rises():
-                dsd = (
-                    self._moon_data["next_rising"]
-                    - self._sun_data["next_setting_astro"]
-                )
+                dsd = self._moon_data["next_rising"] - self._sun_data["next_setting_astro"]
                 _LOGGER.debug(f"DSD: Sun up, Moon rises {dsd}")
 
             if self._deep_sky_darkness_moon_sets():
-                dsd = (
-                    self._sun_data["next_rising_astro"]
-                    - self._moon_data["next_setting"]
-                )
+                dsd = self._sun_data["next_rising_astro"] - self._moon_data["next_setting"]
                 _LOGGER.debug(f"DSD: Sun up, Moon sets {dsd}")
 
             if self._deep_sky_darkness_moon_always_down():
-                dsd = (
-                    self._sun_data["next_rising_astro"]
-                    - self._sun_data["next_setting_astro"]
-                )
+                dsd = self._sun_data["next_rising_astro"] - self._sun_data["next_setting_astro"]
                 _LOGGER.debug(f"DSD: Sun up, Moon down {dsd}")
 
         if self._deep_sky_darkness_moon_always_up():
@@ -1244,10 +1151,7 @@ class AstronomicalRoutines:
         else:
             start_timestamp_moon = self._moon_data["next_setting"]
 
-        if (
-            start_timestamp_moon > start_timestamp
-            and start_timestamp_moon < self._sun_data["next_rising_astro"]
-        ):
+        if start_timestamp_moon > start_timestamp and start_timestamp_moon < self._sun_data["next_rising_astro"]:
             _LOGGER.debug("DSD: Moon sets during astronomical night")
             return True
         return False
