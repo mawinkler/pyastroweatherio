@@ -5,14 +5,14 @@ import json
 import logging
 import math
 import os.path
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from json.decoder import JSONDecodeError
+from pprint import pprint as pp
 from typing import Optional
 
 import aiofiles
 from aiohttp import ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ClientError
-from pydantic import ValidationError
 
 from pyastroweatherio.const import (
     BASE_URL_MET,
@@ -40,26 +40,32 @@ from pyastroweatherio.const import (
     WIND10M_MAX,
 )
 from pyastroweatherio.dataclasses import (
-    BODIESUpTonight,
-    COMETSUpTonight,
-    DSOUpTonight,
+    AtmosphereData,
+    AtmosphereDataModel,
+    ConditionData,
+    ConditionDataModel,
     ForecastData,
+    ForecastDataModel,
+    GeoLocationData,
+    GeoLocationDataModel,
     LocationData,
+    LocationDataModel,
     NightlyConditionsData,
+    NightlyConditionsDataModel,
+    TimeData,
+    TimeDataModel,
+    UpTonightBodiesData,
+    UpTonightBodiesDataModel,
+    UpTonightCometsData,
+    UpTonightCometsDataModel,
+    UpTonightDSOData,
+    UpTonightDSODataModel,
 )
 from pyastroweatherio.errors import RequestError
 from pyastroweatherio.helper_functions import (
     AstronomicalRoutines,
     AtmosphericRoutines,
     ConversionFunctions,
-)
-from pyastroweatherio.models import (
-    AtmosphereModel,
-    ConditionModel,
-    LocationModel,
-    DSOUpTonightModel,
-    BODIESUpTonightModel,
-    COMETSUpTonightModel,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -162,22 +168,24 @@ class AstroWeather:
         longitude,
         elevation,
         timezone_info,
-    ) -> LocationModel | None:
-        location = {
-            "latitude": latitude,
-            "longitude": longitude,
-            "elevation": elevation,
-            "timezone_info": timezone_info,
-        }
+    ) -> GeoLocationData | None:
+        geolocation = GeoLocationDataModel(
+            {
+                "latitude": latitude,
+                "longitude": longitude,
+                "elevation": elevation,
+                "timezone_info": timezone_info,
+            }
+        )
 
         try:
-            return LocationModel(**location)
-        except ValidationError as ve:
-            _LOGGER.error(f"Failed to parse location data: {location}")
+            return GeoLocationData(data=geolocation)
+        except TypeError as ve:
+            _LOGGER.error(f"Failed to parse geo location data: {geolocation}")
             _LOGGER.error(ve)
             return None
 
-    async def _get_atmosphere(self, details_seventimer, details_metno) -> AtmosphereModel | None:
+    async def _get_atmosphere(self, details_seventimer, details_metno) -> AtmosphereData | None:
         atmosphere = {}
 
         seeing = 0
@@ -219,15 +227,17 @@ class AstroWeather:
         else:
             lifted_index = LIFTED_INDEX_7TIMER_MAPPING[details_seventimer["lifted_index"]]
 
-        atmosphere = {
-            "seeing": seeing,
-            "transparency": transparency,
-            "lifted_index": lifted_index,
-        }
+        atmosphere = AtmosphereDataModel(
+            {
+                "seeing": seeing,
+                "transparency": transparency,
+                "lifted_index": lifted_index,
+            }
+        )
 
         try:
-            return AtmosphereModel(**atmosphere)
-        except ValidationError as ve:
+            return AtmosphereData(data=atmosphere)
+        except TypeError as ve:
             _LOGGER.error(f"Failed to parse atmosphere data: {atmosphere}")
             _LOGGER.error(ve)
             return None
@@ -240,40 +250,42 @@ class AstroWeather:
         seeing,
         transparency,
         lifted_index,
-    ) -> ConditionModel | None:
-        condition = {
-            "cloudcover": details_metno.get("cloud_area_fraction"),
-            "cloud_area_fraction": details_metno.get("cloud_area_fraction"),
-            "cloud_area_fraction_high": details_metno.get("cloud_area_fraction_high"),
-            "cloud_area_fraction_low": details_metno.get("cloud_area_fraction_low"),
-            "cloud_area_fraction_medium": details_metno.get("cloud_area_fraction_medium"),
-            "fog_area_fraction": details_metno.get("fog_area_fraction"),
-            "seeing": seeing,
-            "transparency": transparency,
-            "lifted_index": lifted_index,
-            "condition_percentage": await self._calc_condition_percentage(
-                details_metno.get("cloud_area_fraction_high"),
-                details_metno.get("cloud_area_fraction_medium"),
-                details_metno.get("cloud_area_fraction_low"),
-                seeing,
-                transparency,
-                details_metno.get("wind_speed"),
-                details_metno_next_1_hours.get("details", {}).get("precipitation_amount"),
-            ),
-            "rh2m": details_metno.get("relative_humidity"),
-            "wind_speed": details_metno.get("wind_speed"),
-            "wind_from_direction": details_metno.get("wind_from_direction"),
-            "temp2m": details_metno.get("air_temperature"),
-            "dewpoint2m": details_metno.get("dew_point_temperature"),
-            "weather": details_metno_next_1_hours.get("summary", {}).get("symbol_code"),
-            "weather6": details_metno_next_6_hours.get("summary", {}).get("symbol_code"),
-            "precipitation_amount": details_metno_next_1_hours.get("details", {}).get("precipitation_amount"),
-            "precipitation_amount6": details_metno_next_6_hours.get("details", {}).get("precipitation_amount"),
-        }
+    ) -> ConditionData | None:
+        condition = ConditionDataModel(
+            {
+                "cloudcover": details_metno.get("cloud_area_fraction"),
+                "cloud_area_fraction": details_metno.get("cloud_area_fraction"),
+                "cloud_area_fraction_high": details_metno.get("cloud_area_fraction_high"),
+                "cloud_area_fraction_low": details_metno.get("cloud_area_fraction_low"),
+                "cloud_area_fraction_medium": details_metno.get("cloud_area_fraction_medium"),
+                "fog_area_fraction": details_metno.get("fog_area_fraction"),
+                "seeing": seeing,
+                "transparency": transparency,
+                "lifted_index": lifted_index,
+                "condition_percentage": await self._calc_condition_percentage(
+                    details_metno.get("cloud_area_fraction_high"),
+                    details_metno.get("cloud_area_fraction_medium"),
+                    details_metno.get("cloud_area_fraction_low"),
+                    seeing,
+                    transparency,
+                    details_metno.get("wind_speed"),
+                    details_metno_next_1_hours.get("details", {}).get("precipitation_amount"),
+                ),
+                "rh2m": details_metno.get("relative_humidity"),
+                "wind_speed": details_metno.get("wind_speed"),
+                "wind_from_direction": details_metno.get("wind_from_direction"),
+                "temp2m": details_metno.get("air_temperature"),
+                "dewpoint2m": details_metno.get("dew_point_temperature"),
+                "weather": details_metno_next_1_hours.get("summary", {}).get("symbol_code"),
+                "weather6": details_metno_next_6_hours.get("summary", {}).get("symbol_code"),
+                "precipitation_amount": details_metno_next_1_hours.get("details", {}).get("precipitation_amount"),
+                "precipitation_amount6": details_metno_next_6_hours.get("details", {}).get("precipitation_amount"),
+            }
+        )
 
         try:
-            return ConditionModel(**condition)
-        except ValidationError as ve:
+            return ConditionData(data=condition)
+        except TypeError as ve:
             _LOGGER.error(f"Failed to parse condition data: {condition}")
             _LOGGER.error(ve)
             return None
@@ -287,22 +299,8 @@ class AstroWeather:
         transparency,
         wind_speed,
         precipitation_amount,
-    ):
+    ) -> int:
         """Return condition based on cloud cover, seeing, transparency, and wind speed."""
-
-        if not all(
-            v is not None
-            for v in [
-                cloudcover_high,
-                cloudcover_medium,
-                cloudcover_low,
-                seeing,
-                transparency,
-                wind_speed,
-                precipitation_amount,
-            ]
-        ):
-            return None
 
         # Seeing is something in between 0 and 2.5 arcsecs
         seeing = seeing * 100 / SEEING_MAX  # arcsecs up to 2.5
@@ -414,44 +412,70 @@ class AstroWeather:
 
         atmosphere_data = await self._get_atmosphere(details_seventimer, details_metno)
 
-        item = {
-            # seventimer_init is "init" of 7timer astro data
-            "seventimer_init": seventimer_init,  # init
-            # seventimer_timepoint is "timepoint" of 7timer astro data and defines the data for init + timepoint
-            "seventimer_timepoint": details_seventimer["timepoint"],  # timepoint
-            # Forecast_time is the actual datetime for the forecast data onwards in UTC
-            # Corresponds to "time" in met data
-            "forecast_time": forecast_time,  # timestamp
-            # Time shift to UTC
-            "time_shift": await self._astro_routines.time_shift(),
-            # Remaining forecast data point in met.no data
-            "forecast_length": (len(self._weather_data_metno) - metno_index),
-            # Location
-            "location_data": self._location_data,
-            # Astronomical routines
-            "sun_data": await self._astro_routines.sun_data(),
-            "moon_data": await self._astro_routines.moon_data(),
-            "darkness_data": await self._astro_routines.darkness_data(),
-            "night_duration_astronomical": await self._astro_routines.night_duration_astronomical(),
-            "deepsky_forecast": await self._get_deepsky_forecast(),
-            # Met.no
-            "condition_data": await self._get_condition(
-                details_metno,
-                details_metno_next_1_hours,
-                details_metno_next_6_hours,
-                atmosphere_data.seeing,
-                atmosphere_data.transparency,
-                atmosphere_data.lifted_index,
-            ),
-            # Uptonight objects
-            "uptonight": await self._get_deepsky_objects(),
-            "uptonight_bodies": await self._get_bodies(),
-            "uptonight_comets": await self._get_comets(),
-        }
+        time_data = TimeDataModel(
+            {
+                # seventimer_init is "init" of 7timer astro data
+                "seventimer_init": seventimer_init,
+                # seventimer_timepoint is "timepoint" of 7timer astro data and defines the data for init + timepoint
+                "seventimer_timepoint": details_seventimer["timepoint"],
+                # Forecast_time is the actual datetime for the forecast data onwards in UTC
+                # Corresponds to "time" in met data
+                "forecast_time": forecast_time.replace(microsecond=0, tzinfo=timezone.utc),
+            }
+        )
 
-        items.append(LocationData(item))
+        try:
+            time_data = TimeData(data=time_data)
+        except TypeError as ve:
+            _LOGGER.error(f"Failed to parse location data model data: {time_data}")
+            _LOGGER.error(ve)
+
+        item = LocationDataModel(
+            {
+                # Time data
+                "time_data": time_data,
+                # Time shift to UTC
+                "time_shift": await self._astro_routines.time_shift(),
+                # Remaining forecast data point in met.no data
+                "forecast_length": (len(self._weather_data_metno) - metno_index),
+                # Location
+                "location_data": self._location_data,
+                # Astronomical routines
+                "sun_data": await self._astro_routines.sun_data(),
+                "moon_data": await self._astro_routines.moon_data(),
+                "darkness_data": await self._astro_routines.darkness_data(),
+                "night_duration_astronomical": await self._astro_routines.night_duration_astronomical(),
+                "deepsky_forecast": await self._get_deepsky_forecast(),
+                # Met.no
+                "condition_data": await self._get_condition(
+                    details_metno,
+                    details_metno_next_1_hours,
+                    details_metno_next_6_hours,
+                    atmosphere_data.seeing,
+                    atmosphere_data.transparency,
+                    atmosphere_data.lifted_index,
+                ),
+                # Uptonight objects
+                "uptonight": await self._get_deepsky_objects(),
+                "uptonight_bodies": await self._get_bodies(),
+                "uptonight_comets": await self._get_comets(),
+            }
+        )
+
+        try:
+            items.append(LocationData(data=item))
+        except TypeError as ve:
+            _LOGGER.error(f"Failed to parse location data model data: {item}")
+            _LOGGER.error(ve)
 
         return items
+
+    def _test_data(self, data, keys) -> bool:
+        """Test that specific values in a dictionary are not None"""
+
+        if not all(data[key] is not None for key in keys):
+            return False
+        return True
 
     async def _get_forecast_data(self, forecast_type, hours_to_show) -> None:
         """Return Forecast data for the Station."""
@@ -466,9 +490,11 @@ class AstroWeather:
         # Create items
         cnt = 0
 
-        forecast_time = now.replace(minute=0, second=0, microsecond=0)
+        forecast_time = now.replace(minute=0, second=0, microsecond=0).replace(microsecond=0, tzinfo=timezone.utc)
         if self._test_datetime is not None:
-            forecast_time = self._test_datetime.replace(minute=0, second=0, microsecond=0)
+            forecast_time = self._test_datetime.replace(minute=0, second=0, microsecond=0).replace(
+                microsecond=0, tzinfo=timezone.utc
+            )
         _LOGGER.debug("Forecast time: %s", str(forecast_time))
 
         # 7Timer: Search for start index
@@ -487,18 +513,41 @@ class AstroWeather:
 
         last_forecast_time = forecast_time
         for metno_index, datapoint in enumerate(self._weather_data_metno):
-            if forecast_time > datetime.strptime(datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ"):
+            datapoint_time = datetime.strptime(datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ").replace(
+                microsecond=0, tzinfo=timezone.utc
+            )
+            if forecast_time > datapoint_time:
                 continue
 
-            if datetime.strptime(datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ") - last_forecast_time > timedelta(hours=1):
+            if datapoint_time - last_forecast_time > timedelta(hours=1):
                 break
 
-            last_forecast_time = datetime.strptime(datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ")
+            last_forecast_time = datapoint_time
             details_metno = datapoint.get("data", {}).get("instant", {}).get("details")
 
-            if details_metno.get("cloud_area_fraction") is None:
+            if not self._test_data(
+                details_metno,
+                [
+                    "air_pressure_at_sea_level",
+                    "air_temperature",
+                    "cloud_area_fraction",
+                    "cloud_area_fraction_high",
+                    "cloud_area_fraction_low",
+                    "cloud_area_fraction_medium",
+                    "dew_point_temperature",
+                    "fog_area_fraction",
+                    "relative_humidity",
+                    "ultraviolet_index_clear_sky",
+                    "wind_from_direction",
+                    "wind_speed",
+                ],
+            ):
                 _LOGGER.error("Missing Met.no data")
                 break
+
+            # if details_metno.get("cloud_area_fraction") is None:
+            #     _LOGGER.error("Missing Met.no data")
+            #     break
 
             details_seventimer = self._get_data_seventimer_timer(
                 seventimer_init,
@@ -525,26 +574,56 @@ class AstroWeather:
 
             atmosphere_data = await self._get_atmosphere(details_seventimer, details_metno)
 
-            item = {
-                "seventimer_init": init_ts,
-                "seventimer_timepoint": details_seventimer["timepoint"],
-                "forecast_time": datetime.strptime(datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ"),
-                "hour": datetime.strptime(datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ").hour,  # forecast_time.hour % 24,
-                "condition_data": await self._get_condition(
-                    details_metno,
-                    details_metno_next_1_hours,
-                    details_metno_next_6_hours,
-                    atmosphere_data.seeing,
-                    atmosphere_data.transparency,
-                    atmosphere_data.lifted_index,
-                ),
-            }
+            td = TimeDataModel(
+                {
+                    # seventimer_init is "init" of 7timer astro data
+                    "seventimer_init": init_ts,
+                    # seventimer_timepoint is "timepoint" of 7timer astro data and defines the data for init + timepoint
+                    "seventimer_timepoint": details_seventimer["timepoint"],
+                    # Forecast_time is the actual datetime for the forecast data onwards in UTC
+                    # Corresponds to "time" in met data
+                    "forecast_time": datetime.strptime(datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ").replace(
+                        microsecond=0, tzinfo=timezone.utc
+                    ),  # timestamp
+                }
+            )
 
-            items.append(ForecastData(item))
+            try:
+                time_data = TimeData(data=td)
+            except TypeError as ve:
+                _LOGGER.error(f"Failed to parse location data model data: {time_data}")
+                _LOGGER.error(ve)
 
-            item["seventimer_timepoint"] = item["seventimer_timepoint"] + 1
-            item["forecast_time"] = item["forecast_time"] + timedelta(hours=1)
-            item["hour"] = item["hour"] + 1
+            item = ForecastDataModel(
+                {
+                    # Time data
+                    "time_data": time_data,
+                    "hour": datetime.strptime(
+                        datapoint.get("time"), "%Y-%m-%dT%H:%M:%SZ"
+                    ).hour,  # forecast_time.hour % 24,
+                    "condition_data": await self._get_condition(
+                        details_metno,
+                        details_metno_next_1_hours,
+                        details_metno_next_6_hours,
+                        atmosphere_data.seeing,
+                        atmosphere_data.transparency,
+                        atmosphere_data.lifted_index,
+                    ),
+                }
+            )
+
+            try:
+                items.append(ForecastData(data=item))
+            except TypeError as ve:
+                _LOGGER.error(f"Failed to parse forecast data: {item}")
+                _LOGGER.error(ve)
+
+            # items.append(ForecastData(data=item))
+
+            # item["seventimer_timepoint"] = item["seventimer_timepoint"] + 1
+            # # item.seventimer_timepoint(item["seventimer_timepoint"] + 1)
+            # item["forecast_time"] = item["forecast_time"] + timedelta(hours=1)
+            # item["hour"] = item["hour"] + 1
 
             cnt += 1
             if cnt >= hours_to_show:
@@ -555,7 +634,7 @@ class AstroWeather:
         _LOGGER.debug("Forceast Length: %s", str(len(items)))
         return items
 
-    async def _get_deepsky_forecast(self):
+    async def _get_deepsky_forecast(self) -> list:
         """Return Deepsky Forecast data."""
 
         cnv = ConversionFunctions()
@@ -634,15 +713,24 @@ class AstroWeather:
                     )
 
                 if details_forecast.forecast_time.hour == sun_next_rising.hour or index >= (forecast_data_len - 1):
-                    item = {
-                        "seventimer_init": init_ts,
-                        "dayname": forecast_dayname,
-                        "hour": start_forecast_hour,
-                        "nightly_conditions": interval_points,
-                        "weather": start_weather,
-                        "precipitation_amount6": start_precipitation_amount6,
-                    }
-                    items.append(NightlyConditionsData(item))
+                    item = NightlyConditionsDataModel(
+                        {
+                            "seventimer_init": init_ts,
+                            "dayname": forecast_dayname,
+                            "hour": start_forecast_hour,
+                            "nightly_conditions": interval_points,
+                            "weather": start_weather,
+                            "precipitation_amount6": start_precipitation_amount6,
+                        }
+                    )
+
+                    try:
+                        item = NightlyConditionsData(data=item)
+                    except TypeError as ve:
+                        _LOGGER.error(f"Failed to parse nightly conditions model data: {item}")
+                        _LOGGER.error(ve)
+
+                    items.append(item)
 
                     conditions_numeric = ""
                     for condition in interval_points:
@@ -666,7 +754,7 @@ class AstroWeather:
     # #########################################################################
     # UpTonight
     # #########################################################################
-    async def _get_deepsky_objects(self):
+    async def _get_deepsky_objects(self) -> list:
         """Return Deepsky Objects for today."""
 
         items = []
@@ -704,27 +792,28 @@ class AstroWeather:
                 else:
                     dso_meridian_antitransit_utc = ""
 
-                item = {
-                    "id": dso_id.get(str(row), ""),
-                    "target_name": dso_target_name.get(str(row), ""),
-                    "type": dso_type.get(str(row), ""),
-                    "constellation": dso_constellation.get(str(row), ""),
-                    "size": dso_size.get(str(row), ""),
-                    "visual_magnitude": dso_visual_magnitude.get(str(row), ""),
-                    "meridian_transit": dso_meridian_transit_utc,
-                    "meridian_antitransit": dso_meridian_antitransit_utc,
-                    "foto": dso_foto.get(str(row), 0),
-                }
+                item = UpTonightDSODataModel(
+                    {
+                        "id": dso_id.get(str(row), ""),
+                        "target_name": dso_target_name.get(str(row), ""),
+                        "type": dso_type.get(str(row), ""),
+                        "constellation": dso_constellation.get(str(row), ""),
+                        "size": dso_size.get(str(row), ""),
+                        "visual_magnitude": dso_visual_magnitude.get(str(row), ""),
+                        "meridian_transit": dso_meridian_transit_utc,
+                        "meridian_antitransit": dso_meridian_antitransit_utc,
+                        "foto": dso_foto.get(str(row), 0),
+                    }
+                )
                 try:
-                    items.append(DSOUpTonightModel(**item))
-                except ValidationError as ve:
+                    items.append(UpTonightDSOData(data=item))
+                except TypeError as ve:
                     _LOGGER.error(f"Failed to parse deep sky object data: {item}")
                     _LOGGER.error(ve)
 
-            return items
-        return None
+        return items
 
-    async def _get_bodies(self):
+    async def _get_bodies(self) -> list:
         """Return Bodies for today."""
 
         items = []
@@ -758,25 +847,26 @@ class AstroWeather:
                 else:
                     body_meridian_transit_utc = ""
 
-                item = {
-                    "target_name": body_target_name.get(str(row), ""),
-                    "max_altitude": body_max_altitude.get(str(row), ""),
-                    "azimuth": body_azimuth.get(str(row), ""),
-                    "max_altitude_time": body_max_altitude_time_utc,
-                    "visual_magnitude": body_visual_magnitude.get(str(row), ""),
-                    "meridian_transit": body_meridian_transit_utc,
-                    "foto": body_foto.get(str(row), 0),
-                }
+                item = UpTonightBodiesDataModel(
+                    {
+                        "target_name": body_target_name.get(str(row), ""),
+                        "max_altitude": body_max_altitude.get(str(row), ""),
+                        "azimuth": body_azimuth.get(str(row), ""),
+                        "max_altitude_time": body_max_altitude_time_utc,
+                        "visual_magnitude": body_visual_magnitude.get(str(row), ""),
+                        "meridian_transit": body_meridian_transit_utc,
+                        "foto": body_foto.get(str(row), 0),
+                    }
+                )
                 try:
-                    items.append(BODIESUpTonightModel(**item))
-                except ValidationError as ve:
+                    items.append(UpTonightBodiesData(data=item))
+                except TypeError as ve:
                     _LOGGER.error(f"Failed to parse bodies data: {item}")
                     _LOGGER.error(ve)
 
-            return items
-        return None
+        return items
 
-    async def _get_comets(self):
+    async def _get_comets(self) -> list:
         """Return Comets for today."""
 
         items = []
@@ -808,25 +898,26 @@ class AstroWeather:
                     - timedelta(seconds=await self._astro_routines.time_shift())
                 ).replace(tzinfo=UTC)
 
-                item = {
-                    "designation": comet_target_name.get(str(row), ""),
-                    "distance_au_earth": distance_au_earth.get(str(row), ""),
-                    "distance_au_sun": distance_au_sun.get(str(row), ""),
-                    "absolute_magnitude": absolute_magnitude.get(str(row), ""),
-                    "visual_magnitude": visual_magnitude.get(str(row), ""),
-                    "altitude": altitude.get(str(row), ""),
-                    "azimuth": azimuth.get(str(row), ""),
-                    "rise_time": rise_time_local_utc,
-                    "set_time": set_time_local_utc,
-                }
+                item = UpTonightCometsDataModel(
+                    {
+                        "designation": comet_target_name.get(str(row), ""),
+                        "distance_au_earth": distance_au_earth.get(str(row), ""),
+                        "distance_au_sun": distance_au_sun.get(str(row), ""),
+                        "absolute_magnitude": absolute_magnitude.get(str(row), ""),
+                        "visual_magnitude": visual_magnitude.get(str(row), ""),
+                        "altitude": altitude.get(str(row), ""),
+                        "azimuth": azimuth.get(str(row), ""),
+                        "rise_time": rise_time_local_utc,
+                        "set_time": set_time_local_utc,
+                    }
+                )
                 try:
-                    items.append(COMETSUpTonightModel(**item))
-                except ValidationError as ve:
+                    items.append(UpTonightCometsData(data=item))
+                except TypeError as ve:
                     _LOGGER.error(f"Failed to parse comets data: {item}")
                     _LOGGER.error(ve)
 
-            return items
-        return None
+        return items
 
     async def _retrieve_data_uptonight(self):
         """Retrieves current data from uptonight"""

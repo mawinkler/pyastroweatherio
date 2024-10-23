@@ -1,4 +1,5 @@
 """ The test for the API """
+
 import asyncio
 import pprint
 import logging
@@ -41,9 +42,9 @@ timezone_info = os.environ["BACKYARD_TIMEZONE"]
 # timezone_info = "America/Anchorage"
 
 # Hacienda Los Andes
-latitude=-30.29528
-longitude=-70.71262
-elevation=1000
+latitude = -30.29528
+longitude = -70.71262
+elevation = 1000
 timezone_info = "Chile/Continental"
 
 # London
