@@ -7,6 +7,7 @@ from math import degrees as deg
 
 import ephem
 from ephem import degree
+from typeguard import typechecked
 from zoneinfo import ZoneInfo
 
 # import metpy.calc as mpcalc
@@ -19,8 +20,6 @@ from pyastroweatherio.const import (
     NAUTICAL_DUSK_DAWN,
     SEEING_MAX,
 )
-
-# from pyastroweatherio.models import DarknessDataModel, MoonDataModel, SunDataModel
 from pyastroweatherio.dataclasses import (
     DarknessData,
     DarknessDataModel,
@@ -68,7 +67,10 @@ class AtmosphericRoutines:
     # #####################################################
     # Calculate lifted index
     # #####################################################
-    async def calculate_lifted_index(self, temperature, altitude, dew_point_temperature, air_pressure_at_sea_level):
+    @typechecked
+    async def calculate_lifted_index(
+        self, temperature, altitude, dew_point_temperature, air_pressure_at_sea_level
+    ) -> None | float:
         """Calculate atmospheric lifted index."""
         # https://en.wikipedia.org/wiki/Lifted_index
 
@@ -88,7 +90,7 @@ class AtmosphericRoutines:
 
         # Calculate saturation vapor pressure at surface temperature
         # Checked with https://www.weather.gov/epz/wxcalc_vaporpressure
-        es = self._calculate_vapor_pressure(temperature)
+        # es = self._calculate_vapor_pressure(temperature)
 
         # Calculate actual Vapor Pressure at surface
         # Checked with https://www.weather.gov/epz/wxcalc_vaporpressure
@@ -123,6 +125,7 @@ class AtmosphericRoutines:
     # #####################################################
     # Calculate magniture degradation based on transparency
     # #####################################################
+    @typechecked
     async def magnitude_degradation(
         self,
         temperature,
@@ -132,7 +135,7 @@ class AtmosphericRoutines:
         altitude,
         dew_point_temperature,
         air_pressure_at_sea_level,
-    ):
+    ) -> None | float:
         """
         Calculates the magnitude_degradation of the atmosphere.
         This algorithm first calculates the lifted index and the seeing and uses them to calculate
@@ -212,6 +215,7 @@ class AtmosphericRoutines:
     # This algorithm first calculates the seeing factor based on temperature, humidity, wind speed
     # and altitude above sea level. It is similar to Model 4 and 5 but uses the air pressure at sea level
     # and dew point provided by Met.no.
+    @typechecked
     async def calculate_seeing(
         self,
         temperature,
@@ -221,7 +225,7 @@ class AtmosphericRoutines:
         cloud_cover,
         altitude,
         air_pressure_at_sea_level,
-    ):
+    ) -> None | float:
         """
         Calculated seeing of the atmosphere. This algorithm first calculates the seeing factor based on temperature,
         humidity, wind speed and altitude above sea level. The seeing factor is then used to calculate the astronomical
@@ -292,7 +296,8 @@ class AtmosphericRoutines:
     # #####################################################
     # Atmospheric calculations
     # #####################################################
-    def _calculate_adjusted_pressure(self, pressure_sea_level, altitude):
+    @typechecked
+    def _calculate_adjusted_pressure(self, pressure_sea_level, altitude) -> float:
         """
         Calculate the adjusted pressure at a given altitude above sea level.
         """
@@ -309,7 +314,8 @@ class AtmosphericRoutines:
 
         return pressure_adjusted
 
-    def _calculate_vapor_pressure(self, temperature):
+    @typechecked
+    def _calculate_vapor_pressure(self, temperature) -> float:
         """
         Calculate the actual or saturation vapor pressure at the surface using the Magnus-Tetens formula.
         If the surface temperature is given, the actual vapor pressure is calculated.
@@ -352,7 +358,8 @@ class AtmosphericRoutines:
 
         return e
 
-    def _calculate_water_vapor_pressure(self, dew_point_temperature, humidity):
+    @typechecked
+    def _calculate_water_vapor_pressure(self, dew_point_temperature, humidity) -> float:
         """
         Calculate the water vapor pressure based on temperature and humiditye.
 
@@ -371,7 +378,8 @@ class AtmosphericRoutines:
 
         return water_vapor_pressure
 
-    def _calculate_mixing_ratio(self, e, air_pressure_at_sea_level):
+    @typechecked
+    def _calculate_mixing_ratio(self, e, air_pressure_at_sea_level) -> float:
         """
         Calculate the mixing ratio.
 
@@ -393,7 +401,8 @@ class AtmosphericRoutines:
 
         return w
 
-    def _calculate_lifting_condensation_level(self, w, air_pressure_at_sea_level):
+    @typechecked
+    def _calculate_lifting_condensation_level(self, w, air_pressure_at_sea_level) -> float:
         """
         The Lifting Condensation Level is the level at which a parcel becomes saturated. It can be used as
         a reasonable estimate of cloud base height when parcels experience forced ascent.
@@ -420,6 +429,7 @@ class AtmosphericRoutines:
 
         return lcl
 
+    @typechecked
     def _calculate_transparency(
         self,
         humidity,
@@ -431,7 +441,7 @@ class AtmosphericRoutines:
         air_pressure_at_sea_level,
         lifted_index,
         seeing,
-    ):
+    ) -> float:
         """
         The transparency of the atmosphere calculated by a weighted sum of conditions.
 
@@ -499,7 +509,8 @@ class AtmosphericRoutines:
 
         return transparency
 
-    def _transparency_to_magnitude_degradation(self, transparency):
+    @typechecked
+    def _transparency_to_magnitude_degradation(self, transparency) -> float:
         """
         The magnitude degradation based on the atmospheric transparency.
 
@@ -527,7 +538,7 @@ class AstronomicalRoutines:
         self,
         location_data,
         forecast_time=None,
-    ):
+    ) -> None:
         self._location_data = location_data
         self._test_mode = False
 
@@ -559,7 +570,7 @@ class AstronomicalRoutines:
             return False
         return True
 
-    def utc_to_local_diff(self):
+    def utc_to_local_diff(self) -> float:
         """Returns the UTC Offset."""
 
         # Get the current time in the specified timezone
@@ -571,12 +582,12 @@ class AstronomicalRoutines:
         # Convert the offset to hours
         return offset_seconds / 3600
 
-    async def time_shift(self) -> int:
-        """Returns the time_shift to UTC."""
+    async def time_shift(self) -> float:
+        """Returns the time_shift to UTC in hours."""
 
         return int(self.utc_to_local_diff() * 3600)
 
-    async def need_update(self, forecast_time=None):
+    async def need_update(self, forecast_time=None) -> None:
         """Update Sun and Moon."""
 
         if forecast_time is not None:
@@ -589,6 +600,7 @@ class AstronomicalRoutines:
     #
     # Observers
     #
+    @typechecked
     def _get_sun_observer(self, below_horizon=ASTRONOMICAL_DUSK_DAWN) -> ephem.Observer:
         """Retrieves the ephem sun observer for the current location."""
 
@@ -599,8 +611,10 @@ class AstronomicalRoutines:
         observer.horizon = below_horizon * degree
         observer.pressure = 0
         observer.epoch = datetime.now().strftime("%Y/%m/%d")
+
         return observer
 
+    @typechecked
     def _get_moon_observer(self) -> ephem.Observer:
         """Retrieves the ephem mon observer for the current location."""
 
@@ -614,17 +628,18 @@ class AstronomicalRoutines:
         observer.horizon = "-0:34"
         observer.pressure = 0
         observer.epoch = datetime.now().strftime("%Y/%m/%d")
+
         return observer
 
     # #########################################################################
     # Sun
     # #########################################################################
-    async def sun_data(self) -> dict:
+    @typechecked
+    async def sun_data(self) -> SunData:
         """Returns sun data."""
 
         sd = SunDataModel(self._sun_data)
         try:
-
             return SunData(data=sd)
         except TypeError as ve:
             _LOGGER.error(f"Failed to parse Sun data: {self._sun_data}")
@@ -675,7 +690,7 @@ class AstronomicalRoutines:
         if self._sun_data.get("next_setting_civil", None) is not None:
             return self._sun_data["next_setting_civil"]
 
-    def _calculate_sun(self):
+    def _calculate_sun(self) -> None:
         """Calculates sun risings and settings."""
 
         if self._sun_observer is None:
@@ -691,8 +706,9 @@ class AstronomicalRoutines:
         self._calculate_sun_nautical()
         self._calculate_sun_astro()
         self._calculate_sun_altaz()
+        self._calculate_sun_constellation()
 
-    def _calculate_sun_civil(self):
+    def _calculate_sun_civil(self) -> None:
         # Rise and Setting (Civil)
         try:
             self._sun_data["next_rising_civil"] = (
@@ -734,7 +750,7 @@ class AstronomicalRoutines:
                     continue
                 break
 
-    def _calculate_sun_nautical(self):
+    def _calculate_sun_nautical(self) -> None:
         # Rise and Setting (Nautical)
         self._sun_observer_nautical.date = self._forecast_time
         self._sun.compute(self._sun_observer_nautical)
@@ -783,7 +799,7 @@ class AstronomicalRoutines:
                     continue
                 break
 
-    def _calculate_sun_astro(self):
+    def _calculate_sun_astro(self) -> None:
         # Rise and Setting (Astronomical)
         self._sun_observer_astro.date = self._forecast_time
         self._sun.compute(self._sun_observer_astro)
@@ -876,7 +892,7 @@ class AstronomicalRoutines:
                     continue
                 break
 
-    def _calculate_sun_altaz(self):
+    def _calculate_sun_altaz(self) -> None:
         """Calculates sun altitude and azimuth."""
 
         if self._sun_observer is None:
@@ -893,22 +909,37 @@ class AstronomicalRoutines:
         # Sun Azimuth
         self._sun_data["azimuth"] = deg(float(self._sun.az))
 
+    def _calculate_sun_constellation(self) -> None:
+        """Calculates sun altitude and azimuth."""
+
+        if self._sun_observer is None:
+            self._sun_observer = self._get_sun_observer(CIVIL_DUSK_DAWN)
+        if self._sun is None:
+            self._sun = ephem.Sun()
+
+        self._sun_observer.date = self._forecast_time
+        self._sun.compute(self._sun_observer)
+
+        # Sun Constellation
+        constellation = ephem.constellation(self._sun)[1]
+        self._sun_data["constellation"] = constellation
+
     # #########################################################################
     # Moon
     # #########################################################################
-    async def moon_data(self) -> dict:
+    @typechecked
+    async def moon_data(self) -> MoonData:
         """Returns moon data."""
 
         md = MoonDataModel(self._moon_data)
         try:
-
             return MoonData(data=md)
         except TypeError as ve:
             _LOGGER.error(f"Failed to parse Sun data: {self._moon_data}")
             _LOGGER.error(ve)
             return None
 
-    def _calculate_moon(self):
+    def _calculate_moon(self) -> None:
         """Calculates moon rising and setting."""
 
         if self._moon_observer is None:
@@ -972,8 +1003,9 @@ class AstronomicalRoutines:
 
         self._calculate_moon_altaz()
         self._calculate_moon_distance_size()
+        self._calculate_moon_constellation()
 
-    def _calculate_moon_altaz(self):
+    def _calculate_moon_altaz(self) -> None:
         """Calculates moon altitude and azimuth."""
 
         if self._moon_observer is None:
@@ -990,7 +1022,7 @@ class AstronomicalRoutines:
         # Moon Azimuth
         self._moon_data["azimuth"] = deg(float(self._moon.az))
 
-    def _calculate_moon_distance_size(self):
+    def _calculate_moon_distance_size(self) -> None:
         """Calculate moon distance and relative size"""
         if self._moon_observer is None:
             self._moon_observer = self._get_moon_observer()
@@ -1014,24 +1046,27 @@ class AstronomicalRoutines:
         self._moon_data["relative_distance"] = self._moon_data["distance_km"] / self._moon_data["avg_distance_km"]
         self._moon_data["relative_size"] = self._moon_data["angular_size"] / self._moon_data["avg_angular_size"]
 
+    def _calculate_moon_constellation(self) -> None:
+        """Calculates sun altitude and azimuth."""
+
+        if self._moon_observer is None:
+            self._moon_observer = self._get_moon_observer()
+        if self._moon is None:
+            self._moon = ephem.Moon()
+
+        self._moon_observer.date = self._forecast_time
+        self._moon.compute(self._moon_observer)
+
+        # Moon Constellation
+        constellation = ephem.constellation(self._moon)[1]
+        self._moon_data["constellation"] = constellation
+
     # #########################################################################
     # Darkness
     # #########################################################################
+    @typechecked
     async def darkness_data(self) -> DarknessData:
         """Returns darkness data."""
-
-        # if not self._test_data(
-        #     self._moon_data, ["next_setting", "next_rising", "previous_setting"]
-        # ):
-        #     _LOGGER.debug("DSD: moon data missing")
-        #     return False
-
-        # if not self._test_data(
-        #     self._sun_data,
-        #     ["previous_setting_astro", "next_setting_astro", "next_rising_astro"],
-        # ):
-        #     _LOGGER.debug("DSD: sun data missing")
-        #     return False
 
         self._darkness_data["deep_sky_darkness_moon_rises"] = self._deep_sky_darkness_moon_rises()
         self._darkness_data["deep_sky_darkness_moon_sets"] = self._deep_sky_darkness_moon_sets()
@@ -1041,7 +1076,6 @@ class AstronomicalRoutines:
 
         dd = DarknessDataModel(self._darkness_data)
         try:
-
             return DarknessData(data=dd)
         except TypeError as ve:
             _LOGGER.error(f"Failed to parse darkness data: {self._darkness_data}")

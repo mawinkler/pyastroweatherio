@@ -95,6 +95,7 @@ class SunDataModel(TypedDict):
     next_setting_nautical: datetime
     previous_rising_astro: datetime
     previous_setting_astro: datetime
+    constellation: str
 
 
 @typechecked
@@ -112,6 +113,7 @@ class SunData:
         self.next_setting_nautical = data["next_setting_nautical"]
         self.previous_rising_astro = data["previous_rising_astro"]
         self.previous_setting_astro = data["previous_setting_astro"]
+        self.constellation = data["constellation"]
 
 
 class MoonDataModel(TypedDict):
@@ -133,6 +135,7 @@ class MoonDataModel(TypedDict):
     previous_setting: datetime
     relative_distance: float
     relative_size: float
+    constellation: str
 
 
 @typechecked
@@ -156,6 +159,7 @@ class MoonData:
         self.previous_setting = data["previous_setting"]
         self.relative_distance = data["relative_distance"]
         self.relative_size = data["relative_size"]
+        self.constellation = data["constellation"]
 
 
 class DarknessDataModel(TypedDict):
@@ -176,9 +180,7 @@ class DarknessData:
         self.deep_sky_darkness_moon_rises = data["deep_sky_darkness_moon_rises"]
         self.deep_sky_darkness_moon_sets = data["deep_sky_darkness_moon_sets"]
         self.deep_sky_darkness_moon_always_up = data["deep_sky_darkness_moon_always_up"]
-        self.deep_sky_darkness_moon_always_down = data[
-            "deep_sky_darkness_moon_always_down"
-        ]
+        self.deep_sky_darkness_moon_always_down = data["deep_sky_darkness_moon_always_down"]
         self.deep_sky_darkness = data["deep_sky_darkness"]
 
 
@@ -730,6 +732,12 @@ class LocationData:
 
         return self.sun_data.next_setting_nautical
 
+    @property
+    def sun_constellation(self) -> str:
+        """Return Sun Constellation."""
+
+        return self.sun_data.constellation
+
     # #########################################################################
     # Moon
     # #########################################################################
@@ -799,6 +807,12 @@ class LocationData:
 
         return round(self.moon_data.relative_distance * 100 - 100, 3)
 
+    @property
+    def moon_constellation(self) -> str:
+        """Return Moon Constellation."""
+
+        return self.moon_data.constellation
+
     # #########################################################################
     # Darkness
     # #########################################################################
@@ -843,12 +857,7 @@ class LocationData:
         if len(self.deepsky_forecast) > 0:
             for nightly_condition in self.deepsky_forecast[0].nightly_conditions:
                 nightly_condition_sum += nightly_condition
-            return int(
-                round(
-                    nightly_condition_sum
-                    / len(self.deepsky_forecast[0].nightly_conditions)
-                )
-            )
+            return int(round(nightly_condition_sum / len(self.deepsky_forecast[0].nightly_conditions)))
 
     @property
     def deepsky_forecast_today_dayname(self):
@@ -892,12 +901,7 @@ class LocationData:
         if len(self.deepsky_forecast) > 1:
             for nightly_condition in self.deepsky_forecast[1].nightly_conditions:
                 nightly_condition_sum += nightly_condition
-            return int(
-                round(
-                    nightly_condition_sum
-                    / len(self.deepsky_forecast[1].nightly_conditions)
-                )
-            )
+            return int(round(nightly_condition_sum / len(self.deepsky_forecast[1].nightly_conditions)))
 
     @property
     def deepsky_forecast_tomorrow_dayname(self):

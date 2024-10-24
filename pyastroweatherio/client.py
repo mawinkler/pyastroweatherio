@@ -8,11 +8,12 @@ import os.path
 from datetime import UTC, datetime, timedelta, timezone
 from json.decoder import JSONDecodeError
 from pprint import pprint as pp
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import aiofiles
 from aiohttp import ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ClientError
+from typeguard import typechecked
 
 from pyastroweatherio.const import (
     BASE_URL_MET,
@@ -23,6 +24,7 @@ from pyastroweatherio.const import (
     DEFAULT_CONDITION_CLOUDCOVER_LOW_WEAKENING,
     DEFAULT_CONDITION_CLOUDCOVER_MEDIUM_WEAKENING,
     DEFAULT_CONDITION_CLOUDCOVER_WEIGHT,
+    DEFAULT_CONDITION_FOG_WEIGHT,
     DEFAULT_CONDITION_SEEING_WEIGHT,
     DEFAULT_CONDITION_TRANSPARENCY_WEIGHT,
     DEFAULT_ELEVATION,
@@ -86,6 +88,7 @@ class AstroWeather:
         cloudcover_high_weakening=DEFAULT_CONDITION_CLOUDCOVER_HIGH_WEAKENING,
         cloudcover_medium_weakening=DEFAULT_CONDITION_CLOUDCOVER_MEDIUM_WEAKENING,
         cloudcover_low_weakening=DEFAULT_CONDITION_CLOUDCOVER_LOW_WEAKENING,
+        fog_weight=DEFAULT_CONDITION_FOG_WEIGHT,
         seeing_weight=DEFAULT_CONDITION_SEEING_WEIGHT,
         transparency_weight=DEFAULT_CONDITION_TRANSPARENCY_WEIGHT,
         calm_weight=DEFAULT_CONDITION_CALM_WEIGHT,
@@ -115,6 +118,7 @@ class AstroWeather:
         self._cloudcover_high_weakening = cloudcover_high_weakening
         self._cloudcover_medium_weakening = cloudcover_medium_weakening
         self._cloudcover_low_weakening = cloudcover_low_weakening
+        self._fog_weight = fog_weight
         self._seeing_weight = seeing_weight
         self._transparency_weight = transparency_weight
         self._calm_weight = calm_weight
@@ -142,19 +146,22 @@ class AstroWeather:
     # #########################################################################
     # Public functions
     # #########################################################################
+    @typechecked
     async def get_location_data(
         self,
-    ) -> None:
+    ) -> List[LocationData]:
         """Returns station Weather Forecast."""
 
         return await self._get_location_data()
 
-    async def get_hourly_forecast(self) -> None:
+    @typechecked
+    async def get_hourly_forecast(self) -> List[ForecastData]:
         """Returns hourly Weather Forecast."""
 
         return await self._get_forecast_data(FORECAST_TYPE_HOURLY, 72)
 
-    async def get_deepsky_forecast(self) -> None:
+    @typechecked
+    async def get_deepsky_forecast(self) -> List[NightlyConditionsData]:
         """Returns Deep Sky Forecast."""
 
         return await self._get_deepsky_forecast()
@@ -162,6 +169,7 @@ class AstroWeather:
     # #########################################################################
     # Private functions
     # #########################################################################
+    @typechecked
     def _get_location(
         self,
         latitude,
@@ -169,6 +177,8 @@ class AstroWeather:
         elevation,
         timezone_info,
     ) -> GeoLocationData | None:
+        """Returns a validated GeoLocation data object"""
+
         geolocation = GeoLocationDataModel(
             {
                 "latitude": latitude,
@@ -185,7 +195,10 @@ class AstroWeather:
             _LOGGER.error(ve)
             return None
 
+    @typechecked
     async def _get_atmosphere(self, details_seventimer, details_metno) -> AtmosphereData | None:
+        """Returns a validated Atmospherical Conditions data object"""
+
         atmosphere = {}
 
         seeing = 0
@@ -242,6 +255,7 @@ class AstroWeather:
             _LOGGER.error(ve)
             return None
 
+    @typechecked
     async def _get_condition(
         self,
         details_metno,
@@ -251,6 +265,8 @@ class AstroWeather:
         transparency,
         lifted_index,
     ) -> ConditionData | None:
+        """Returns a validated Weather Conditions data object"""
+
         condition = ConditionDataModel(
             {
                 "cloudcover": details_metno.get("cloud_area_fraction"),
@@ -266,6 +282,7 @@ class AstroWeather:
                     details_metno.get("cloud_area_fraction_high"),
                     details_metno.get("cloud_area_fraction_medium"),
                     details_metno.get("cloud_area_fraction_low"),
+                    details_metno.get("fog_area_fraction"),
                     seeing,
                     transparency,
                     details_metno.get("wind_speed"),
@@ -290,17 +307,19 @@ class AstroWeather:
             _LOGGER.error(ve)
             return None
 
+    @typechecked
     async def _calc_condition_percentage(
         self,
         cloudcover_high,
         cloudcover_medium,
         cloudcover_low,
+        fog,
         seeing,
         transparency,
         wind_speed,
         precipitation_amount,
     ) -> int:
-        """Return condition based on cloud cover, seeing, transparency, and wind speed."""
+        """Return condition based on cloud cover, fog, seeing, transparency, wind speed, and precipitation."""
 
         # Seeing is something in between 0 and 2.5 arcsecs
         seeing = seeing * 100 / SEEING_MAX  # arcsecs up to 2.5
@@ -320,24 +339,44 @@ class AstroWeather:
             100
             - (
                 self._cloudcover_weight * max(cloudcover)
+                + self._fog_weight * fog
                 + self._seeing_weight * seeing
                 + self._transparency_weight * transparency
                 + self._calm_weight * wind_speed_value
             )
-            / (self._cloudcover_weight + self._seeing_weight + self._transparency_weight + self._calm_weight)
+            / (
+                self._cloudcover_weight
+                + self._fog_weight
+                + self._seeing_weight
+                + self._transparency_weight
+                + self._calm_weight
+            )
             - precipitation_amount * 100
         )
+
+        # _LOGGER.debug(
+        #     f"Cloudcover: {max(cloudcover)}, Fog: {fog}, Seeing: {seeing}, Transparency: {transparency}, Wind speed: {wind_speed_value}"
+        # )
 
         # Ensure condition is within the valid range [0, 1]
         condition = max(0, min(100, condition))
 
         return condition
 
+    @typechecked
+    def _test_data(self, data, keys) -> bool:
+        """Test that specific values in a dictionary are not None"""
+
+        if not all(data[key] is not None for key in keys):
+            return False
+        return True
+
     # #########################################################################
     # Data for AstroWeather
     # #########################################################################
-    async def _get_location_data(self) -> None:
-        """Return Forecast data"""
+    @typechecked
+    async def _get_location_data(self) -> List[LocationData]:
+        """Returns a validated LocationData data object"""
 
         cnv = ConversionFunctions()
         items = []
@@ -470,14 +509,8 @@ class AstroWeather:
 
         return items
 
-    def _test_data(self, data, keys) -> bool:
-        """Test that specific values in a dictionary are not None"""
-
-        if not all(data[key] is not None for key in keys):
-            return False
-        return True
-
-    async def _get_forecast_data(self, forecast_type, hours_to_show) -> None:
+    @typechecked
+    async def _get_forecast_data(self, forecast_type, hours_to_show) -> List[ForecastData]:
         """Return Forecast data for the Station."""
 
         cnv = ConversionFunctions()
@@ -505,7 +538,6 @@ class AstroWeather:
 
         utc_to_local_diff = self._astro_routines.utc_to_local_diff()
         _LOGGER.debug("UTC to local diff: %s", str(utc_to_local_diff))
-        # _LOGGER.debug("Forecast length 7timer: %s", str(len(self._weather_data_seventimer)))
 
         if len(self._weather_data_metno) == 0:
             _LOGGER.error("Met.no data not available")
@@ -544,10 +576,6 @@ class AstroWeather:
             ):
                 _LOGGER.error("Missing Met.no data")
                 break
-
-            # if details_metno.get("cloud_area_fraction") is None:
-            #     _LOGGER.error("Missing Met.no data")
-            #     break
 
             details_seventimer = self._get_data_seventimer_timer(
                 seventimer_init,
@@ -618,13 +646,6 @@ class AstroWeather:
                 _LOGGER.error(f"Failed to parse forecast data: {item}")
                 _LOGGER.error(ve)
 
-            # items.append(ForecastData(data=item))
-
-            # item["seventimer_timepoint"] = item["seventimer_timepoint"] + 1
-            # # item.seventimer_timepoint(item["seventimer_timepoint"] + 1)
-            # item["forecast_time"] = item["forecast_time"] + timedelta(hours=1)
-            # item["hour"] = item["hour"] + 1
-
             cnt += 1
             if cnt >= hours_to_show:
                 break
@@ -632,9 +653,11 @@ class AstroWeather:
         self._forecast_data = items
 
         _LOGGER.debug("Forceast Length: %s", str(len(items)))
+
         return items
 
-    async def _get_deepsky_forecast(self) -> list:
+    @typechecked
+    async def _get_deepsky_forecast(self) -> List[NightlyConditionsData]:
         """Return Deepsky Forecast data."""
 
         cnv = ConversionFunctions()
@@ -705,6 +728,7 @@ class AstroWeather:
                             details_forecast.cloud_area_fraction_high_percentage,
                             details_forecast.cloud_area_fraction_medium_percentage,
                             details_forecast.cloud_area_fraction_low_percentage,
+                            details_forecast.fog_area_fraction_percentage,
                             details_forecast.seeing,
                             details_forecast.transparency,
                             details_forecast.wind10m_speed,
@@ -754,7 +778,8 @@ class AstroWeather:
     # #########################################################################
     # UpTonight
     # #########################################################################
-    async def _get_deepsky_objects(self) -> list:
+    @typechecked
+    async def _get_deepsky_objects(self) -> List[UpTonightDSOData]:
         """Return Deepsky Objects for today."""
 
         items = []
@@ -813,7 +838,8 @@ class AstroWeather:
 
         return items
 
-    async def _get_bodies(self) -> list:
+    @typechecked
+    async def _get_bodies(self) -> List[UpTonightBodiesData]:
         """Return Bodies for today."""
 
         items = []
@@ -866,7 +892,8 @@ class AstroWeather:
 
         return items
 
-    async def _get_comets(self) -> list:
+    @typechecked
+    async def _get_comets(self) -> List[UpTonightCometsData]:
         """Return Comets for today."""
 
         items = []
@@ -919,7 +946,8 @@ class AstroWeather:
 
         return items
 
-    async def _retrieve_data_uptonight(self):
+    @typechecked
+    async def _retrieve_data_uptonight(self) -> None:
         """Retrieves current data from uptonight"""
 
         if ((datetime.now() - self._data_uptonight_timestamp).total_seconds()) > DEFAULT_CACHE_TIMEOUT:
@@ -975,7 +1003,7 @@ class AstroWeather:
     # #########################################################################
     # 7Timer
     # #########################################################################
-    async def _retrieve_data_seventimer(self):
+    async def _retrieve_data_seventimer(self) -> None:
         """Retrieves current data from 7timer."""
 
         if ((datetime.now() - self._weather_data_seventimer_timestamp).total_seconds()) > DEFAULT_CACHE_TIMEOUT:
@@ -1021,7 +1049,8 @@ class AstroWeather:
         else:
             _LOGGER.debug("Using cached data for 7Timer")
 
-    async def _async_request_seventimer(self, product="astro", method="get") -> dict:
+    @typechecked
+    async def _async_request_seventimer(self, product="astro", method="get") -> Dict:
         """Make a request against the 7timer API."""
 
         use_running_session = self._session and not self._session.closed
@@ -1069,7 +1098,8 @@ class AstroWeather:
             if not use_running_session:
                 await session.close()
 
-    def _get_data_seventimer_timer(self, anchor_timestamp, datetime):
+    @typechecked
+    def _get_data_seventimer_timer(self, anchor_timestamp, datetime) -> Dict[str, Any]:
         """Return 7Timer datapoint of interest."""
 
         seventimer_index = 0
@@ -1091,7 +1121,7 @@ class AstroWeather:
     # #########################################################################
     # Met.no
     # #########################################################################
-    async def _retrieve_data_metno(self):
+    async def _retrieve_data_metno(self) -> None:
         """Retrieves current data from met."""
 
         if ((datetime.now() - self._weather_data_metno_timestamp).total_seconds()) > DEFAULT_CACHE_TIMEOUT:
@@ -1120,7 +1150,8 @@ class AstroWeather:
         else:
             _LOGGER.debug("Using cached data for Met.no")
 
-    async def _async_request_met(self, product="met", method="get") -> dict:
+    @typechecked
+    async def _async_request_met(self, product="met", method="get") -> Dict:
         """Make a request against the 7timer API."""
 
         use_running_session = self._session and not self._session.closed

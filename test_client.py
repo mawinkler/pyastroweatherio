@@ -122,6 +122,7 @@ async def main() -> None:
         cloudcover_high_weakening=0.5,
         cloudcover_medium_weakening=0.75,
         cloudcover_low_weakening=0.75,
+        fog_weight=3,
         seeing_weight=2,
         transparency_weight=1,
         calm_weight=2,
@@ -147,6 +148,7 @@ async def main() -> None:
                 "high",
                 "medium",
                 "low",
+                "fog",
                 "precipitation",
                 "wind_direction",
                 "wind_speed",
@@ -154,6 +156,12 @@ async def main() -> None:
                 "temp2m",
                 "rh2m",
                 "dewpoint2m",
+                "condition",
+                "seeing",
+                "transparency",
+                "lifted_index",
+                "weather",
+                "weather6",
             ]
             rows = [
                 [
@@ -164,6 +172,7 @@ async def main() -> None:
                     obj.cloud_area_fraction_high_percentage,
                     obj.cloud_area_fraction_medium_percentage,
                     obj.cloud_area_fraction_low_percentage,
+                    obj.fog_area_fraction_percentage,
                     obj.precipitation_amount,
                     obj.wind10m_direction,
                     obj.wind10m_speed,
@@ -171,27 +180,6 @@ async def main() -> None:
                     obj.temp2m,
                     obj.rh2m,
                     obj.dewpoint2m,
-                ]
-                for obj in data
-            ]
-            print(
-                f"{esc(COLOR_BLUE)}"
-                + f"{tabulate(rows, headers=headers)}"
-                + f"{esc('0')}\n"
-            )
-
-            headers = [
-                "forecast_time",
-                "condition",
-                "seeing",
-                "transparency",
-                "lifted_index",
-                "weather",
-                "weather6",
-            ]
-            rows = [
-                [
-                    obj.forecast_time.strftime("%Y-%m-%d %H:%M"),
                     obj.condition_percentage,
                     obj.seeing_percentage,
                     obj.transparency_percentage,
@@ -201,11 +189,7 @@ async def main() -> None:
                 ]
                 for obj in data
             ]
-            print(
-                f"{esc(COLOR_BLUE)}"
-                + f"{tabulate(rows, headers=headers)}"
-                + f"{esc('0')}\n"
-            )
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
         if test_deepsky_forecast:
             data = await astroweather.get_deepsky_forecast()
@@ -225,11 +209,7 @@ async def main() -> None:
                 ]
                 for obj in data
             ]
-            print(
-                f"{esc(COLOR_BLUE)}"
-                + f"{tabulate(rows, headers=headers)}"
-                + f"{esc('0')}\n"
-            )
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
         if test_location_data:
             data = await astroweather.get_location_data()
@@ -254,11 +234,7 @@ async def main() -> None:
                 ]
                 for obj in data
             ]
-            print(
-                f"{esc(COLOR_BLUE)}"
-                + f"{tabulate(rows, headers=headers)}"
-                + f"{esc('0')}\n"
-            )
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
             print("Clouds:")
             headers = [
@@ -270,6 +246,7 @@ async def main() -> None:
                 "high",
                 "medium",
                 "low",
+                "fog",
             ]
             rows = [
                 [
@@ -281,14 +258,11 @@ async def main() -> None:
                     obj.cloud_area_fraction_high_percentage,
                     obj.cloud_area_fraction_medium_percentage,
                     obj.cloud_area_fraction_low_percentage,
+                    obj.fog_area_fraction_percentage,
                 ]
                 for obj in data
             ]
-            print(
-                f"{esc(COLOR_BLUE)}"
-                + f"{tabulate(rows, headers=headers)}"
-                + f"{esc('0')}\n"
-            )
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
             print("Atmosphere:")
             headers = [
@@ -316,11 +290,7 @@ async def main() -> None:
                 ]
                 for obj in data
             ]
-            print(
-                f"{esc(COLOR_BLUE)}"
-                + f"{tabulate(rows, headers=headers)}"
-                + f"{esc('0')}\n"
-            )
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
             print("During the night:")
             headers = [
@@ -360,11 +330,7 @@ async def main() -> None:
                 ]
                 for obj in data
             ]
-            print(
-                f"{esc(COLOR_BLUE)}"
-                + f"{tabulate(rows, headers=headers)}"
-                + f"{esc('0')}\n"
-            )
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
             print("Sun:")
             headers = [
@@ -376,6 +342,7 @@ async def main() -> None:
                 "next_setting",
                 "next_setting_nautical",
                 "next_setting_astro",
+                "constellation",
             ]
             rows = [
                 [
@@ -387,14 +354,11 @@ async def main() -> None:
                     obj.sun_next_setting.strftime("%Y-%m-%d %H:%M"),
                     obj.sun_next_setting_nautical.strftime("%Y-%m-%d %H:%M"),
                     obj.sun_next_setting_astro.strftime("%Y-%m-%d %H:%M"),
+                    obj.sun_constellation,
                 ]
                 for obj in data
             ]
-            print(
-                f"{esc(COLOR_BLUE)}"
-                + f"{tabulate(rows, headers=headers)}"
-                + f"{esc('0')}\n"
-            )
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
             print("Moon:")
             headers = [
@@ -409,6 +373,7 @@ async def main() -> None:
                 "angular_size",
                 "relative_distance",
                 "relative_size",
+                "constellation",
             ]
             rows = [
                 [
@@ -423,14 +388,11 @@ async def main() -> None:
                     obj.moon_angular_size,
                     obj.moon_relative_distance,
                     obj.moon_relative_size,
+                    obj.moon_constellation,
                 ]
                 for obj in data
             ]
-            print(
-                f"{esc(COLOR_BLUE)}"
-                + f"{tabulate(rows, headers=headers)}"
-                + f"{esc('0')}\n"
-            )
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
             print("UpTonight:")
             headers = [
@@ -452,11 +414,7 @@ async def main() -> None:
                 ]
                 for obj in data
             ]
-            print(
-                f"{esc(COLOR_BLUE)}"
-                + f"{tabulate(rows, headers=headers)}"
-                + f"{esc('0')}\n"
-            )
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
     except AstroWeatherError as err:
         print(err)
