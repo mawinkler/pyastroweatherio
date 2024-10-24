@@ -7,7 +7,6 @@ from math import degrees as deg
 
 import ephem
 from ephem import degree
-from pydantic import ValidationError
 from zoneinfo import ZoneInfo
 
 # import metpy.calc as mpcalc
@@ -20,7 +19,16 @@ from pyastroweatherio.const import (
     NAUTICAL_DUSK_DAWN,
     SEEING_MAX,
 )
-from pyastroweatherio.models import DarknessModel, MoonModel, SunModel
+
+# from pyastroweatherio.models import DarknessDataModel, MoonDataModel, SunDataModel
+from pyastroweatherio.dataclasses import (
+    DarknessData,
+    DarknessDataModel,
+    MoonData,
+    MoonDataModel,
+    SunData,
+    SunDataModel,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -614,14 +622,14 @@ class AstronomicalRoutines:
     async def sun_data(self) -> dict:
         """Returns sun data."""
 
-        if self._sun_data is not None:
-            try:
-                return SunModel(**self._sun_data)
-            except ValidationError as ve:
-                _LOGGER.error(f"Failed to parse Sun data: {self._sun_data}")
-                _LOGGER.error(ve)
-                return None
-        return None
+        sd = SunDataModel(self._sun_data)
+        try:
+
+            return SunData(data=sd)
+        except TypeError as ve:
+            _LOGGER.error(f"Failed to parse Sun data: {self._sun_data}")
+            _LOGGER.error(ve)
+            return None
 
     async def sun_next_rising(self) -> datetime:
         """Returns sun next rising."""
@@ -891,14 +899,14 @@ class AstronomicalRoutines:
     async def moon_data(self) -> dict:
         """Returns moon data."""
 
-        if self._moon_data is not None:
-            try:
-                return MoonModel(**self._moon_data)
-            except ValidationError as ve:
-                _LOGGER.error(f"Failed to parse Moon data: {self._moon_data}")
-                _LOGGER.error(ve)
-                return None
-        return None
+        md = MoonDataModel(self._moon_data)
+        try:
+
+            return MoonData(data=md)
+        except TypeError as ve:
+            _LOGGER.error(f"Failed to parse Sun data: {self._moon_data}")
+            _LOGGER.error(ve)
+            return None
 
     def _calculate_moon(self):
         """Calculates moon rising and setting."""
@@ -1009,19 +1017,21 @@ class AstronomicalRoutines:
     # #########################################################################
     # Darkness
     # #########################################################################
-    async def darkness_data(self) -> dict:
+    async def darkness_data(self) -> DarknessData:
         """Returns darkness data."""
 
-        if not self._test_data(self._moon_data, ["next_setting", "next_rising", "previous_setting"]):
-            _LOGGER.debug("DSD: moon data missing")
-            return False
+        # if not self._test_data(
+        #     self._moon_data, ["next_setting", "next_rising", "previous_setting"]
+        # ):
+        #     _LOGGER.debug("DSD: moon data missing")
+        #     return False
 
-        if not self._test_data(
-            self._sun_data,
-            ["previous_setting_astro", "next_setting_astro", "next_rising_astro"],
-        ):
-            _LOGGER.debug("DSD: sun data missing")
-            return False
+        # if not self._test_data(
+        #     self._sun_data,
+        #     ["previous_setting_astro", "next_setting_astro", "next_rising_astro"],
+        # ):
+        #     _LOGGER.debug("DSD: sun data missing")
+        #     return False
 
         self._darkness_data["deep_sky_darkness_moon_rises"] = self._deep_sky_darkness_moon_rises()
         self._darkness_data["deep_sky_darkness_moon_sets"] = self._deep_sky_darkness_moon_sets()
@@ -1029,9 +1039,11 @@ class AstronomicalRoutines:
         self._darkness_data["deep_sky_darkness_moon_always_down"] = self._deep_sky_darkness_moon_always_down()
         self._darkness_data["deep_sky_darkness"] = self._deep_sky_darkness()
 
+        dd = DarknessDataModel(self._darkness_data)
         try:
-            return DarknessModel(**self._darkness_data)
-        except ValidationError as ve:
+
+            return DarknessData(data=dd)
+        except TypeError as ve:
             _LOGGER.error(f"Failed to parse darkness data: {self._darkness_data}")
             _LOGGER.error(ve)
             return None
@@ -1057,7 +1069,7 @@ class AstronomicalRoutines:
         if self._astronomical_darkness():
             _LOGGER.debug("DSD: In astronomical darkness")
             if self._deep_sky_darkness_moon_rises():
-                dsd = self._moon_data("next_rising") - self._forecast_time
+                dsd = self._moon_data["next_rising"] - self._forecast_time
                 _LOGGER.debug(f"DSD: Sun down, Moon rises {dsd}")
 
             if self._deep_sky_darkness_moon_sets():
