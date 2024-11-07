@@ -3,3 +3,4 @@ aiohttp==3.10.9
 pyephem==9.99
 pytz==2024.2
 setuptools==75.1.0
+typeguard==4.3.0

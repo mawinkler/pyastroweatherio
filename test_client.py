@@ -1,13 +1,14 @@
+#!/usr/bin/env python3
 """The test for the API"""
 
 import asyncio
-import pprint
 import logging
-import time
 import os
+import time
 from datetime import datetime
+from tabulate import tabulate
+
 import pytz
-from pprint import pprint as pp
 
 from pyastroweatherio import (
     AstroWeather,
@@ -16,8 +17,6 @@ from pyastroweatherio import (
 
 _LOGGER = logging.getLogger(__name__)
 
-
-pp = pprint.PrettyPrinter()
 COLOR_BLACK = "1;30"
 COLOR_RED = "1;31"
 COLOR_GREEN = "1;32"
@@ -97,7 +96,7 @@ def convert_to_hhmm(sec):
     sec %= 3600
     min = sec // 60
     sec %= 60
-    #    return "%02d:%02d:%02d" % (hour, min, sec)
+
     return "%02d:%02d" % (hour, min)
 
 
@@ -122,13 +121,14 @@ async def main() -> None:
         timezone_info=timezone_info,
         cloudcover_weight=3,
         cloudcover_high_weakening=0.5,
-        cloudcover_medium_weakening=1,
-        cloudcover_low_weakening=1,
+        cloudcover_medium_weakening=0.75,
+        cloudcover_low_weakening=0.75,
+        fog_weight=3,
         seeing_weight=2,
         transparency_weight=1,
-        calm_weight=3,
+        calm_weight=2,
         uptonight_path=".",
-        test_datetime=datetime.strptime("2024-10-17T11:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
+        # test_datetime=datetime.strptime("2024-10-22T11:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
         experimental_features=True,
     )
 
@@ -141,284 +141,285 @@ async def main() -> None:
         if test_hourly_forecast:
             data = await astroweather.get_hourly_forecast()
 
-            f = open("debug/test_client_hourly_forecast.csv", "w")
-
-            f.write(
-                "Init,Timepoint,Timestamp,Hour of Day,Cloudcover,Cloudless,Seeing,Transparency,Lifted Index,Cloud Area Fraction,Cloud Area Fraction High,Cloud Area Fraction Low,Cloud Area Fraction Medium,View Condition,Wind Direction,Speed,Temperature,Rel Humidity,Dew Point,Weather,Weather 6,Precipitation amount\n"
-            )
-
-            for row in data:
-                print(
-                    f"{esc(COLOR_BLUE)}--------------------------------------------------------"
-                    + f"---------------------------------------------------------------{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Seventimer Init: {esc(COLOR_GREEN)}{str(row.seventimer_init)}, "
-                    + f"{esc(COLOR_RED)}Seventimer Timepoint: {esc(COLOR_GREEN)}{str(row.seventimer_timepoint)}, "
-                    + f"{esc(COLOR_RED)}Forecast Time: {esc(COLOR_GREEN)}{str(row.forecast_time)}, "
-                    + f"{esc(COLOR_RED)}Hour of Day: {esc(COLOR_GREEN)}{str(row.hour)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Cloudcover: {esc(COLOR_GREEN)}{str(row.cloudcover_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Cloudless: {esc(COLOR_GREEN)}{str(row.cloudless_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Seeing: {esc(COLOR_GREEN)}{str(row.seeing_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Transparency: {esc(COLOR_GREEN)}{str(row.transparency_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Calm Percentage: {esc(COLOR_GREEN)}{str(row.calm_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Liftet Index: {esc(COLOR_GREEN)}{str(row.lifted_index)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Cloud Area Fraction: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Cloud Area Fraction High: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_high_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Cloud Area Fraction Low: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_low_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Cloud Area Fraction Medium: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_medium_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Precipitation Amount {esc(COLOR_GREEN)}{str(row.precipitation_amount)}mm{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}View Condition: {esc(COLOR_GREEN)}{str(row.condition_percentage)}%{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Wind Direction: {esc(COLOR_GREEN)}{str(row.wind10m_direction)}, "
-                    + f"{esc(COLOR_RED)}Speed: {esc(COLOR_GREEN)}{str(row.wind10m_speed)}m/s{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Temperature: {esc(COLOR_GREEN)}{str(row.temp2m)}, "
-                    + f"{esc(COLOR_RED)}Rel Humidity: {esc(COLOR_GREEN)}{str(row.rh2m)}, "
-                    + f"{esc(COLOR_RED)}Dew Point: {esc(COLOR_GREEN)}{str(row.dewpoint2m)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}, "
-                    + f"{esc(COLOR_RED)}Weather 6: {esc(COLOR_GREEN)}{str(row.weather6)}, "
-                    + f"{esc(COLOR_RED)}Precipitation amount: {esc(COLOR_GREEN)}{str(row.precipitation_amount)}{esc('0')}"
-                )
-
-                f.write(
-                    str(row.seventimer_init)
-                    + ","
-                    + str(row.seventimer_timepoint)
-                    + ","
-                    + str(row.forecast_time)
-                    + ","
-                    + str(row.hour)
-                    + ","
-                    + str(row.cloudcover_percentage)
-                    + ","
-                    + str(row.cloudless_percentage)
-                    + ","
-                    + str(row.seeing)
-                    + ","
-                    + str(row.transparency)
-                    + ","
-                    + str(row.lifted_index)
-                    + ","
-                    + str(row.cloud_area_fraction_percentage)
-                    + ","
-                    + str(row.cloud_area_fraction_high_percentage)
-                    + ","
-                    + str(row.cloud_area_fraction_low_percentage)
-                    + ","
-                    + str(row.cloud_area_fraction_medium_percentage)
-                    + ","
-                    + str(row.condition_percentage)
-                    + ","
-                    + str(row.wind10m_direction)
-                    + ","
-                    + str(row.wind10m_speed)
-                    + ","
-                    + str(row.temp2m)
-                    + ","
-                    + str(row.rh2m)
-                    + ","
-                    + str(row.dewpoint2m)
-                    + ","
-                    + str(row.weather)
-                    + ","
-                    + str(row.weather6)
-                    + ","
-                    + str(row.precipitation_amount)
-                    + "\n"
-                )
-
-            f.close()
-
-            # print(
-            #     f"{esc(COLOR_BLUE)}--------------------------------------------------------"
-            #     + f"---------------------------------------------------------------{esc('0')}"
-            # )
-
-            # for row in data:
-            #     print(
-            #         f"{esc(COLOR_RED)}Seventimer Init: {esc(COLOR_GREEN)}{str(row.seventimer_init)}, "
-            #         + f"{esc(COLOR_RED)}Forecast Time: {esc(COLOR_GREEN)}{str(row.forecast_time)}, "
-            #         + f"{esc(COLOR_RED)}Seeing: \t{esc(COLOR_GREEN)}{str(row.seeing)}{esc('0')}"
-            #     )
+            headers = [
+                "forecast_time",
+                "cloudcover",
+                "cloudless",
+                "clouds",
+                "high",
+                "medium",
+                "low",
+                "fog",
+                "fog2m",
+                "precipitation",
+                "wind_direction",
+                "wind_speed",
+                "calm",
+                "temp2m",
+                "rh2m",
+                "dewpoint2m",
+                "condition",
+                "seeing",
+                "transparency",
+                "lifted_index",
+                "weather",
+                "weather6",
+            ]
+            rows = [
+                [
+                    obj.forecast_time,
+                    obj.cloudcover_percentage,
+                    obj.cloudless_percentage,
+                    obj.cloud_area_fraction_percentage,
+                    obj.cloud_area_fraction_high_percentage,
+                    obj.cloud_area_fraction_medium_percentage,
+                    obj.cloud_area_fraction_low_percentage,
+                    obj.fog_area_fraction_percentage,
+                    obj.fog2m_area_fraction_percentage,
+                    obj.precipitation_amount,
+                    obj.wind10m_direction,
+                    obj.wind10m_speed,
+                    obj.calm_percentage,
+                    obj.temp2m,
+                    obj.rh2m,
+                    obj.dewpoint2m,
+                    obj.condition_percentage,
+                    obj.seeing_percentage,
+                    obj.transparency_percentage,
+                    obj.lifted_index,
+                    obj.weather,
+                    obj.weather6,
+                ]
+                for obj in data
+            ]
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
         if test_deepsky_forecast:
             data = await astroweather.get_deepsky_forecast()
 
-            f = open("debug/test_client_deepsky_forecast.csv", "w")
-
-            f.write("Init,Hour of Day,Nightly conditions,Weather\n")
-
-            for row in data:
-                print(
-                    f"{esc(COLOR_BLUE)}--------------------------------------------------------"
-                    + f"---------------------------------------------------------------{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Seventimer Init: {esc(COLOR_GREEN)}{str(row.seventimer_init)}, "
-                    + f"{esc(COLOR_RED)}Hour of day: {esc(COLOR_GREEN)}{str(row.hour)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Nightly conditions: {esc(COLOR_GREEN)}{str(row.nightly_conditions)}, "
-                    + f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}, "
-                    + f"{esc(COLOR_RED)}Precipitation Amount: {esc(COLOR_GREEN)}{str(row.precipitation_amount6)}{esc('0')}"
-                )
-
-                f.write(
-                    str(row.seventimer_init)
-                    + ","
-                    + str(row.hour)
-                    + ","
-                    + str(row.nightly_conditions)
-                    + ","
-                    + str(row.weather)
-                    + "\n"
-                )
-
-            f.close()
+            headers = [
+                "hour",
+                "nightly_conditions",
+                "weather",
+                "precipitation_amount6",
+            ]
+            rows = [
+                [
+                    obj.hour,
+                    obj.nightly_conditions,
+                    obj.weather,
+                    obj.precipitation_amount6,
+                ]
+                for obj in data
+            ]
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
         if test_location_data:
             data = await astroweather.get_location_data()
-            for row in data:
-                print(
-                    f"{esc(COLOR_BLUE)}--------------------------------------------------------"
-                    + f"---------------------------------------------------------------{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Seventimer Init: {esc(COLOR_GREEN)}{str(row.seventimer_init)}, "
-                    + f"{esc(COLOR_RED)}Seventimer Timepoint: {esc(COLOR_GREEN)}{str(row.seventimer_timepoint)}, "
-                    + f"{esc(COLOR_RED)}Forecast Time: {esc(COLOR_GREEN)}{str(row.forecast_time)}, "
-                    + f"{esc(COLOR_RED)}Forecast Length: {esc(COLOR_GREEN)}{str(row.forecast_length)}, "
-                    + f"{esc(COLOR_RED)}Time Shift: {esc(COLOR_GREEN)}{str(row.time_shift)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Latitude: {esc(COLOR_GREEN)}{str(row.latitude)}, "
-                    + f"{esc(COLOR_RED)}Longitude: {esc(COLOR_GREEN)}{str(row.longitude)}, "
-                    + f"{esc(COLOR_RED)}Elevation: {esc(COLOR_GREEN)}{str(row.elevation)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}View Condition: {esc(COLOR_GREEN)}{str(row.condition_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.condition_plain)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Cloudcover: {esc(COLOR_GREEN)}{str(row.cloudcover_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Cloudless: {esc(COLOR_GREEN)}{str(row.cloudless_percentage)}%{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Cloud Area Fraction: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Cloud Area Fraction High: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_high_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Cloud Area Fraction Low: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_low_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Cloud Area Fraction Medium: {esc(COLOR_GREEN)}{str(row.cloud_area_fraction_medium_percentage)}%{esc('0')}"
-                )
-                print(
-                    f'{esc(COLOR_RED)}Seeing: {esc(COLOR_GREEN)}{str(row.seeing)}", '
-                    + f"{esc(COLOR_RED)}Seeing: {esc(COLOR_GREEN)}{str(row.seeing_percentage)}%{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Transparency: {esc(COLOR_GREEN)}{str(row.transparency)}, "
-                    + f"{esc(COLOR_RED)}Transparency: {esc(COLOR_GREEN)}{str(row.transparency_percentage)}%{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Lifted Index: {esc(COLOR_GREEN)}{str(row.lifted_index)}, "
-                    + f"{esc(COLOR_RED)}Lifted Index Plain: {esc(COLOR_GREEN)}{str(row.lifted_index_plain)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Calm Percentage: {esc(COLOR_GREEN)}{str(row.calm_percentage)}%, "
-                    + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.wind10m_speed_plain)}, "
-                    + f"{esc(COLOR_RED)}Wind Direction: {esc(COLOR_GREEN)}{str(row.wind10m_direction)}, "
-                    + f"{esc(COLOR_RED)}Speed: {esc(COLOR_GREEN)}{str(row.wind10m_speed)}m/s{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Temperature: {esc(COLOR_GREEN)}{str(row.temp2m)}, "
-                    + f"{esc(COLOR_RED)}Rel Humidity: {esc(COLOR_GREEN)}{str(row.rh2m)}, "
-                    + f"{esc(COLOR_RED)}Dew Point: {esc(COLOR_GREEN)}{str(row.dewpoint2m)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}View Condition: {esc(COLOR_GREEN)}{str(row.condition_percentage)}, "
-                    + f"{esc(COLOR_RED)}Plain: {esc(COLOR_GREEN)}{str(row.condition_plain)}, "
-                    + f"{esc(COLOR_RED)}Weather: {esc(COLOR_GREEN)}{str(row.weather)}, "
-                    + f"{esc(COLOR_RED)}Deep Sky View: {esc(COLOR_GREEN)}{str(row.deep_sky_view)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Moon Phase: {esc(COLOR_GREEN)}{str(row.moon_phase)}, "
-                    + f"{esc(COLOR_RED)}Moon Altitude: {esc(COLOR_GREEN)}{str(row.moon_altitude)}, "
-                    + f"{esc(COLOR_RED)}Moon Azimuth: {esc(COLOR_GREEN)}{str(row.moon_azimuth)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Sun Altitude: {esc(COLOR_GREEN)}{str(row.sun_altitude)}, "
-                    + f"{esc(COLOR_RED)}Sun Azimuth: {esc(COLOR_GREEN)}{str(row.sun_azimuth)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Sun next Rising: {esc(COLOR_GREEN)}{str(row.sun_next_rising)}, "
-                    + f"{esc(COLOR_RED)}Nautical: {esc(COLOR_GREEN)}{str(row.sun_next_rising_nautical)}, "
-                    + f"{esc(COLOR_RED)}Astronomical: {esc(COLOR_GREEN)}{str(row.sun_next_rising_astro)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Sun next Setting: {esc(COLOR_GREEN)}{str(row.sun_next_setting)}, "
-                    + f"{esc(COLOR_RED)}Nautical: {esc(COLOR_GREEN)}{str(row.sun_next_setting_nautical)}, "
-                    + f"{esc(COLOR_RED)}Astronomical: {esc(COLOR_GREEN)}{str(row.sun_next_setting_astro)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Moon next Rising: {esc(COLOR_GREEN)}{str(row.moon_next_rising)}, "
-                    + f"{esc(COLOR_RED)}Moon next Setting: {esc(COLOR_GREEN)}{str(row.moon_next_setting)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Moon next new Moon: {esc(COLOR_GREEN)}{str(row.moon_next_new_moon)}, "
-                    + f"{esc(COLOR_RED)}Moon next full Moon: {esc(COLOR_GREEN)}{str(row.moon_next_full_moon)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Forecast Today: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today)}, "
-                    + f"{esc(COLOR_RED)}Forecast Today Dayname: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_dayname)}, "
-                    + f"{esc(COLOR_RED)}Forecast Today Desc: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_desc)}, "
-                    + f"{esc(COLOR_RED)}Forecast Today: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_today_plain)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Forecast Tomorrow: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow)}, "
-                    + f"{esc(COLOR_RED)}Forecast Tomorrow Dayname: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_dayname)}, "
-                    + f"{esc(COLOR_RED)}Forecast Tomorrow Desc: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_desc)}, "
-                    + f"{esc(COLOR_RED)}Forecast Tomorrow: {esc(COLOR_GREEN)}{str(row.deepsky_forecast_tomorrow_plain)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}DSD Moon rises: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness_moon_rises)}, "
-                    + f"{esc(COLOR_RED)}DSD Moon sets: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness_moon_sets)}, "
-                    + f"{esc(COLOR_RED)}DSD Moon always down: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness_moon_always_down)}, "
-                    + f"{esc(COLOR_RED)}DSD Moon always up: {esc(COLOR_GREEN)}{str(row.deep_sky_darkness_moon_always_up)}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Night Duration Astronomical: {esc(COLOR_GREEN)}{str(round(row.night_duration_astronomical / 3600, 2))}, "
-                    + f"{esc(COLOR_RED)}DSD: {esc(COLOR_GREEN)}{str(round(row.deep_sky_darkness / 3600,2))}{esc('0')}"
-                )
-                print(
-                    f"{esc(COLOR_RED)}Uptonight: {esc(COLOR_GREEN)}{row.uptonight}{esc('0')}"
-                )
-                print(
-                    row.uptonight_list[0].target_name,
-                    row.uptonight_list[0].visual_magnitude,
-                )
-                print(
-                    f"{esc(COLOR_RED)}Uptonight Bodies: {esc(COLOR_GREEN)}{row.uptonight_bodies}{esc('0')}"
-                )
-                print(
-                    row.uptonight_bodies_list[0].target_name,
-                    row.uptonight_bodies_list[0].visual_magnitude,
-                )
-                print(
-                    f"{esc(COLOR_RED)}Uptonight Comets: {esc(COLOR_GREEN)}{row.uptonight_comets}{esc('0')}"
-                )
-                print(
-                    row.uptonight_comets_list[0].designation,
-                    row.uptonight_comets_list[0].visual_magnitude,
-                )
+
+            print("Location:")
+            headers = [
+                "forecast_time",
+                "forecast_length",
+                "time_shift",
+                "latitude",
+                "longitude",
+                "elevation",
+            ]
+            rows = [
+                [
+                    obj.forecast_time.strftime("%Y-%m-%d %H:%M"),
+                    obj.forecast_length,
+                    obj.time_shift,
+                    obj.latitude,
+                    obj.longitude,
+                    obj.elevation,
+                ]
+                for obj in data
+            ]
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
+
+            print("Clouds:")
+            headers = [
+                "condition",
+                "condition_plain",
+                "cloudcover",
+                "cloudless",
+                "clouds",
+                "high",
+                "medium",
+                "low",
+                "fog",
+                "fog2m",
+            ]
+            rows = [
+                [
+                    obj.condition_percentage,
+                    obj.condition_plain,
+                    obj.cloudcover_percentage,
+                    obj.cloudless_percentage,
+                    obj.cloud_area_fraction_percentage,
+                    obj.cloud_area_fraction_high_percentage,
+                    obj.cloud_area_fraction_medium_percentage,
+                    obj.cloud_area_fraction_low_percentage,
+                    obj.fog_area_fraction_percentage,
+                    obj.fog2m_area_fraction_percentage,
+                ]
+                for obj in data
+            ]
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
+
+            print("Atmosphere:")
+            headers = [
+                "seeing",
+                "transparency",
+                "lifted_index",
+                "lifted_index_plain",
+                "wind",
+                "temp",
+                "rh",
+                "dewpoint",
+                "weather",
+            ]
+            rows = [
+                [
+                    (obj.seeing, obj.seeing_percentage),
+                    (obj.transparency, obj.transparency_percentage),
+                    obj.lifted_index,
+                    obj.lifted_index_plain,
+                    (obj.wind10m_speed_plain, obj.wind10m_direction, obj.wind10m_speed),
+                    obj.temp2m,
+                    obj.rh2m,
+                    obj.dewpoint2m,
+                    obj.weather,
+                ]
+                for obj in data
+            ]
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
+
+            print("During the night:")
+            headers = [
+                "view",
+                "1",
+                "1_dayname",
+                "1_desc",
+                "1_plain",
+                "2",
+                "2_dayname",
+                "2_desc",
+                "2_plain",
+                "moon_rises",
+                "moon_sets",
+                "moon_down",
+                "moon_up",
+                "duration",
+                "darkness",
+            ]
+            rows = [
+                [
+                    obj.deep_sky_view,
+                    obj.deepsky_forecast_today,
+                    obj.deepsky_forecast_today_dayname,
+                    obj.deepsky_forecast_today_desc,
+                    obj.deepsky_forecast_today_plain,
+                    obj.deepsky_forecast_tomorrow,
+                    obj.deepsky_forecast_tomorrow_dayname,
+                    obj.deepsky_forecast_tomorrow_desc,
+                    obj.deepsky_forecast_tomorrow_plain,
+                    obj.deep_sky_darkness_moon_rises,
+                    obj.deep_sky_darkness_moon_sets,
+                    obj.deep_sky_darkness_moon_always_down,
+                    obj.deep_sky_darkness_moon_always_up,
+                    str(round(obj.night_duration_astronomical / 3600, 2)),
+                    str(round(obj.deep_sky_darkness / 3600, 2)),
+                ]
+                for obj in data
+            ]
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
+
+            print("Sun:")
+            headers = [
+                "altitude",
+                "azimuth",
+                "next_rising",
+                "next_rising_nautical",
+                "next_rising_astro",
+                "next_setting",
+                "next_setting_nautical",
+                "next_setting_astro",
+                "constellation",
+            ]
+            rows = [
+                [
+                    obj.sun_altitude,
+                    obj.sun_azimuth,
+                    obj.sun_next_rising.strftime("%Y-%m-%d %H:%M"),
+                    obj.sun_next_rising_nautical.strftime("%Y-%m-%d %H:%M"),
+                    obj.sun_next_rising_astro.strftime("%Y-%m-%d %H:%M"),
+                    obj.sun_next_setting.strftime("%Y-%m-%d %H:%M"),
+                    obj.sun_next_setting_nautical.strftime("%Y-%m-%d %H:%M"),
+                    obj.sun_next_setting_astro.strftime("%Y-%m-%d %H:%M"),
+                    obj.sun_constellation,
+                ]
+                for obj in data
+            ]
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
+
+            print("Moon:")
+            headers = [
+                "altitude",
+                "azimuth",
+                "phase",
+                "next_rising",
+                "next_setting",
+                "next_new_moon",
+                "next_full_moon",
+                "distance_km",
+                "angular_size",
+                "relative_distance",
+                "relative_size",
+                "constellation",
+            ]
+            rows = [
+                [
+                    obj.moon_altitude,
+                    obj.moon_azimuth,
+                    obj.moon_phase,
+                    obj.moon_next_rising.strftime("%Y-%m-%d %H:%M"),
+                    obj.moon_next_setting.strftime("%Y-%m-%d %H:%M"),
+                    obj.moon_next_new_moon.strftime("%Y-%m-%d %H:%M"),
+                    obj.moon_next_full_moon.strftime("%Y-%m-%d %H:%M"),
+                    obj.moon_distance_km,
+                    obj.moon_angular_size,
+                    obj.moon_relative_distance,
+                    obj.moon_relative_size,
+                    obj.moon_constellation,
+                ]
+                for obj in data
+            ]
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
+
+            print("UpTonight:")
+            headers = [
+                "dsos",
+                "name",
+                "bodies",
+                "name",
+                "comets",
+                "designation",
+            ]
+            rows = [
+                [
+                    obj.uptonight,
+                    obj.uptonight_list[0].target_name,
+                    obj.uptonight_bodies,
+                    obj.uptonight_bodies_list[0].target_name,
+                    obj.uptonight_comets,
+                    obj.uptonight_comets_list[0].designation,
+                ]
+                for obj in data
+            ]
+            print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
     except AstroWeatherError as err:
         print(err)

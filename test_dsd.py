@@ -1,4 +1,6 @@
-""" The test for the API """
+#!/usr/bin/env python3
+"""The test for the API"""
+
 import asyncio
 import pprint
 import logging
@@ -41,9 +43,9 @@ timezone_info = os.environ["BACKYARD_TIMEZONE"]
 # timezone_info = "America/Anchorage"
 
 # Hacienda Los Andes
-latitude=-30.29528
-longitude=-70.71262
-elevation=1000
+latitude = -30.29528
+longitude = -70.71262
+elevation = 1000
 timezone_info = "Chile/Continental"
 
 # London
@@ -123,7 +125,12 @@ async def main() -> None:
                     + str(datetime.strftime(utc_to_local(row.sun_next_rising), "%d.%m.%Y %H:%M:%S"))
                     + "; "
                     + "SSA "
-                    + str(datetime.strftime(utc_to_local(row.sun_next_setting_astro), "%d.%m.%Y %H:%M:%S"))
+                    + str(
+                        datetime.strftime(
+                            utc_to_local(row.sun_next_setting_astro),
+                            "%d.%m.%Y %H:%M:%S",
+                        )
+                    )
                     + "; "
                     + "SRA "
                     + str(datetime.strftime(utc_to_local(row.sun_next_rising_astro), "%d.%m.%Y %H:%M:%S"))
@@ -145,7 +152,12 @@ async def main() -> None:
                     + ";"
                     + str(datetime.strftime(utc_to_local(row.sun_next_setting), "%d.%m.%Y %H:%M:%S"))
                     + ";"
-                    + str(datetime.strftime(utc_to_local(row.sun_next_setting_astro), "%d.%m.%Y %H:%M:%S"))
+                    + str(
+                        datetime.strftime(
+                            utc_to_local(row.sun_next_setting_astro),
+                            "%d.%m.%Y %H:%M:%S",
+                        )
+                    )
                     + ";"
                     + str(datetime.strftime(utc_to_local(row.moon_next_rising), "%d.%m.%Y %H:%M:%S"))
                     + ";"
