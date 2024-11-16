@@ -29,8 +29,6 @@ from pyastroweatherio.const import (
 class TimeDataModel(TypedDict):
     """Model for time data"""
 
-    seventimer_init: datetime
-    seventimer_timepoint: int
     forecast_time: datetime
 
 
@@ -39,8 +37,6 @@ class TimeData:
     """A representation of the time data of forecasts."""
 
     def __init__(self, *, data: TimeDataModel):
-        self.seventimer_init = data["seventimer_init"]
-        self.seventimer_timepoint = data["seventimer_timepoint"]
         self.forecast_time = data["forecast_time"]
 
 
@@ -62,24 +58,6 @@ class GeoLocationData:
         self.longitude = data["longitude"]
         self.elevation = data["elevation"]
         self.timezone_info = data["timezone_info"]
-
-
-class AtmosphereDataModel(TypedDict):
-    """Model for atmosperic conditions"""
-
-    seeing: float
-    transparency: float
-    lifted_index: float
-
-
-@typechecked
-class AtmosphereData:
-    """A representation of atmospheric condition base class."""
-
-    def __init__(self, *, data: AtmosphereDataModel):
-        self.seeing = data["seeing"]
-        self.transparency = data["transparency"]
-        self.lifted_index = data["lifted_index"]
 
 
 class SunDataModel(TypedDict):
@@ -405,7 +383,6 @@ class UpTonightDSODataModel(TypedDict):
 class UpTonightDSOData:
     """A representation of uptonight DSO."""
 
-    # def __init__(self, data):
     def __init__(self, *, data: UpTonightDSODataModel):
         self.id = data["id"]
         self.target_name = data["target_name"]
@@ -434,7 +411,6 @@ class UpTonightBodiesDataModel(TypedDict):
 class UpTonightBodiesData:
     """A representation of uptonight bodies."""
 
-    # def __init__(self, data):
     def __init__(self, *, data: UpTonightBodiesDataModel):
         self.target_name = data["target_name"]
         self.max_altitude = data["max_altitude"]
@@ -463,7 +439,6 @@ class UpTonightCometsDataModel(TypedDict):
 class UpTonightCometsData:
     """A representation of uptonight comets."""
 
-    # def __init__(self, data):
     def __init__(self, *, data: UpTonightCometsDataModel):
         self.designation = data["designation"]
         self.distance_au_earth = data["distance_au_earth"]
@@ -498,7 +473,6 @@ class LocationDataModel(TypedDict):
 class LocationData:
     """A representation of the Location AstroWeather Data."""
 
-    # def __init__(self, data):
     def __init__(self, *, data: LocationDataModel):
         self.time_data = data["time_data"]
         self.time_shift = data["time_shift"]
@@ -1138,7 +1112,6 @@ class ForecastData:
 class NightlyConditionsDataModel(TypedDict):
     """Model for nightly conditions data"""
 
-    seventimer_init: datetime
     dayname: str
     hour: int
     nightly_conditions: list
@@ -1151,7 +1124,6 @@ class NightlyConditionsData:
     """A representation of nights Sky Quality Data."""
 
     def __init__(self, *, data: NightlyConditionsDataModel):
-        self.seventimer_init = data["seventimer_init"]
         self.dayname = data["dayname"]
         self.hour = data["hour"]
         self.nightly_conditions = data["nightly_conditions"]

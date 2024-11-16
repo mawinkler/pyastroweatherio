@@ -3,8 +3,9 @@
 # #####################################################
 # Requests
 # #####################################################
-BASE_URL_SEVENTIMER = "https://www.7timer.info/bin/api.pl"
+BASE_URL_OPENMETEO = "https://api.open-meteo.com/v1/forecast"
 BASE_URL_MET = "https://api.met.no/weatherapi/locationforecast/2.0/complete"
+BASE_URL_SEVENTIMER = "https://www.7timer.info/bin/api.pl"
 HEADERS = {"User-Agent": "AstroWeather github.com/mawinkler/astroweather"}
 
 # #####################################################

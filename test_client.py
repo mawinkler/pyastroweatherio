@@ -49,7 +49,7 @@ timezone_info = os.environ["BACKYARD_TIMEZONE"]
 # elevation = 977
 # timezone_info = "Europe/Berlin"
 
-# Anchorage
+# # Anchorage
 # latitude = 61.212
 # longitude = -149.737
 # elevation = 115
@@ -128,8 +128,9 @@ async def main() -> None:
         transparency_weight=1,
         calm_weight=2,
         uptonight_path=".",
-        # test_datetime=datetime.strptime("2024-10-22T11:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
+        test_datetime=datetime.strptime("2024-11-16T18:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
         experimental_features=True,
+        forecast_model="icon_seamless",
     )
 
     start = time.time()

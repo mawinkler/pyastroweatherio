@@ -10,9 +10,6 @@ from ephem import degree
 from typeguard import typechecked
 from zoneinfo import ZoneInfo
 
-# import metpy.calc as mpcalc
-# from metpy.units import units
-# import numpy as np
 from pyastroweatherio.const import (
     ASTRONOMICAL_DUSK_DAWN,
     CIVIL_DUSK_DAWN,
@@ -273,6 +270,8 @@ class AtmosphericRoutines:
         adjusted_pressure = self._calculate_adjusted_pressure(air_pressure_at_sea_level, altitude)
         relative_pressure = adjusted_pressure / air_pressure_at_sea_level
 
+        if wind_speed == 0:
+            wind_speed = 0.01
         seeing_factor = C * (water_vapor_pressure / 10) ** 0.25 * (wind_speed / 10) ** 0.75 * relative_pressure
         seeing = 0.98 / seeing_factor
 
@@ -316,7 +315,7 @@ class AtmosphericRoutines:
         # A normalizing constant chosen empirically to scale the fog density to a reasonable
         # range. Adjust this based on the desired scale of output (e.g., 0.1 for very light
         # fog, 1 for dense fog).
-        k = 0.90
+        k = 0.50
 
         # Controls how sensitive the density calculation is to the temperature-dew point
         # difference. Smaller values of a make fog density increase faster as the temperature
@@ -340,10 +339,10 @@ class AtmosphericRoutines:
         # Ensure fog density is within the valid range [0, 1]
         adjusted_fog_density = max(0, min(1, adjusted_fog_density))
 
-        return adjusted_fog_density
+        return float(adjusted_fog_density)
 
     # @typechecked
-    # async def calculate_fog_density1(self, temp2m, rh2m, dewpoint2m, wind_speed) -> int:
+    # async def calculate_fog_density(self, temp2m, rh2m, dewpoint2m, wind_speed) -> int:
     #     ffp = max(
     #         0, 1 - abs(temp2m - dewpoint2m) / 5
     #     )  # Scale factor: closer to 1 if near saturation
@@ -358,6 +357,35 @@ class AtmosphericRoutines:
     #     fog2m = ffp * rh_factor * wind_factor
 
     #     return fog2m
+
+    # #####################################################
+    # Calculate dew point at 2m
+    # #####################################################
+    @typechecked
+    async def calculate_dew_point(self, temp2m, rh2m) -> float:
+        """
+        Calculate the dew point temperature given air temperature and relative humidity
+        using Magnus formula.
+
+        Parameters:
+            temp (float): Air temperature in °C.
+            humidity (float): Relative humidity in % (0-100).
+
+        Args:
+        - temp2m: Surface temperature in Celsius.
+        - rh2m: Humidity in Percent.
+
+        Returns:
+        - float: Dew point temperature in °C.
+        """
+        # Constants
+        a = 17.62
+        b = 243.12
+
+        # Calculate alpha
+        alpha = math.log(rh2m / 100) + (a * temp2m) / (b + temp2m)
+
+        return (b * alpha) / (a - alpha)
 
     # #####################################################
     # Atmospheric calculations
@@ -427,7 +455,7 @@ class AtmosphericRoutines:
     @typechecked
     def _calculate_water_vapor_pressure(self, dew_point_temperature, humidity) -> float:
         """
-        Calculate the water vapor pressure based on temperature and humiditye.
+        Calculate the water vapor pressure based on temperature and humidity.
 
         Used by: seeing
 

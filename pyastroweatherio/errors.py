@@ -17,3 +17,11 @@ class ResultError(AstroWeatherError):
     """Define an error related to the result returned from a request."""
 
     pass
+
+
+class OpenMeteoError(Exception):
+    """Generic OpenMeteo exception."""
+
+
+class OpenMeteoConnectionError(OpenMeteoError):
+    """OpenMeteo connection exception."""
