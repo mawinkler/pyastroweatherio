@@ -813,15 +813,18 @@ class AstronomicalRoutines:
             start = self._sun_observer.date.datetime()
             end = self._sun_observer.date.datetime() + timedelta(days=365)
             timestamp = start
+            cnt = 1
             while timestamp < end:
                 timestamp += timedelta(minutes=1440)
                 self._sun_observer.date = timestamp
                 try:
-                    self._sun_data["next_rising_civil"] = self._sun_observer.next_rising(
-                        ephem.Sun(), use_center=True
-                    ).datetime()
+                    self._sun_data["next_rising_civil"] = (
+                        self._sun_observer.next_rising(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
+                    )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    cnt += 1
                     continue
+                _LOGGER.debug(f"Sun next rising civil in {cnt} days.")
                 break
 
         try:
@@ -833,15 +836,18 @@ class AstronomicalRoutines:
             start = self._sun_observer.date.datetime()
             end = self._sun_observer.date.datetime() + timedelta(days=365)
             timestamp = start
+            cnt = 1
             while timestamp < end:
                 timestamp += timedelta(minutes=1440)
                 self._sun_observer.date = timestamp
                 try:
-                    self._sun_data["next_setting_civil"] = self._sun_observer.next_setting(
-                        ephem.Sun(), use_center=True
-                    ).datetime()
+                    self._sun_data["next_setting_civil"] = (
+                        self._sun_observer.next_setting(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
+                    )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    cnt += 1
                     continue
+                _LOGGER.debug(f"Sun next setting civil in {cnt} days.")
                 break
 
     def _calculate_sun_nautical(self) -> None:
@@ -858,6 +864,7 @@ class AstronomicalRoutines:
             start = self._sun_observer_nautical.date.datetime()
             end = self._sun_observer_nautical.date.datetime() + timedelta(days=365)
             timestamp = start
+            cnt = 1
             while timestamp < end:
                 timestamp += timedelta(minutes=1440)
                 self._sun_observer_nautical.date = timestamp
@@ -868,7 +875,9 @@ class AstronomicalRoutines:
                         .replace(tzinfo=UTC)
                     )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    cnt += 1
                     continue
+                _LOGGER.debug(f"Sun next rising nautical in {cnt} days.")
                 break
 
         try:
@@ -880,6 +889,7 @@ class AstronomicalRoutines:
             start = self._sun_observer_nautical.date.datetime()
             end = self._sun_observer_nautical.date.datetime() + timedelta(days=365)
             timestamp = start
+            cnt = 1
             while timestamp < end:
                 timestamp += timedelta(minutes=1440)
                 self._sun_observer_nautical.date = timestamp
@@ -890,7 +900,9 @@ class AstronomicalRoutines:
                         .replace(tzinfo=UTC)
                     )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    cnt += 1
                     continue
+                _LOGGER.debug(f"Sun next setting nautical in {cnt} days.")
                 break
 
     def _calculate_sun_astro(self) -> None:
@@ -907,6 +919,7 @@ class AstronomicalRoutines:
             start = self._sun_observer_astro.date.datetime()
             end = self._sun_observer_astro.date.datetime() + timedelta(days=365)
             timestamp = start
+            cnt = 1
             while timestamp < end:
                 timestamp += timedelta(minutes=1440)
                 self._sun_observer_astro.date = timestamp
@@ -917,7 +930,9 @@ class AstronomicalRoutines:
                         .replace(tzinfo=UTC)
                     )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    cnt += 1
                     continue
+                _LOGGER.debug(f"Sun next rising astro in {cnt} days.")
                 break
 
         try:
@@ -929,6 +944,7 @@ class AstronomicalRoutines:
             start = self._sun_observer_astro.date.datetime()
             end = self._sun_observer_astro.date.datetime() - timedelta(days=365)
             timestamp = start
+            cnt = 1
             while timestamp > end:
                 timestamp -= timedelta(minutes=1440)
                 self._sun_observer_astro.date = timestamp
@@ -939,7 +955,9 @@ class AstronomicalRoutines:
                         .replace(tzinfo=UTC)
                     )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    cnt += 1
                     continue
+                _LOGGER.debug(f"Sun previous rising astro {cnt} days before.")
                 break
 
         try:
@@ -951,6 +969,7 @@ class AstronomicalRoutines:
             start = self._sun_observer_astro.date.datetime()
             end = self._sun_observer_astro.date.datetime() + timedelta(days=365)
             timestamp = start
+            cnt = 1
             while timestamp < end:
                 timestamp += timedelta(minutes=1440)
                 self._sun_observer_astro.date = timestamp
@@ -961,7 +980,9 @@ class AstronomicalRoutines:
                         .replace(tzinfo=UTC)
                     )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    cnt += 1
                     continue
+                _LOGGER.debug(f"Sun next setting astro in {cnt} days.")
                 break
 
         try:
@@ -973,6 +994,7 @@ class AstronomicalRoutines:
             start = self._sun_observer_astro.date.datetime()
             end = self._sun_observer_astro.date.datetime() - timedelta(days=365)
             timestamp = start
+            cnt = 1
             while timestamp > end:
                 timestamp -= timedelta(minutes=1440)
                 self._sun_observer_astro.date = timestamp
@@ -983,7 +1005,9 @@ class AstronomicalRoutines:
                         .replace(tzinfo=UTC)
                     )
                 except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    cnt += 1
                     continue
+                _LOGGER.debug(f"Sun previous setting astro {cnt} days before.")
                 break
 
     def _calculate_sun_altaz(self) -> None:
@@ -1050,28 +1074,92 @@ class AstronomicalRoutines:
                 self._moon_observer.next_rising(ephem.Moon()).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
-            pass
+            # Search for the next astronomical rising
+            start = self._moon_observer.date.datetime()
+            end = self._moon_observer.date.datetime() + timedelta(days=365)
+            timestamp = start
+            cnt = 1
+            while timestamp < end:
+                timestamp += timedelta(minutes=1440)
+                self._moon_observer.date = timestamp
+                try:
+                    self._moon_data["next_rising"] = (
+                        self._moon_observer.next_rising(ephem.Moon()).datetime().replace(tzinfo=UTC)
+                    )
+                except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    cnt += 1
+                    continue
+                _LOGGER.debug(f"Moon next rising in {cnt} days.")
+                break
 
         try:
             self._moon_data["next_setting"] = (
                 self._moon_observer.next_setting(ephem.Moon()).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
-            pass
+            # Search for the next astronomical setting
+            start = self._moon_observer.date.datetime()
+            end = self._moon_observer.date.datetime() + timedelta(days=365)
+            timestamp = start
+            cnt = 1
+            while timestamp < end:
+                timestamp += timedelta(minutes=1440)
+                self._moon_observer.date = timestamp
+                try:
+                    self._moon_data["next_setting"] = (
+                        self._moon_observer.next_setting(ephem.Moon()).datetime().replace(tzinfo=UTC)
+                    )
+                except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    cnt += 1
+                    continue
+                _LOGGER.debug(f"Moon next setting in {cnt} days.")
+                break
 
         try:
             self._moon_data["previous_rising"] = (
                 self._moon_observer.previous_rising(ephem.Moon()).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
-            pass
+            # Search for the previous astronomical rising
+            start = self._moon_observer.date.datetime()
+            end = self._moon_observer.date.datetime() - timedelta(days=365)
+            timestamp = start
+            cnt = 1
+            while timestamp > end:
+                timestamp -= timedelta(minutes=1440)
+                self._moon_observer.date = timestamp
+                try:
+                    self._moon_data["previous_rising"] = (
+                        self._moon_observer.previous_rising(ephem.Moon()).datetime().replace(tzinfo=UTC)
+                    )
+                except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    cnt += 1
+                    continue
+                _LOGGER.debug(f"Moon previous rising {cnt} days before.")
+                break
 
         try:
             self._moon_data["previous_setting"] = (
                 self._moon_observer.previous_setting(ephem.Moon()).datetime().replace(tzinfo=UTC)
             )
         except (ephem.AlwaysUpError, ephem.NeverUpError):
-            pass
+            # Search for the previous astronomical setting
+            start = self._moon_observer.date.datetime()
+            end = self._moon_observer.date.datetime() - timedelta(days=365)
+            timestamp = start
+            cnt = 1
+            while timestamp > end:
+                timestamp -= timedelta(minutes=1440)
+                self._moon_observer.date = timestamp
+                try:
+                    self._moon_data["previous_setting"] = (
+                        self._moon_observer.previous_setting(ephem.Moon()).datetime().replace(tzinfo=UTC)
+                    )
+                except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    cnt += 1
+                    continue
+                _LOGGER.debug(f"Moon previous setting {cnt} days before.")
+                break
 
         # self._moon_observer.date = self._forecast_time + timedelta(days=1)
         # self._moon.compute(self._moon_observer)

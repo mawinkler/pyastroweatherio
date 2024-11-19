@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name="pyastroweatherio",
     packages=["pyastroweatherio"],
-    version="0.70.0",
+    version="0.70.2",
     license="MIT",
     description="Python Wrapper for 7Timer and Met.no REST API",
     long_description=" ".join(

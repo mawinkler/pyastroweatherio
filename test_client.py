@@ -25,23 +25,11 @@ COLOR_BLUE = "1;34"
 COLOR_PURPLE = "1;35"
 COLOR_CYAN = "1;36"
 
-# Backyard
-latitude = float(os.environ["BACKYARD_LATITUDE"])
-longitude = float(os.environ["BACKYARD_LONGITUDE"])
-elevation = int(os.environ["BACKYARD_ELEVATION"])
-timezone_info = os.environ["BACKYARD_TIMEZONE"]
-
 # # ITV
 # latitude = 50.429
 # longitude = 9.181
 # elevation = 357
 # timezone_info = "Europe/Berlin"
-
-# # Santiago
-# latitude = -33.46
-# longitude = -70.65
-# elevation = 556
-# timezone_info = "America/Santiago"
 
 # # Peißenberg
 # latitude = 48.811
@@ -49,34 +37,57 @@ timezone_info = os.environ["BACKYARD_TIMEZONE"]
 # elevation = 977
 # timezone_info = "Europe/Berlin"
 
-# # Anchorage
-# latitude = 61.212
-# longitude = -149.737
-# elevation = 115
-# timezone_info = "America/Anchorage"
-
-# # Hacienda Los Andes
-# latitude = -30.29528
-# longitude = -70.71262
-# elevation = 1000
-# timezone_info = "Chile/Continental"
-
-# # London
-# latitude = 51.5072
-# longitude = 0.1276
-# elevation = 11
-# timezone_info = "Europe/London"
-
-# # Sydney
-# latitude = -33.869
-# longitude = 151.198
-# elevation = 3
-# timezone_info = "Australia/Sydney"
-
-# latitude = 65.064717
-# longitude = 25.553043
-# elevation = 12
-# timezone_info = "Europe/Helsinki"
+LOCATIONS = [
+    {
+        # Backyard
+        "latitude": float(os.environ["BACKYARD_LATITUDE"]),
+        "longitude": float(os.environ["BACKYARD_LONGITUDE"]),
+        "elevation": int(os.environ["BACKYARD_ELEVATION"]),
+        "timezone_info": os.environ["BACKYARD_TIMEZONE"],
+    },
+    {
+        # Santiago
+        "latitude": -33.46,
+        "longitude": -70.65,
+        "elevation": 556,
+        "timezone_info": "America/Santiago",
+    },
+    {
+        # Anchorage
+        "latitude": 61.212,
+        "longitude": -149.737,
+        "elevation": 115,
+        "timezone_info": "America/Anchorage",
+    },
+    {
+        # Hacienda Los Andes
+        "latitude": -30.29528,
+        "longitude": -70.71262,
+        "elevation": 1000,
+        "timezone_info": "Chile/Continental",
+    },
+    {
+        # London
+        "latitude": 51.5072,
+        "longitude": 0.1276,
+        "elevation": 11,
+        "timezone_info": "Europe/London",
+    },
+    {
+        # Sydney
+        "latitude": -33.869,
+        "longitude": 151.198,
+        "elevation": 3,
+        "timezone_info": "Australia/Sydney",
+    },
+    {
+        # Helsinki
+        "latitude": 65.064717,
+        "longitude": 25.553043,
+        "elevation": 12,
+        "timezone_info": "Europe/Helsinki",
+    },
+]
 
 
 def esc(code):
@@ -128,7 +139,7 @@ async def main() -> None:
         transparency_weight=1,
         calm_weight=2,
         uptonight_path=".",
-        test_datetime=datetime.strptime("2024-11-16T18:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
+        # test_datetime=datetime.strptime("2024-11-19T07:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
         experimental_features=True,
         forecast_model="icon_seamless",
     )
@@ -432,4 +443,10 @@ async def main() -> None:
     return None
 
 
-asyncio.run(main())
+for location in LOCATIONS:
+    latitude = location["latitude"]
+    longitude = location["longitude"]
+    elevation = location["elevation"]
+    timezone_info = location["timezone_info"]
+
+    asyncio.run(main())
