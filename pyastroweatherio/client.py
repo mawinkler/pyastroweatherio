@@ -834,8 +834,8 @@ class AstroWeather:
                         "target_name": dso_target_name.get(str(row), ""),
                         "type": dso_type.get(str(row), ""),
                         "constellation": dso_constellation.get(str(row), ""),
-                        "size": dso_size.get(str(row), ""),
-                        "visual_magnitude": dso_visual_magnitude.get(str(row), ""),
+                        "size": dso_size.get(str(row), 0),
+                        "visual_magnitude": dso_visual_magnitude.get(str(row), 0),
                         "meridian_transit": dso_meridian_transit_utc,
                         "meridian_antitransit": dso_meridian_antitransit_utc,
                         "foto": dso_foto.get(str(row), 0),
@@ -868,10 +868,13 @@ class AstroWeather:
             for row in range(len(body_target_name)):
                 # UpTonight delivers the time in local time zone. here we need it in UTC
                 body_max_altitude_time_local = body_max_altitude_time.get(str(row), "")
-                body_max_altitude_time_utc = (
-                    datetime.strptime(body_max_altitude_time_local, "%m/%d/%Y %H:%M:%S")
-                    - timedelta(seconds=await self._astro_routines.time_shift())
-                ).replace(tzinfo=UTC)
+                if body_max_altitude_time_local != "":
+                    body_max_altitude_time_utc = (
+                        datetime.strptime(body_max_altitude_time_local, "%m/%d/%Y %H:%M:%S")
+                        - timedelta(seconds=await self._astro_routines.time_shift())
+                    ).replace(tzinfo=UTC)
+                else:
+                    body_max_altitude_time_utc = ""
 
                 body_meridian_transit_local = body_meridian_transit.get(str(row), "")
                 if body_meridian_transit_local != "":
@@ -885,10 +888,10 @@ class AstroWeather:
                 item = UpTonightBodiesDataModel(
                     {
                         "target_name": body_target_name.get(str(row), ""),
-                        "max_altitude": body_max_altitude.get(str(row), ""),
-                        "azimuth": body_azimuth.get(str(row), ""),
+                        "max_altitude": body_max_altitude.get(str(row), 0),
+                        "azimuth": body_azimuth.get(str(row), 0),
                         "max_altitude_time": body_max_altitude_time_utc,
-                        "visual_magnitude": body_visual_magnitude.get(str(row), ""),
+                        "visual_magnitude": body_visual_magnitude.get(str(row), 0),
                         "meridian_transit": body_meridian_transit_utc,
                         "foto": body_foto.get(str(row), 0),
                     }
@@ -922,25 +925,32 @@ class AstroWeather:
             for row in range(len(comet_target_name)):
                 # UpTonight delivers the time in local time zone. here we need it in UTC
                 rise_time_local = rise_time.get(str(row), "")
+                if rise_time_local != "":
+                    rise_time_local_utc = (
+                        datetime.strptime(rise_time_local, "%m/%d/%Y %H:%M:%S")
+                        - timedelta(seconds=await self._astro_routines.time_shift())
+                    ).replace(tzinfo=UTC)
+                else:
+                    rise_time_local_utc = ""
+
                 set_time_local = set_time.get(str(row), "")
-                rise_time_local_utc = (
-                    datetime.strptime(rise_time_local, "%m/%d/%Y %H:%M:%S")
-                    - timedelta(seconds=await self._astro_routines.time_shift())
-                ).replace(tzinfo=UTC)
-                set_time_local_utc = (
-                    datetime.strptime(set_time_local, "%m/%d/%Y %H:%M:%S")
-                    - timedelta(seconds=await self._astro_routines.time_shift())
-                ).replace(tzinfo=UTC)
+                if set_time_local != "":
+                    set_time_local_utc = (
+                        datetime.strptime(set_time_local, "%m/%d/%Y %H:%M:%S")
+                        - timedelta(seconds=await self._astro_routines.time_shift())
+                    ).replace(tzinfo=UTC)
+                else:
+                    set_time_local_utc = ""
 
                 item = UpTonightCometsDataModel(
                     {
                         "designation": comet_target_name.get(str(row), ""),
-                        "distance_au_earth": distance_au_earth.get(str(row), ""),
-                        "distance_au_sun": distance_au_sun.get(str(row), ""),
-                        "absolute_magnitude": absolute_magnitude.get(str(row), ""),
-                        "visual_magnitude": visual_magnitude.get(str(row), ""),
-                        "altitude": altitude.get(str(row), ""),
-                        "azimuth": azimuth.get(str(row), ""),
+                        "distance_au_earth": distance_au_earth.get(str(row), 0),
+                        "distance_au_sun": distance_au_sun.get(str(row), 0),
+                        "absolute_magnitude": absolute_magnitude.get(str(row), 0),
+                        "visual_magnitude": visual_magnitude.get(str(row), 0),
+                        "altitude": altitude.get(str(row), 0),
+                        "azimuth": azimuth.get(str(row), 0),
                         "rise_time": rise_time_local_utc,
                         "set_time": set_time_local_utc,
                     }

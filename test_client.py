@@ -45,48 +45,48 @@ LOCATIONS = [
         "elevation": int(os.environ["BACKYARD_ELEVATION"]),
         "timezone_info": os.environ["BACKYARD_TIMEZONE"],
     },
-    {
-        # Santiago
-        "latitude": -33.46,
-        "longitude": -70.65,
-        "elevation": 556,
-        "timezone_info": "America/Santiago",
-    },
-    {
-        # Anchorage
-        "latitude": 61.212,
-        "longitude": -149.737,
-        "elevation": 115,
-        "timezone_info": "America/Anchorage",
-    },
-    {
-        # Hacienda Los Andes
-        "latitude": -30.29528,
-        "longitude": -70.71262,
-        "elevation": 1000,
-        "timezone_info": "Chile/Continental",
-    },
-    {
-        # London
-        "latitude": 51.5072,
-        "longitude": 0.1276,
-        "elevation": 11,
-        "timezone_info": "Europe/London",
-    },
-    {
-        # Sydney
-        "latitude": -33.869,
-        "longitude": 151.198,
-        "elevation": 3,
-        "timezone_info": "Australia/Sydney",
-    },
-    {
-        # Helsinki
-        "latitude": 65.064717,
-        "longitude": 25.553043,
-        "elevation": 12,
-        "timezone_info": "Europe/Helsinki",
-    },
+    # {
+    #     # Santiago
+    #     "latitude": -33.46,
+    #     "longitude": -70.65,
+    #     "elevation": 556,
+    #     "timezone_info": "America/Santiago",
+    # },
+    # {
+    #     # Anchorage
+    #     "latitude": 61.212,
+    #     "longitude": -149.737,
+    #     "elevation": 115,
+    #     "timezone_info": "America/Anchorage",
+    # },
+    # {
+    #     # Hacienda Los Andes
+    #     "latitude": -30.29528,
+    #     "longitude": -70.71262,
+    #     "elevation": 1000,
+    #     "timezone_info": "Chile/Continental",
+    # },
+    # {
+    #     # London
+    #     "latitude": 51.5072,
+    #     "longitude": 0.1276,
+    #     "elevation": 11,
+    #     "timezone_info": "Europe/London",
+    # },
+    # {
+    #     # Sydney
+    #     "latitude": -33.869,
+    #     "longitude": 151.198,
+    #     "elevation": 3,
+    #     "timezone_info": "Australia/Sydney",
+    # },
+    # {
+    #     # Helsinki
+    #     "latitude": 65.064717,
+    #     "longitude": 25.553043,
+    #     "elevation": 12,
+    #     "timezone_info": "Europe/Helsinki",
+    # },
 ]
 
 

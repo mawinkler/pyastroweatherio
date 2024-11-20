@@ -401,7 +401,7 @@ class UpTonightBodiesDataModel(TypedDict):
     target_name: str
     max_altitude: float
     azimuth: float
-    max_altitude_time: datetime
+    max_altitude_time: datetime | str
     visual_magnitude: float
     meridian_transit: datetime | str
     foto: float
@@ -431,8 +431,8 @@ class UpTonightCometsDataModel(TypedDict):
     visual_magnitude: float
     altitude: float
     azimuth: float
-    rise_time: datetime
-    set_time: datetime
+    rise_time: datetime | str
+    set_time: datetime | str
 
 
 @typechecked
