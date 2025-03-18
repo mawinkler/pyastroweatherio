@@ -106,14 +106,17 @@ class MoonDataModel(TypedDict):
     distance_km: float
     next_full_moon: datetime
     next_new_moon: datetime
+    previous_new_moon: datetime
     next_rising: datetime
     next_setting: datetime
     phase: float
+    icon: str
     previous_rising: datetime
     previous_setting: datetime
     relative_distance: float
     relative_size: float
     constellation: str
+    next_dark_night: datetime | None
 
 
 @typechecked
@@ -130,14 +133,17 @@ class MoonData:
         self.distance_km = data["distance_km"]
         self.next_full_moon = data["next_full_moon"]
         self.next_new_moon = data["next_new_moon"]
+        self.previous_new_moon = data["previous_new_moon"]
         self.next_rising = data["next_rising"]
         self.next_setting = data["next_setting"]
         self.phase = data["phase"]
+        self.icon = data["icon"]
         self.previous_rising = data["previous_rising"]
         self.previous_setting = data["previous_setting"]
         self.relative_distance = data["relative_distance"]
         self.relative_size = data["relative_size"]
         self.constellation = data["constellation"]
+        self.next_dark_night = data["next_dark_night"]
 
 
 class DarknessDataModel(TypedDict):
@@ -782,6 +788,12 @@ class LocationData:
         return round(self.moon_data.phase, 1)
 
     @property
+    def moon_icon(self) -> str:
+        """Return Moon Phase."""
+
+        return self.moon_data.icon
+
+    @property
     def moon_relative_size(self) -> float:
         """Return Moon Relative Size in %."""
 
@@ -798,6 +810,12 @@ class LocationData:
         """Return Moon Constellation."""
 
         return self.moon_data.constellation
+
+    @property
+    def moon_next_dark_night(self) -> datetime:
+        """Returns the next dark night."""
+
+        return self.moon_data.next_dark_night
 
     # #########################################################################
     # Darkness

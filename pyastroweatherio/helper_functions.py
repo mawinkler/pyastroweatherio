@@ -1,5 +1,6 @@
 """Contains Helper functions for AstroWeather."""
 
+import bisect
 import logging
 import math
 from datetime import UTC, datetime, timedelta
@@ -13,6 +14,8 @@ from zoneinfo import ZoneInfo
 from pyastroweatherio.const import (
     ASTRONOMICAL_DUSK_DAWN,
     CIVIL_DUSK_DAWN,
+    DARK_NIGHT_MAX_MOON_ALT,
+    DARK_NIGHT_MAX_MOON_PHASE,
     MAG_DEGRATION_MAX,
     NAUTICAL_DUSK_DAWN,
     SEEING_MAX,
@@ -1053,7 +1056,7 @@ class AstronomicalRoutines:
         try:
             return MoonData(data=md)
         except TypeError as ve:
-            _LOGGER.error(f"Failed to parse Sun data: {self._moon_data}")
+            _LOGGER.error(f"Failed to parse Moon data: {self._moon_data}")
             _LOGGER.error(ve)
             return None
 
@@ -1177,6 +1180,11 @@ class AstronomicalRoutines:
         # Next new Moon
         self._moon_data["next_new_moon"] = ephem.next_new_moon(self._forecast_time).datetime().replace(tzinfo=UTC)
 
+        # Pervious new Moon
+        self._moon_data["previous_new_moon"] = (
+            ephem.previous_new_moon(self._forecast_time).datetime().replace(tzinfo=UTC)
+        )
+
         # Next full Moon
         self._moon_data["next_full_moon"] = ephem.next_full_moon(self._forecast_time).datetime().replace(tzinfo=UTC)
 
@@ -1186,6 +1194,8 @@ class AstronomicalRoutines:
         self._calculate_moon_altaz()
         self._calculate_moon_distance_size()
         self._calculate_moon_constellation()
+        self._calculate_moon_phase_on_day()
+        self._next_dark_night()
 
     def _calculate_moon_altaz(self) -> None:
         """Calculates moon altitude and azimuth."""
@@ -1206,6 +1216,7 @@ class AstronomicalRoutines:
 
     def _calculate_moon_distance_size(self) -> None:
         """Calculate moon distance and relative size"""
+
         if self._moon_observer is None:
             self._moon_observer = self._get_moon_observer()
         if self._moon is None:
@@ -1229,7 +1240,7 @@ class AstronomicalRoutines:
         self._moon_data["relative_size"] = self._moon_data["angular_size"] / self._moon_data["avg_angular_size"]
 
     def _calculate_moon_constellation(self) -> None:
-        """Calculates sun altitude and azimuth."""
+        """Calculates moon constellation."""
 
         if self._moon_observer is None:
             self._moon_observer = self._get_moon_observer()
@@ -1242,6 +1253,137 @@ class AstronomicalRoutines:
         # Moon Constellation
         constellation = ephem.constellation(self._moon)[1]
         self._moon_data["constellation"] = constellation
+
+    def _calculate_moon_phase_on_day(self) -> None:
+        """
+        Calculates the Moon Phase on day
+
+        The following extract the percent time between one new moon and the next
+        This corresponds (somewhat roughly) to the phase of the moon.
+        Note that there is a ephem.Moon().phase(), but this returns the
+        percentage of the moon which is illuminated. This is not really what we
+        want.
+        """
+
+        day = 1.0 / 29.33
+        moonphase = [
+            (0.0 / 4.0 + day, "🌑", "New moon", "moon-new"),
+            (1.0 / 4.0 - day, "🌒", "Waxing crescent moon", "moon-waxing-crescent"),
+            (1.0 / 4.0 + day, "🌓", "First quarter moon", "first-quarter-moon"),
+            (2.0 / 4.0 - day, "🌔", "Waxing gibbous moon", "moon-waxing-gibbous"),
+            (2.0 / 4.0 + day, "🌕", "Full moon", "moon-full"),
+            (3.0 / 4.0 - day, "🌖", "Waning gibbous moon", "moon-waning-gibbous"),
+            (3.0 / 4.0 + day, "🌗", "Last quarter moon", "moon-last-quarter"),
+            (4.0 / 4.0 - day, "🌘", "Waning crescent moon", "moon-waning-crescent"),
+            (4.0 / 4.0, "🌑", "New moon", "moon-new"),
+        ]
+        ranges = [x[0] for x in moonphase]
+
+        nnm = self._moon_data["next_new_moon"]
+        pnm = self._moon_data["previous_new_moon"]
+
+        # Number from 0-1. where 0=new, 0.5=full, 1=new
+        lunation = (self._forecast_time - pnm) / (nnm - pnm)
+
+        phase = bisect.bisect_right(ranges, lunation)
+
+        self._moon_data["icon"] = moonphase[phase][3]
+
+        # _LOGGER.debug(f"{round(lunation * 100.0, 1)} {moonphase[phase][1]} {moonphase[phase][2]} {moonphase[phase][3]}")
+
+    def _get_astronomical_darkness(self, date) -> tuple | tuple[None, None]:
+        """
+        Get astronimical darkness for a given date.
+
+        Args:
+        - date: Date for calculation
+
+        Returns:
+        - astro_twilight_start,
+          astro_twilight_end: Datetime for astronomical sun set and rise.
+                              If the sun does not rise or set [None, None] is returned.
+        """
+        self._sun_observer_astro.date = date
+
+        # Compute the next sunset and sunrise
+        try:
+            astro_twilight_start = self._sun_observer_astro.next_setting(ephem.Sun(), use_center=True)
+            self._sun_observer_astro.date = astro_twilight_start
+            astro_twilight_end = self._sun_observer_astro.next_rising(ephem.Sun(), use_center=True)
+            return astro_twilight_start.datetime(), astro_twilight_end.datetime()
+        except (ephem.AlwaysUpError, ephem.NeverUpError):
+            return None, None
+
+    # Function to check Moon conditions for the whole night
+    def _is_moon_dark_whole_night(self, night_start, night_end) -> bool:
+        """
+        Test if Moon phase is less than 5% and/or maximum Moon altitide during
+        astronomical darkness is less than 5°.
+
+        Args:
+        - night_start: Sun set -18°
+        - night_end: Sun rise -18°
+
+        Returns:
+        - dark_night: True, if Moon is within constraints.
+        """
+        current_time = night_start
+
+        moon_alts = []
+        moon_phases = []
+        dark_night = True
+
+        while current_time <= night_end:
+            self._moon_observer.date = current_time
+            moon = ephem.Moon(self._moon_observer)
+
+            moon_alt = moon.alt
+            moon_alts.append(moon_alt)
+            moon_phase = moon.phase  # Moon phase in percentage
+            moon_phases.append(moon_phase)
+
+            # If at any point the Moon is above horizon and > 10% illuminated, return False
+            if moon_alt > ephem.degrees(DARK_NIGHT_MAX_MOON_ALT):  # and moon_phase >= DARK_NIGHT_MAX_MOON_PHASE * 10:
+                dark_night = False
+                break
+
+            # Step in time (e.g., every 15 minutes)
+            current_time += timedelta(minutes=5)
+
+        moon_phases_avg = sum(moon_phases) / len(moon_phases)
+        if dark_night or moon_phases_avg <= DARK_NIGHT_MAX_MOON_PHASE * 10:
+            _LOGGER.debug(
+                f"Next dark night: {night_start.strftime("%Y-%m-%d")}, Altidudes min/max: {min(moon_alts)}/{max(moon_alts)}, Phase mix/max: {min(moon_phases):.2f}/{max(moon_phases):.2f}%"
+            )
+        else:
+            dark_night = False
+        return dark_night
+
+    def _next_dark_night(self) -> None:
+        """Calculate the next dark night"""
+
+        if self._moon_observer is None:
+            self._moon_observer = self._get_moon_observer()
+        if self._moon is None:
+            self._moon = ephem.Moon()
+
+        self._moon_data["next_dark_night"] = None
+
+        start_date = datetime.now(UTC).replace(hour=12, minute=0, second=0, microsecond=0) - timedelta(
+            seconds=self.utc_to_local_diff()
+        )
+
+        for i in range(365):
+            date = start_date + timedelta(days=i)
+            night_start, night_end = self._get_astronomical_darkness(date)
+
+            # Skip nights where twilight is undefined (polar regions)
+            if night_start is None or night_end is None:
+                continue
+
+            if self._is_moon_dark_whole_night(night_start, night_end):
+                self._moon_data["next_dark_night"] = night_start.replace(tzinfo=UTC)
+                break
 
     # #########################################################################
     # Darkness

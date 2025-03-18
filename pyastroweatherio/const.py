@@ -179,6 +179,8 @@ DEFAULT_CONDITION_CALM_WEIGHT = 2
 CONDITION_PLAIN = ["excellent", "good", "fair", "poor", "bad"]
 CONDITION = ["█", "▆", "▄", "▂", "▁"]
 DEEP_SKY_THRESHOLD = 75
+DARK_NIGHT_MAX_MOON_PHASE = 0.05
+DARK_NIGHT_MAX_MOON_ALT = "5:0:0"
 
 # #####################################################
 # Forecast

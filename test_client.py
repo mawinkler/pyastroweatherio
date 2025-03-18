@@ -87,6 +87,20 @@ LOCATIONS = [
     #     "elevation": 12,
     #     "timezone_info": "Europe/Helsinki",
     # },
+    {
+        # North
+        "latitude": 85,
+        "longitude": 11,
+        "elevation": 12,
+        "timezone_info": "Europe/Helsinki",
+    },
+    {
+        # South
+        "latitude": -85,
+        "longitude": 11,
+        "elevation": 12,
+        "timezone_info": "Europe/Berlin",
+    },
 ]
 
 
@@ -382,6 +396,7 @@ async def main() -> None:
                 "altitude",
                 "azimuth",
                 "phase",
+                "icon",
                 "next_rising",
                 "next_setting",
                 "next_new_moon",
@@ -391,12 +406,14 @@ async def main() -> None:
                 "relative_distance",
                 "relative_size",
                 "constellation",
+                "next_dark_night",
             ]
             rows = [
                 [
                     obj.moon_altitude,
                     obj.moon_azimuth,
                     obj.moon_phase,
+                    obj.moon_icon,
                     obj.moon_next_rising.strftime("%Y-%m-%d %H:%M"),
                     obj.moon_next_setting.strftime("%Y-%m-%d %H:%M"),
                     obj.moon_next_new_moon.strftime("%Y-%m-%d %H:%M"),
@@ -406,6 +423,7 @@ async def main() -> None:
                     obj.moon_relative_distance,
                     obj.moon_relative_size,
                     obj.moon_constellation,
+                    obj.moon_next_dark_night.strftime("%Y-%m-%d %H:%M"),
                 ]
                 for obj in data
             ]
@@ -432,6 +450,18 @@ async def main() -> None:
                 for obj in data
             ]
             print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
+
+            # print("Next Dark Night:")
+            # headers = [
+            #     "next_dark_night",
+            # ]
+            # rows = [
+            #     [
+            #         obj.next_dark_night,
+            #     ]
+            #     for obj in data
+            # ]
+            # print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
     except AstroWeatherError as err:
         print(err)

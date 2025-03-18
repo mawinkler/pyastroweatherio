@@ -242,6 +242,9 @@ class AstroWeather:
             self._weather_data_timestamp = datetime.now()
 
             weather_df_metno = await self._retrieve_data_metno()
+            if weather_df_metno is None:
+                _LOGGER.warning("Could not retrieve Met.no data. Using existing data.")
+                return None
             weather_df_seventimer = await self._retrieve_data_seventimer()
             await self._retrieve_data_uptonight()
 
@@ -286,6 +289,7 @@ class AstroWeather:
             # Clean up rows with missing values
             self._weather_df = self._weather_df.dropna(subset=["air_temperature"])
             self._weather_df = self._weather_df.dropna(subset=["next_6h_symbol_code"])
+            self._weather_df = self._weather_df.dropna(subset=["precipitation_amount"])
 
             self._weather_df["time_diff"] = self._weather_df["time"].diff()
             threshold = pd.Timedelta(hours=1)
@@ -316,6 +320,8 @@ class AstroWeather:
                 self._weather_df["seeing"] = self._weather_df["seeing"].bfill()
                 self._weather_df["transparency"] = self._weather_df["transparency"].bfill()
                 self._weather_df["lifted_index"] = self._weather_df["lifted_index"].bfill()
+
+            self._test_weather_df()
         else:
             _LOGGER.debug("Using cached data")
 
@@ -486,7 +492,29 @@ class AstroWeather:
 
         if not all(data[key] is not None for key in keys):
             return False
+        if not all(data[key] != "NaN" for key in keys):
+            return False
         return True
+
+    def _test_weather_df(self) -> None:
+        # Check main dataframe for any NaN values
+        nan_locations = self._weather_df.isna()
+
+        # Find column names and index positions of NaNs
+        result = [
+            (index, col)
+            for col in nan_locations.columns
+            for index in nan_locations.index
+            if nan_locations.at[index, col]
+        ]
+
+        # Print results
+        if result:
+            _LOGGER.warning("NaN in main dataframe found at:")
+            for index, col in result:
+                _LOGGER.warning(f"Column: {col}, Index: {index}")
+        else:
+            _LOGGER.debug("No NaN values found in main dataframe.")
 
     # #########################################################################
     # Data for AstroWeather
@@ -1114,33 +1142,38 @@ class AstroWeather:
 
         # Flattening the data into a list of records
         records = []
-        for entry in dataseries:
-            time = datetime.strptime(entry["time"], "%Y-%m-%dT%H:%M:%SZ").replace(microsecond=0, tzinfo=timezone.utc)
-            instant_details = entry["data"]["instant"]["details"]
-            next_1h_symbol_code = entry["data"].get("next_1_hours", {}).get("summary", {}).get("symbol_code", None)
-            next_6h_symbol_code = entry["data"].get("next_6_hours", {}).get("summary", {}).get("symbol_code", None)
-            next_1h_precipitation_amount = (
-                entry["data"].get("next_1_hours", {}).get("details", {}).get("precipitation_amount", None)
-            )
-            next_6h_precipitation_amount = (
-                entry["data"].get("next_6_hours", {}).get("details", {}).get("precipitation_amount", None)
-            )
+        if dataseries is not None:
+            for entry in dataseries:
+                time = datetime.strptime(entry["time"], "%Y-%m-%dT%H:%M:%SZ").replace(
+                    microsecond=0, tzinfo=timezone.utc
+                )
+                instant_details = entry["data"]["instant"]["details"]
+                next_1h_symbol_code = entry["data"].get("next_1_hours", {}).get("summary", {}).get("symbol_code", None)
+                next_6h_symbol_code = entry["data"].get("next_6_hours", {}).get("summary", {}).get("symbol_code", None)
+                next_1h_precipitation_amount = (
+                    entry["data"].get("next_1_hours", {}).get("details", {}).get("precipitation_amount", None)
+                )
+                next_6h_precipitation_amount = (
+                    entry["data"].get("next_6_hours", {}).get("details", {}).get("precipitation_amount", None)
+                )
 
-            # Adding all details to a single record
-            record = {
-                "time": time,
-                **instant_details,
-                "next_1h_symbol_code": next_1h_symbol_code,
-                "next_6h_symbol_code": next_6h_symbol_code,
-                "next_1h_precipitation_amount": next_1h_precipitation_amount,
-                "next_6h_precipitation_amount": next_6h_precipitation_amount,
-            }
-            records.append(record)
+                # Adding all details to a single record
+                record = {
+                    "time": time,
+                    **instant_details,
+                    "next_1h_symbol_code": next_1h_symbol_code,
+                    "next_6h_symbol_code": next_6h_symbol_code,
+                    "next_1h_precipitation_amount": next_1h_precipitation_amount,
+                    "next_6h_precipitation_amount": next_6h_precipitation_amount,
+                }
+                records.append(record)
 
-        # Convert to DataFrame
-        weather_df_metno = pd.DataFrame(records)
+            # Convert to DataFrame
+            weather_df_metno = pd.DataFrame(records)
 
-        return weather_df_metno
+            return weather_df_metno
+        else:
+            return None
 
     @typechecked
     async def _async_request_met(self) -> Dict:
