@@ -1,9 +1,17 @@
 from setuptools import setup
+import os
+
+lib_folder = os.path.dirname(os.path.realpath(__file__))
+requirement_path = f"{lib_folder}/requirements.txt"
+install_requires = []
+if os.path.isfile(requirement_path):
+    with open(requirement_path) as f:
+        install_requires = f.read().splitlines()
 
 setup(
     name="pyastroweatherio",
     packages=["pyastroweatherio"],
-    version="0.71.0",
+    version="0.72.0",
     license="MIT",
     description="Python Wrapper for 7Timer and Met.no REST API",
     long_description=" ".join(
@@ -16,8 +24,8 @@ setup(
     author="Markus Winkler",
     author_email="winkler.info@icloud.com",
     url="https://github.com/mawinkler/pyastroweatherio",
-    keywords=["AstroWeather", "7Timer", "Met.no", "Python"],
-    install_requires=["aiohttp", "aiofiles", "pyephem", "openmeteo-requests"],
+    keywords=["AstroWeather", "7Timer", "Met.no", "OpenMeteo", "Python"],
+    install_requires=install_requires,
     classifiers=[
         # Chose either "3 - Alpha", "4 - Beta" or "5 - Production/Stable" as the current state of your package
         "Development Status :: 4 - Beta",

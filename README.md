@@ -42,3 +42,19 @@ This will return a handle to the AstroWeather class and open the connection.
 ```sh
 pip3 install .
 ```
+
+## Build
+
+```sh
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+
+python3 setup.py sdist
+twine upload dist/*
+```
+
+## Test
+
+```sh
+python -m unittest -v tests/client.py
+```

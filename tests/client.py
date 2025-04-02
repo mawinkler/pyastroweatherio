@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """The test for the API"""
 
+from unittest import TestCase
+
 import asyncio
 import logging
 import os
@@ -108,63 +110,55 @@ def esc(code):
     return f"\033[{code}m"
 
 
-def utc_to_local(utc_dt):
-    """Localizes the datetime"""
-    local_tz = pytz.timezone(timezone_info)
-    local_dt = utc_dt.replace(tzinfo=pytz.utc).astimezone(local_tz)
-    return local_tz.normalize(local_dt)
+class AstroWeatherIOTestCase(TestCase):
+    def setup(self):
+        return None
 
+    def test_hourly_forecast(self):
+        asyncio.run(self.hourly_forecast(idx=0))
 
-def convert_to_hhmm(sec):
-    sec = sec % (24 * 3600)
-    hour = sec // 3600
-    sec %= 3600
-    min = sec // 60
-    sec %= 60
+    def test_deepsky_forecast(self):
+        asyncio.run(self.deepsky_forecast(idx=0))
 
-    return "%02d:%02d" % (hour, min)
+    def test_location_data(self):
+        asyncio.run(self.location_data(idx=0))
 
+    async def hourly_forecast(self, idx) -> None:
+        """Create the aiohttp session and run the example."""
+        logging.basicConfig(level=logging.DEBUG)
 
-async def main() -> None:
-    """Create the aiohttp session and run the example."""
-    logging.basicConfig(level=logging.DEBUG)
+        print(
+            f"\n{esc(COLOR_BLUE)}--------------------------------------------------------"
+            + f"---------------------------------------------------------------{esc('0')}"
+        )
+        print(f"{esc(COLOR_RED)}Date & Time: {esc(COLOR_GREEN)}{str(datetime.now())}, ")
+        print(
+            f"{esc(COLOR_BLUE)}--------------------------------------------------------"
+            + f"---------------------------------------------------------------{esc('0')}"
+        )
 
-    print(
-        f"{esc(COLOR_BLUE)}--------------------------------------------------------"
-        + f"---------------------------------------------------------------{esc('0')}"
-    )
-    print(f"{esc(COLOR_RED)}Date & Time: {esc(COLOR_GREEN)}{str(datetime.now())}, ")
-    print(
-        f"{esc(COLOR_BLUE)}--------------------------------------------------------"
-        + f"---------------------------------------------------------------{esc('0')}"
-    )
+        astroweather = AstroWeather(
+            latitude=LOCATIONS[idx]["latitude"],
+            longitude=LOCATIONS[idx]["longitude"],
+            elevation=LOCATIONS[idx]["elevation"],
+            timezone_info=LOCATIONS[idx]["timezone_info"],
+            cloudcover_weight=3,
+            cloudcover_high_weakening=0.5,
+            cloudcover_medium_weakening=0.75,
+            cloudcover_low_weakening=0.75,
+            fog_weight=3,
+            seeing_weight=2,
+            transparency_weight=1,
+            calm_weight=2,
+            uptonight_path=".",
+            # test_datetime=datetime.strptime("2024-11-19T07:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
+            experimental_features=True,
+            forecast_model="icon_seamless",
+        )
 
-    astroweather = AstroWeather(
-        latitude=latitude,
-        longitude=longitude,
-        elevation=elevation,
-        timezone_info=timezone_info,
-        cloudcover_weight=3,
-        cloudcover_high_weakening=0.5,
-        cloudcover_medium_weakening=0.75,
-        cloudcover_low_weakening=0.75,
-        fog_weight=3,
-        seeing_weight=2,
-        transparency_weight=1,
-        calm_weight=2,
-        uptonight_path=".",
-        # test_datetime=datetime.strptime("2024-11-19T07:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
-        experimental_features=True,
-        forecast_model="icon_seamless",
-    )
+        start = time.time()
 
-    start = time.time()
-
-    test_hourly_forecast = True
-    test_deepsky_forecast = True
-    test_location_data = True
-    try:
-        if test_hourly_forecast:
+        try:
             data = await astroweather.get_hourly_forecast()
 
             headers = [
@@ -220,7 +214,51 @@ async def main() -> None:
             ]
             print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
-        if test_deepsky_forecast:
+        except AstroWeatherError as err:
+            print(err)
+
+        end = time.time()
+
+        print(f"Execution time: {end - start} seconds")
+
+        return None
+
+    async def deepsky_forecast(self, idx) -> None:
+        """Create the aiohttp session and run the example."""
+        logging.basicConfig(level=logging.DEBUG)
+
+        print(
+            f"\n{esc(COLOR_BLUE)}--------------------------------------------------------"
+            + f"---------------------------------------------------------------{esc('0')}"
+        )
+        print(f"{esc(COLOR_RED)}Date & Time: {esc(COLOR_GREEN)}{str(datetime.now())}, ")
+        print(
+            f"{esc(COLOR_BLUE)}--------------------------------------------------------"
+            + f"---------------------------------------------------------------{esc('0')}"
+        )
+
+        astroweather = AstroWeather(
+            latitude=LOCATIONS[idx]["latitude"],
+            longitude=LOCATIONS[idx]["longitude"],
+            elevation=LOCATIONS[idx]["elevation"],
+            timezone_info=LOCATIONS[idx]["timezone_info"],
+            cloudcover_weight=3,
+            cloudcover_high_weakening=0.5,
+            cloudcover_medium_weakening=0.75,
+            cloudcover_low_weakening=0.75,
+            fog_weight=3,
+            seeing_weight=2,
+            transparency_weight=1,
+            calm_weight=2,
+            uptonight_path=".",
+            # test_datetime=datetime.strptime("2024-11-19T07:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
+            experimental_features=True,
+            forecast_model="icon_seamless",
+        )
+
+        start = time.time()
+
+        try:
             data = await astroweather.get_deepsky_forecast()
 
             headers = [
@@ -240,7 +278,51 @@ async def main() -> None:
             ]
             print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
-        if test_location_data:
+        except AstroWeatherError as err:
+            print(err)
+
+        end = time.time()
+
+        print(f"Execution time: {end - start} seconds")
+
+        return None
+
+    async def location_data(self, idx) -> None:
+        """Create the aiohttp session and run the example."""
+        logging.basicConfig(level=logging.DEBUG)
+
+        print(
+            f"\n{esc(COLOR_BLUE)}--------------------------------------------------------"
+            + f"---------------------------------------------------------------{esc('0')}"
+        )
+        print(f"{esc(COLOR_RED)}Date & Time: {esc(COLOR_GREEN)}{str(datetime.now())}, ")
+        print(
+            f"{esc(COLOR_BLUE)}--------------------------------------------------------"
+            + f"---------------------------------------------------------------{esc('0')}"
+        )
+
+        astroweather = AstroWeather(
+            latitude=LOCATIONS[idx]["latitude"],
+            longitude=LOCATIONS[idx]["longitude"],
+            elevation=LOCATIONS[idx]["elevation"],
+            timezone_info=LOCATIONS[idx]["timezone_info"],
+            cloudcover_weight=3,
+            cloudcover_high_weakening=0.5,
+            cloudcover_medium_weakening=0.75,
+            cloudcover_low_weakening=0.75,
+            fog_weight=3,
+            seeing_weight=2,
+            transparency_weight=1,
+            calm_weight=2,
+            uptonight_path=".",
+            # test_datetime=datetime.strptime("2024-11-19T07:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
+            experimental_features=True,
+            forecast_model="icon_seamless",
+        )
+
+        start = time.time()
+
+        try:
             data = await astroweather.get_location_data()
 
             print("Location:")
@@ -451,32 +533,11 @@ async def main() -> None:
             ]
             print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
 
-            # print("Next Dark Night:")
-            # headers = [
-            #     "next_dark_night",
-            # ]
-            # rows = [
-            #     [
-            #         obj.next_dark_night,
-            #     ]
-            #     for obj in data
-            # ]
-            # print(f"{esc(COLOR_BLUE)}" + f"{tabulate(rows, headers=headers)}" + f"{esc('0')}\n")
+        except AstroWeatherError as err:
+            print(err)
 
-    except AstroWeatherError as err:
-        print(err)
+        end = time.time()
 
-    end = time.time()
+        print(f"Execution time: {end - start} seconds")
 
-    print(f"Execution time: {end - start} seconds")
-
-    return None
-
-
-for location in LOCATIONS:
-    latitude = location["latitude"]
-    longitude = location["longitude"]
-    elevation = location["elevation"]
-    timezone_info = location["timezone_info"]
-
-    asyncio.run(main())
+        return None
