@@ -1,6 +1,6 @@
 # pyAstroWeatherIO
 
-Wrapper for the ***MET Norway Weather***, ***7Timer***, and ***Open-Meteo*** RESTful APIs. Designed to work with Home Assistant and the custom [AstroWeather](https://github.com/mawinkler/astroweather) integration.
+Wrapper for the ***MET Norway Weather*** and ***Open-Meteo*** RESTful APIs. Designed to work with Home Assistant and the custom [AstroWeather](https://github.com/mawinkler/astroweather) integration.
 
 In addition to the weather data, some calculations for the astronomical twilight and Moon setting, rising and phase are implemented. They indicate the darkness you can expect the upcoming night.
 

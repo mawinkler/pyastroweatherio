@@ -13,18 +13,18 @@ setup(
     packages=["pyastroweatherio"],
     version="0.72.0",
     license="MIT",
-    description="Python Wrapper for 7Timer and Met.no REST API",
+    description="Python Wrapper for OpenMeteo and Met.no REST API",
     long_description=" ".join(
         [
             "Lightweight Python 3 module to receive data via",
-            "REST API from 7Timer and Met.no and consume",
+            "REST API from OpenMeteo and Met.no and consume",
             "UpTonight reports.",
         ],
     ),
     author="Markus Winkler",
     author_email="winkler.info@icloud.com",
     url="https://github.com/mawinkler/pyastroweatherio",
-    keywords=["AstroWeather", "7Timer", "Met.no", "OpenMeteo", "Python"],
+    keywords=["AstroWeather", "Met.no", "OpenMeteo", "Python"],
     install_requires=install_requires,
     classifiers=[
         # Chose either "3 - Alpha", "4 - Beta" or "5 - Production/Stable" as the current state of your package
