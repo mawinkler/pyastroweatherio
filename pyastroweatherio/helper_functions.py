@@ -40,11 +40,6 @@ class ConversionFunctions:
 
         return datetime.datetime.fromtimestamp(int(value)).strftime("%Y-%m-%d %H:%M:%S")
 
-    async def anchor_timestamp(self, value) -> datetime:
-        """Converts the datetime string from 7Timer to DateTime."""
-
-        return datetime.strptime(value, "%Y%m%d%H")
-
 
 class AtmosphericRoutines:
     """Calculate atmospheric attributes."""

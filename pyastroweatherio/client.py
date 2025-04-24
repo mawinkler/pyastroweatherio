@@ -1,4 +1,4 @@
-"""Define a client to interact with 7Timer."""
+"""Define a client to interact with weather APIs."""
 
 import asyncio
 import json
@@ -26,7 +26,6 @@ from typeguard import typechecked
 
 from pyastroweatherio.const import (
     BASE_URL_MET,
-    BASE_URL_SEVENTIMER,
     BASE_URL_OPENMETEO,
     DEFAULT_CACHE_TIMEOUT,
     DEFAULT_CONDITION_CALM_WEIGHT,
@@ -44,7 +43,6 @@ from pyastroweatherio.const import (
     DEFAULT_TIMEZONE,
     FORECAST_TYPE_HOURLY,
     HEADERS,
-    LIFTED_INDEX_7TIMER_MAPPING,
     MAG_DEGRATION_MAX,
     SEEING,
     SEEING_MAX,
@@ -126,7 +124,7 @@ class AstroWeather:
         self._calm_weight = calm_weight
         self._uptonight_path = uptonight_path
         self._test_datetime = test_datetime
-        self._experimental_features = experimental_features
+        self._experimental_features = True
         self._forecast_model = forecast_model
         # Open-Meteo
         # DWD Germany: icon_seamless
@@ -245,46 +243,41 @@ class AstroWeather:
             if weather_df_metno is None:
                 _LOGGER.warning("Could not retrieve Met.no data. Using existing data.")
                 return None
-            weather_df_seventimer = await self._retrieve_data_seventimer()
             await self._retrieve_data_uptonight()
 
-            if self._forecast_model is not None:
-                weather_df_openmeteo = await self._retrieve_data_openmeteo()
+            weather_df_openmeteo = await self._retrieve_data_openmeteo()
 
-                # Merge the dataframes of metno, seventimer, and openmeteo
-                self._weather_df = weather_df_metno.merge(weather_df_seventimer, on="time", how="left").merge(
-                    weather_df_openmeteo, on="time", how="left"
-                )
+            # Merge the dataframes of metno and openmeteo
+            self._weather_df = weather_df_metno.merge(
+                weather_df_openmeteo, on="time", how="left"
+            )
 
-                # Overwrite met.no forecast with open-meteo forcast
-                self._weather_df["cloud_area_fraction"] = self._weather_df["openmeteo_cloud_cover"]
-                self._weather_df["cloud_area_fraction_high"] = self._weather_df["openmeteo_cloud_cover_high"]
-                self._weather_df["cloud_area_fraction_medium"] = self._weather_df["openmeteo_cloud_cover_mid"]
-                self._weather_df["cloud_area_fraction_low"] = self._weather_df["openmeteo_cloud_cover_low"]
-                self._weather_df["relative_humidity"] = self._weather_df["openmeteo_relative_humidity_2m"]
-                self._weather_df["wind_speed"] = self._weather_df["openmeteo_wind_speed_10m"]
-                self._weather_df["wind_from_direction"] = self._weather_df["openmeteo_wind_direction_10m"]
-                self._weather_df["air_temperature"] = self._weather_df["openmeteo_temperature_2m"]
-                self._weather_df["dew_point_temperature"] = self._weather_df["openmeteo_dew_point_2m"]
-                self._weather_df["precipitation_amount"] = self._weather_df["openmeteo_precipitation"]
-                self._weather_df = self._weather_df.drop(
-                    [
-                        "openmeteo_cloud_cover",
-                        "openmeteo_cloud_cover_high",
-                        "openmeteo_cloud_cover_mid",
-                        "openmeteo_cloud_cover_low",
-                        "openmeteo_relative_humidity_2m",
-                        "openmeteo_wind_speed_10m",
-                        "openmeteo_wind_direction_10m",
-                        "openmeteo_temperature_2m",
-                        "openmeteo_dew_point_2m",
-                        "openmeteo_precipitation",
-                    ],
-                    axis=1,
-                )
-            else:
-                # Merge the dataframes of metno and seventimer
-                self._weather_df = weather_df_metno.merge(weather_df_seventimer, on="time", how="left")
+            # Overwrite met.no forecast with open-meteo forcast
+            self._weather_df["cloud_area_fraction"] = self._weather_df["openmeteo_cloud_cover"]
+            self._weather_df["cloud_area_fraction_high"] = self._weather_df["openmeteo_cloud_cover_high"]
+            self._weather_df["cloud_area_fraction_medium"] = self._weather_df["openmeteo_cloud_cover_mid"]
+            self._weather_df["cloud_area_fraction_low"] = self._weather_df["openmeteo_cloud_cover_low"]
+            self._weather_df["relative_humidity"] = self._weather_df["openmeteo_relative_humidity_2m"]
+            self._weather_df["wind_speed"] = self._weather_df["openmeteo_wind_speed_10m"]
+            self._weather_df["wind_from_direction"] = self._weather_df["openmeteo_wind_direction_10m"]
+            self._weather_df["air_temperature"] = self._weather_df["openmeteo_temperature_2m"]
+            self._weather_df["dew_point_temperature"] = self._weather_df["openmeteo_dew_point_2m"]
+            self._weather_df["precipitation_amount"] = self._weather_df["openmeteo_precipitation"]
+            self._weather_df = self._weather_df.drop(
+                [
+                    "openmeteo_cloud_cover",
+                    "openmeteo_cloud_cover_high",
+                    "openmeteo_cloud_cover_mid",
+                    "openmeteo_cloud_cover_low",
+                    "openmeteo_relative_humidity_2m",
+                    "openmeteo_wind_speed_10m",
+                    "openmeteo_wind_direction_10m",
+                    "openmeteo_temperature_2m",
+                    "openmeteo_dew_point_2m",
+                    "openmeteo_precipitation",
+                ],
+                axis=1,
+            )
 
             # Clean up rows with missing values
             self._weather_df = self._weather_df.dropna(subset=["air_temperature"])
@@ -306,20 +299,10 @@ class AstroWeather:
                 )
                 self._weather_df["dew_point_temperature"] = await self._calculate_dew_point(self._weather_df)
 
-            # Should we try to calculate seeing, transparency, and lifted_index?
-            if self._experimental_features:
-                # Calculate atmosphere
-                self._weather_df["seeing"] = await self._calculate_seeing(self._weather_df)
-                self._weather_df["transparency"] = await self._calculate_transparency(self._weather_df)
-                self._weather_df["lifted_index"] = await self._calculate_lifted_index(self._weather_df)
-            else:
-                # 7Timer delivers three hourly data only, so we fill the missing data here
-                self._weather_df["seeing"] = self._weather_df["seeing"].ffill()
-                self._weather_df["transparency"] = self._weather_df["transparency"].ffill()
-                self._weather_df["lifted_index"] = self._weather_df["lifted_index"].ffill()
-                self._weather_df["seeing"] = self._weather_df["seeing"].bfill()
-                self._weather_df["transparency"] = self._weather_df["transparency"].bfill()
-                self._weather_df["lifted_index"] = self._weather_df["lifted_index"].bfill()
+            # Calculate atmosphere
+            self._weather_df["seeing"] = await self._calculate_seeing(self._weather_df)
+            self._weather_df["transparency"] = await self._calculate_transparency(self._weather_df)
+            self._weather_df["lifted_index"] = await self._calculate_lifted_index(self._weather_df)
 
             self._test_weather_df()
         else:
@@ -381,11 +364,8 @@ class AstroWeather:
         transparency = float(row["transparency"])
         lifted_index = float(row["lifted_index"])
 
-        if self._experimental_features:
-            # Calculate Fog Density
-            fog2m = await self._atmosphere.calculate_fog_density(temp2m, rh2m, dewpoint2m, wind_speed) * 100
-        else:
-            fog2m = fog
+        # Calculate Fog Density
+        fog2m = await self._atmosphere.calculate_fog_density(temp2m, rh2m, dewpoint2m, wind_speed) * 100
 
         condition = ConditionDataModel(
             {
@@ -992,132 +972,6 @@ class AstroWeather:
         return items
 
     # #########################################################################
-    # 7Timer
-    # #########################################################################
-    async def _retrieve_data_seventimer(self) -> None:
-        """Retrieves current data from 7timer."""
-
-        _LOGGER.debug("Updating data from 7Timer")
-
-        astro_dataseries = {}
-
-        # Testing
-        if not self._experimental_features:
-            if self._test_mode:
-                if os.path.isfile("debug/astro.json"):
-                    _LOGGER.debug("Reading 7Timer from file")
-                    with open("debug/astro.json") as json_file:
-                        astro_dataseries_json = json.load(json_file)
-                        astro_dataseries = astro_dataseries_json.get("dataseries", {})
-                        json_data_astro = {"init": astro_dataseries_json.get("init")}
-                else:
-                    json_data_astro = await self._async_request_seventimer()
-                    astro_dataseries = json_data_astro.get("dataseries", {})
-            else:
-                json_data_astro = await self._async_request_seventimer()
-                astro_dataseries = json_data_astro.get("dataseries", {})
-
-        if astro_dataseries != {} and not self._experimental_features:
-            cnv = ConversionFunctions()
-            seventimer_init = await cnv.anchor_timestamp(json_data_astro.get("init"))
-
-            # Flattening the data into a list of records
-            records = []
-            for entry in astro_dataseries:
-                time = (seventimer_init + timedelta(hours=entry["timepoint"])).replace(
-                    microsecond=0, tzinfo=timezone.utc
-                )
-                instant_details = {}
-                instant_details["seeing"] = SEEING[max(0, min(7, int(entry["seeing"] - 1)))]
-                instant_details["transparency"] = TRANSPARENCY[max(0, min(7, int(entry["transparency"] - 1)))]
-                instant_details["lifted_index"] = LIFTED_INDEX_7TIMER_MAPPING[entry["lifted_index"]]
-
-                # Adding all details to a single record
-                record = {
-                    "time": time,
-                    **instant_details,
-                }
-                records.append(record)
-
-            # Convert to DataFrame
-            weather_df_seventimer = pd.DataFrame(records)
-        else:
-            # Fake 7timer weather data if service is broken
-            # This eliminates consideration of seeing, transparency, and lifted_index
-            # and switches automatically to experimental functions.
-            records = []
-            now = datetime.now(UTC)
-
-            for index in range(0, 20):
-                time = (now + timedelta(hours=index * 3)).replace(
-                    minute=0, second=0, microsecond=0, tzinfo=timezone.utc
-                )
-                instant_details = {}
-                instant_details["seeing"] = _NOT_AVAILABLE
-                instant_details["transparency"] = _NOT_AVAILABLE
-                instant_details["lifted_index"] = _NOT_AVAILABLE
-
-                # Adding all details to a single record
-                record = {
-                    "time": time,
-                    **instant_details,
-                }
-                records.append(record)
-
-            # Convert to DataFrame
-            weather_df_seventimer = pd.DataFrame(records)
-
-        return weather_df_seventimer
-
-    @typechecked
-    async def _async_request_seventimer(self) -> Dict:
-        """Make a request against the 7timer API."""
-
-        use_running_session = self._session and not self._session.closed
-
-        if use_running_session:
-            session = self._session
-        else:
-            session = ClientSession(timeout=ClientTimeout(total=DEFAULT_TIMEOUT))
-
-        # BASE_URL_SEVENTIMER = "https://www.7timer.info/bin/api.pl?lon=XX.XX&lat=YY.YY&product=astro&output=json"
-        url = (
-            str(f"{BASE_URL_SEVENTIMER}")
-            + "?lon="
-            + str("%.1f" % round(self._location_data.longitude, 2))
-            + "&lat="
-            + str("%.1f" % round(self._location_data.latitude, 2))
-            + "&product=astro"
-            + "&output=json"
-        )
-        try:
-            _LOGGER.debug(f"Query url: {url}")
-            async with session.request("get", url, headers=HEADERS, ssl=False) as resp:
-                resp.raise_for_status()
-                plain = str(await resp.text()).replace("\n", " ")
-                data = json.loads(plain)
-
-                if self._test_mode:
-                    json_string = json.dumps(data)
-                    with open("debug/astro.json", "w") as outfile:
-                        outfile.write(json_string)
-
-                return data
-        except JSONDecodeError as jsonerr:
-            _LOGGER.error(f"JSON decode error, expecting value: {jsonerr}")
-            return {}
-        except asyncio.TimeoutError as tex:
-            _LOGGER.error(f"Request to endpoint timed out: {tex}")
-            return {}
-        except ClientError as err:
-            _LOGGER.error(f"Error requesting data: {err}")
-            return {}
-
-        finally:
-            if not use_running_session:
-                await session.close()
-
-    # #########################################################################
     # Met.no
     # #########################################################################
     async def _retrieve_data_metno(self) -> None:
@@ -1177,7 +1031,7 @@ class AstroWeather:
 
     @typechecked
     async def _async_request_met(self) -> Dict:
-        """Make a request against the 7timer API."""
+        """Make a request against the Met.no API."""
 
         use_running_session = self._session and not self._session.closed
 

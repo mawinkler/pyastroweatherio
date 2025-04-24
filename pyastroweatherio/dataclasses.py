@@ -498,14 +498,6 @@ class LocationData:
     # Time data
     # #########################################################################
     @property
-    def seventimer_init(self) -> datetime:
-        return self.time_data.seventimer_init
-
-    @property
-    def seventimer_timepoint(self) -> int:
-        return self.time_data.seventimer_timepoint
-
-    @property
     def forecast_time(self) -> datetime:
         return self.time_data.forecast_time
 
@@ -1007,14 +999,6 @@ class ForecastData:
     # #########################################################################
     # Time data
     # #########################################################################
-    @property
-    def seventimer_init(self) -> datetime:
-        return self.time_data.seventimer_init
-
-    @property
-    def seventimer_timepoint(self) -> int:
-        return self.time_data.seventimer_timepoint
-
     @property
     def forecast_time(self) -> datetime:
         return self.time_data.forecast_time
