@@ -146,6 +146,8 @@ class AstroWeather:
 
         self._atmosphere = AtmosphericRoutines()
 
+        self._lock = asyncio.Lock()
+        
         # Testing
         self._test_mode = False
         if self._test_datetime is not None:
@@ -235,78 +237,78 @@ class AstroWeather:
 
     async def _retrive_data(self) -> None:
         """Retrieves current data from all data sources."""
+        async with self._lock:
+            if ((datetime.now() - self._weather_data_timestamp).total_seconds()) > DEFAULT_CACHE_TIMEOUT:
+                self._weather_data_timestamp = datetime.now()
 
-        if ((datetime.now() - self._weather_data_timestamp).total_seconds()) > DEFAULT_CACHE_TIMEOUT:
-            self._weather_data_timestamp = datetime.now()
+                weather_df_metno = await self._retrieve_data_metno()
+                if weather_df_metno is None:
+                    _LOGGER.warning("Could not retrieve Met.no data. Using existing data.")
+                    return None
+                await self._retrieve_data_uptonight()
 
-            weather_df_metno = await self._retrieve_data_metno()
-            if weather_df_metno is None:
-                _LOGGER.warning("Could not retrieve Met.no data. Using existing data.")
-                return None
-            await self._retrieve_data_uptonight()
+                weather_df_openmeteo = await self._retrieve_data_openmeteo()
 
-            weather_df_openmeteo = await self._retrieve_data_openmeteo()
-
-            # Merge the dataframes of metno and openmeteo
-            self._weather_df = weather_df_metno.merge(
-                weather_df_openmeteo, on="time", how="left"
-            )
-
-            # Overwrite met.no forecast with open-meteo forcast
-            self._weather_df["cloud_area_fraction"] = self._weather_df["openmeteo_cloud_cover"]
-            self._weather_df["cloud_area_fraction_high"] = self._weather_df["openmeteo_cloud_cover_high"]
-            self._weather_df["cloud_area_fraction_medium"] = self._weather_df["openmeteo_cloud_cover_mid"]
-            self._weather_df["cloud_area_fraction_low"] = self._weather_df["openmeteo_cloud_cover_low"]
-            self._weather_df["relative_humidity"] = self._weather_df["openmeteo_relative_humidity_2m"]
-            self._weather_df["wind_speed"] = self._weather_df["openmeteo_wind_speed_10m"]
-            self._weather_df["wind_from_direction"] = self._weather_df["openmeteo_wind_direction_10m"]
-            self._weather_df["air_temperature"] = self._weather_df["openmeteo_temperature_2m"]
-            self._weather_df["dew_point_temperature"] = self._weather_df["openmeteo_dew_point_2m"]
-            self._weather_df["precipitation_amount"] = self._weather_df["openmeteo_precipitation"]
-            self._weather_df = self._weather_df.drop(
-                [
-                    "openmeteo_cloud_cover",
-                    "openmeteo_cloud_cover_high",
-                    "openmeteo_cloud_cover_mid",
-                    "openmeteo_cloud_cover_low",
-                    "openmeteo_relative_humidity_2m",
-                    "openmeteo_wind_speed_10m",
-                    "openmeteo_wind_direction_10m",
-                    "openmeteo_temperature_2m",
-                    "openmeteo_dew_point_2m",
-                    "openmeteo_precipitation",
-                ],
-                axis=1,
-            )
-
-            # Clean up rows with missing values
-            self._weather_df = self._weather_df.dropna(subset=["air_temperature"])
-            self._weather_df = self._weather_df.dropna(subset=["next_6h_symbol_code"])
-            self._weather_df = self._weather_df.dropna(subset=["precipitation_amount"])
-
-            self._weather_df["time_diff"] = self._weather_df["time"].diff()
-            threshold = pd.Timedelta(hours=1)
-            cutoff_index = self._weather_df[self._weather_df["time_diff"] > threshold].index.min()
-            if pd.notna(cutoff_index):  # Check if there's a cutoff
-                self._weather_df = self._weather_df.loc[: cutoff_index - 1]
-            self._weather_df = self._weather_df.drop(columns=["time_diff"])
-
-            # Check if we got dew point temperatures. If not calculate them.
-            has_nan_or_none = self._weather_df["dew_point_temperature"].isnull().any()
-            if has_nan_or_none:
-                _LOGGER.warning(
-                    f"Column 'dew_point_temperature' has NaN or None: {has_nan_or_none}. Calculating dew points."
+                # Merge the dataframes of metno and openmeteo
+                self._weather_df = weather_df_metno.merge(
+                    weather_df_openmeteo, on="time", how="left"
                 )
-                self._weather_df["dew_point_temperature"] = await self._calculate_dew_point(self._weather_df)
 
-            # Calculate atmosphere
-            self._weather_df["seeing"] = await self._calculate_seeing(self._weather_df)
-            self._weather_df["transparency"] = await self._calculate_transparency(self._weather_df)
-            self._weather_df["lifted_index"] = await self._calculate_lifted_index(self._weather_df)
+                # Overwrite met.no forecast with open-meteo forcast
+                self._weather_df["cloud_area_fraction"] = self._weather_df["openmeteo_cloud_cover"]
+                self._weather_df["cloud_area_fraction_high"] = self._weather_df["openmeteo_cloud_cover_high"]
+                self._weather_df["cloud_area_fraction_medium"] = self._weather_df["openmeteo_cloud_cover_mid"]
+                self._weather_df["cloud_area_fraction_low"] = self._weather_df["openmeteo_cloud_cover_low"]
+                self._weather_df["relative_humidity"] = self._weather_df["openmeteo_relative_humidity_2m"]
+                self._weather_df["wind_speed"] = self._weather_df["openmeteo_wind_speed_10m"]
+                self._weather_df["wind_from_direction"] = self._weather_df["openmeteo_wind_direction_10m"]
+                self._weather_df["air_temperature"] = self._weather_df["openmeteo_temperature_2m"]
+                self._weather_df["dew_point_temperature"] = self._weather_df["openmeteo_dew_point_2m"]
+                self._weather_df["precipitation_amount"] = self._weather_df["openmeteo_precipitation"]
+                self._weather_df = self._weather_df.drop(
+                    [
+                        "openmeteo_cloud_cover",
+                        "openmeteo_cloud_cover_high",
+                        "openmeteo_cloud_cover_mid",
+                        "openmeteo_cloud_cover_low",
+                        "openmeteo_relative_humidity_2m",
+                        "openmeteo_wind_speed_10m",
+                        "openmeteo_wind_direction_10m",
+                        "openmeteo_temperature_2m",
+                        "openmeteo_dew_point_2m",
+                        "openmeteo_precipitation",
+                    ],
+                    axis=1,
+                )
 
-            self._test_weather_df()
-        else:
-            _LOGGER.debug("Using cached data")
+                # Clean up rows with missing values
+                self._weather_df = self._weather_df.dropna(subset=["air_temperature"])
+                self._weather_df = self._weather_df.dropna(subset=["next_6h_symbol_code"])
+                self._weather_df = self._weather_df.dropna(subset=["precipitation_amount"])
+
+                self._weather_df["time_diff"] = self._weather_df["time"].diff()
+                threshold = pd.Timedelta(hours=1)
+                cutoff_index = self._weather_df[self._weather_df["time_diff"] > threshold].index.min()
+                if pd.notna(cutoff_index):  # Check if there's a cutoff
+                    self._weather_df = self._weather_df.loc[: cutoff_index - 1]
+                self._weather_df = self._weather_df.drop(columns=["time_diff"])
+
+                # Check if we got dew point temperatures. If not calculate them.
+                has_nan_or_none = self._weather_df["dew_point_temperature"].isnull().any()
+                if has_nan_or_none:
+                    _LOGGER.warning(
+                        f"Column 'dew_point_temperature' has NaN or None: {has_nan_or_none}. Calculating dew points."
+                    )
+                    self._weather_df["dew_point_temperature"] = await self._calculate_dew_point(self._weather_df)
+
+                # Calculate atmosphere
+                self._weather_df["seeing"] = await self._calculate_seeing(self._weather_df)
+                self._weather_df["transparency"] = await self._calculate_transparency(self._weather_df)
+                self._weather_df["lifted_index"] = await self._calculate_lifted_index(self._weather_df)
+
+                self._test_weather_df()
+            else:
+                _LOGGER.debug("Using cached data")
 
     @typechecked
     def _get_location(
@@ -344,7 +346,7 @@ class AstroWeather:
         # Return row from dataframe
         timestamp = time.replace(tzinfo=None).strftime("%Y-%m-%d %H:00:00+00:00")
         row = self._weather_df.loc[self._weather_df["time"] == timestamp].iloc[0]
-
+        
         cloudcover = float(row["cloud_area_fraction"])
         cloud_area_fraction = float(row["cloud_area_fraction"])
         cloudcover_high = float(row["cloud_area_fraction_high"])
@@ -519,6 +521,9 @@ class AstroWeather:
             forecast_time = self._test_datetime.replace(minute=0, second=0, microsecond=0)
         _LOGGER.debug("Forecast time: %s", str(forecast_time))
 
+        utc_to_local_diff = self._astro_routines.utc_to_local_diff()
+        _LOGGER.debug("UTC to local diff: %s", str(utc_to_local_diff))
+        
         if len(self._weather_df) == 0:
             _LOGGER.error("Weather data not available")
             return []
@@ -583,13 +588,11 @@ class AstroWeather:
         # Create items
         cnt = 0
 
-        forecast_time = now.replace(minute=0, second=0, microsecond=0).replace(microsecond=0, tzinfo=timezone.utc)
+        forecast_time = now.replace(minute=0, second=0, microsecond=0)
         if self._test_datetime is not None:
-            forecast_time = self._test_datetime.replace(minute=0, second=0, microsecond=0).replace(
-                microsecond=0, tzinfo=timezone.utc
-            )
+            forecast_time = self._test_datetime.replace(minute=0, second=0, microsecond=0)
         _LOGGER.debug("Forecast time: %s", str(forecast_time))
-
+        
         utc_to_local_diff = self._astro_routines.utc_to_local_diff()
         _LOGGER.debug("UTC to local diff: %s", str(utc_to_local_diff))
 
@@ -615,16 +618,22 @@ class AstroWeather:
                 _LOGGER.error(f"Failed to parse location data model data: {time_data}")
                 _LOGGER.error(ve)
 
-            item = ForecastDataModel(
-                {
-                    "time_data": time_data,  # Time data
-                    "hour": row["time"].hour,  # forecast_time.hour % 24,
-                    "condition_data": await self._get_condition(row["time"]),
-                }
-            )
-
+            item = None
             try:
-                items.append(ForecastData(data=item))
+                item = ForecastDataModel(
+                    {
+                        "time_data": time_data,  # Time data
+                        "hour": row["time"].hour,  # forecast_time.hour % 24,
+                        "condition_data": await self._get_condition(row["time"]),
+                    }
+                )
+            except KeyError as ke:
+                _LOGGER.error(f"Failed to parse location data model data: {ke}")
+                _LOGGER.error(row["time"])
+                
+            try:
+                if item is not None:
+                    items.append(ForecastData(data=item))
             except TypeError as ve:
                 _LOGGER.error(f"Failed to parse forecast data: {item}")
                 _LOGGER.error(ve)

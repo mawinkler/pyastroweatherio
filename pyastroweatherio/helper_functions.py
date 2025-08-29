@@ -69,17 +69,19 @@ class AtmosphericRoutines:
         """Calculate atmospheric lifted index."""
         # https://en.wikipedia.org/wiki/Lifted_index
 
-        if not all(
-            v is not None
-            for v in [
-                temperature,
-                altitude,
-                dew_point_temperature,
-                air_pressure_at_sea_level,
-            ]
-        ):
-            return None
+        values = {
+            "temperature": temperature,
+            "altitude": altitude,
+            "dew_point_temperature": dew_point_temperature,
+            "air_pressure_at_sea_level": air_pressure_at_sea_level,
+        }
 
+        missing = [name for name, val in values.items() if val is None or (isinstance(val, float) and math.isnan(val))]
+
+        if missing:
+            _LOGGER.warning(f"calculate_lifted_index: The following variables are None or NaN: {', '.join(missing)}")
+            return None
+            
         # Constants
         env_temp_500mb = -20  # Celsius (environmental temperature at 500 mb level)
 
@@ -148,23 +150,25 @@ class AtmosphericRoutines:
         - seeing:
 
         Returns:
-        - seeing: In Arcsecs
+        - magnitude_degradation: In magnitude
         """
 
-        if not all(
-            v is not None
-            for v in [
-                temperature,
-                humidity,
-                cloud_cover,
-                wind_speed,
-                altitude,
-                dew_point_temperature,
-                air_pressure_at_sea_level,
-            ]
-        ):
-            return None
+        values = {
+            "temperature": temperature,
+            "humidity": humidity,
+            "cloud_cover": cloud_cover,
+            "wind_speed": wind_speed,
+            "altitude": altitude,
+            "dew_point_temperature": dew_point_temperature,
+            "air_pressure_at_sea_level": air_pressure_at_sea_level,
+        }
 
+        missing = [name for name, val in values.items() if val is None or (isinstance(val, float) and math.isnan(val))]
+
+        if missing:
+            _LOGGER.warning(f"magnitude_degradation: The following variables are None or NaN: {', '.join(missing)}")
+            return None
+        
         lifted_index = await self.calculate_lifted_index(
             temperature, altitude, dew_point_temperature, air_pressure_at_sea_level
         )
@@ -235,7 +239,7 @@ class AtmosphericRoutines:
         - air_pressure_at_sea_level: Air pressure at sea level.
 
         Returns:
-        - seeing: In Arcsecs
+        - seeing: In arcsecs
 
         Flow:
         - _calculate_water_vapor_pressure
@@ -244,21 +248,23 @@ class AtmosphericRoutines:
         - seeing_factor
         - seeing
         """
+        
+        values = {
+            "temperature": temperature,
+            "humidity": humidity,
+            "dew_point_temperature": dew_point_temperature,
+            "wind_speed": wind_speed,
+            "cloud_cover": cloud_cover,
+            "altitude": altitude,
+            "air_pressure_at_sea_level": air_pressure_at_sea_level,
+        }
 
-        if not all(
-            v is not None
-            for v in [
-                temperature,
-                humidity,
-                dew_point_temperature,
-                wind_speed,
-                cloud_cover,
-                altitude,
-                air_pressure_at_sea_level,
-            ]
-        ):
+        missing = [name for name, val in values.items() if val is None or (isinstance(val, float) and math.isnan(val))]
+
+        if missing:
+            _LOGGER.warning(f"calculate_seeing: The following variables are None or NaN: {', '.join(missing)}")
             return None
-
+        
         # Constants
         C = 6.5  # 1.7
 

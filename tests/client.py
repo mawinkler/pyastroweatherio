@@ -48,6 +48,13 @@ LOCATIONS = [
         "timezone_info": os.environ["BACKYARD_TIMEZONE"],
     },
     # {
+    #     # Amsterdam
+    #     "latitude": 52.377956,
+    #     "longitude": 4.897070,
+    #     "elevation": -2,
+    #     "timezone_info": "Europe/Amsterdam",
+    # },
+    # {
     #     # Santiago
     #     "latitude": -33.46,
     #     "longitude": -70.65,
