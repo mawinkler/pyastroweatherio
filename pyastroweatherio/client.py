@@ -69,7 +69,7 @@ from pyastroweatherio.dataclasses import (
     UpTonightDSOData,
     UpTonightDSODataModel,
 )
-from pyastroweatherio.errors import OpenMeteoConnectionError, OpenMeteoError
+from pyastroweatherio.errors import OpenMeteoConnectionError, OpenMeteoError, MetnoConnectionError, MetnoError
 from pyastroweatherio.helper_functions import (
     AstronomicalRoutines,
     AtmosphericRoutines,
@@ -241,14 +241,23 @@ class AstroWeather:
             if ((datetime.now() - self._weather_data_timestamp).total_seconds()) > DEFAULT_CACHE_TIMEOUT:
                 self._weather_data_timestamp = datetime.now()
 
-                weather_df_metno = await self._retrieve_data_metno()
+                try:
+                    weather_df_metno = await self._retrieve_data_metno()
+                except MetnoConnectionError:
+                    _LOGGER.warning("Could not retrieve Met.no data. Using existing data.")
+                    return None
+                
                 if weather_df_metno is None:
                     _LOGGER.warning("Could not retrieve Met.no data. Using existing data.")
                     return None
                 await self._retrieve_data_uptonight()
 
-                weather_df_openmeteo = await self._retrieve_data_openmeteo()
-
+                try:
+                    weather_df_openmeteo = await self._retrieve_data_openmeteo()
+                except OpenMeteoConnectionError:
+                    _LOGGER.warning("Could not retrieve OpenMeteo data. Using existing data.")
+                    return None
+                
                 # Merge the dataframes of metno and openmeteo
                 self._weather_df = weather_df_metno.merge(
                     weather_df_openmeteo, on="time", how="left"
@@ -1076,16 +1085,22 @@ class AstroWeather:
                         outfile.write(json_string)
 
                 return data
-        except JSONDecodeError as jsonerr:
-            _LOGGER.error(f"JSON decode error, expecting value: {jsonerr}")
-            return {}
-        except asyncio.TimeoutError as tex:
-            _LOGGER.error(f"Request to endpoint timed out: {tex}")
-            return {}
-        except ClientError as err:
-            _LOGGER.error(f"Error requesting data: {err}")
-            return {}
-
+        except JSONDecodeError as exception:
+            _LOGGER.error(f"JSON decode error, expecting value: {exception}")
+            raise MetnoConnectionError(exception) from exception
+            # return {}
+        except asyncio.TimeoutError as exception:
+            _LOGGER.error(f"Timeout occurred while connecting to the Met.no API: {exception}")
+            raise MetnoConnectionError(exception) from exception
+            # return {}
+        except (
+            ClientError,
+            ClientResponseError,
+            socket.gaierror,
+        ) as exception:
+            _LOGGER.error(f"Error occurred while communicating with Met.no API: {exception}")
+            raise MetnoConnectionError(exception) from exception
+            # return {}
         finally:
             if not use_running_session:
                 await session.close()
@@ -1129,19 +1144,17 @@ class AstroWeather:
 
         try:
             _LOGGER.debug(f"Query url: {BASE_URL_OPENMETEO}")
-
-            # async with asyncio.timeout(self.request_timeout):
             response = await session.get(BASE_URL_OPENMETEO, params=params)
         except asyncio.TimeoutError as exception:
-            msg = "Timeout occurred while connecting to the Open-Meteo API"
-            raise OpenMeteoConnectionError(msg) from exception
+            _LOGGER.error(f"Timeout occurred while connecting to the Open-Meteo API: {exception}")
+            raise OpenMeteoConnectionError(exception) from exception
         except (
             ClientError,
             ClientResponseError,
             socket.gaierror,
         ) as exception:
-            msg = "Error occurred while communicating with Open-Meteo API"
-            raise OpenMeteoConnectionError(msg) from exception
+            _LOGGER.error(f"Error occurred while communicating with Open-Meteo API: {exception}")
+            raise OpenMeteoConnectionError(exception) from exception
         finally:
             if not use_running_session:
                 await session.close()

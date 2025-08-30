@@ -19,6 +19,14 @@ class ResultError(AstroWeatherError):
     pass
 
 
+class MetnoError(Exception):
+    """Generic Metno exception."""
+    
+
+class MetnoConnectionError(MetnoError):
+    """Metno connection exception."""
+
+    
 class OpenMeteoError(Exception):
     """Generic OpenMeteo exception."""
 
