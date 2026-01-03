@@ -124,7 +124,7 @@ class AstroWeather:
         self._calm_weight = calm_weight
         self._uptonight_path = uptonight_path
         self._test_datetime = test_datetime
-        self._experimental_features = True
+        self._experimental_features = experimental_features
         self._forecast_model = forecast_model
         # Open-Meteo
         # DWD Germany: icon_seamless
@@ -147,7 +147,12 @@ class AstroWeather:
         self._atmosphere = AtmosphericRoutines()
 
         self._lock = asyncio.Lock()
-        
+
+        if self._experimental_features:
+            _LOGGER.debug(
+                "Using experimental features for Seeing, Magnitude Degradation, Lifted Index, and Fog Density"
+            )
+
         # Testing
         self._test_mode = False
         if self._test_datetime is not None:
@@ -191,47 +196,86 @@ class AstroWeather:
         return results
 
     async def _calculate_seeing(self, df):
-        tasks = [
-            self._atmosphere.calculate_seeing(
-                temperature=row["air_temperature"],
-                humidity=row["relative_humidity"],
-                dew_point_temperature=row["dew_point_temperature"],
-                wind_speed=row["wind_speed"],
-                cloud_cover=row["cloud_area_fraction"],
-                altitude=self._location_data.elevation,
-                air_pressure_at_sea_level=row["air_pressure_at_sea_level"],
-            )
-            for _, row in df.iterrows()
-        ]
+        if self._experimental_features:
+            tasks = [
+                self._atmosphere.calculate_seeing_11(
+                    temperature=row["air_temperature"],
+                    humidity=row["relative_humidity"],
+                    dew_point_temperature=row["dew_point_temperature"],
+                    wind_speed=row["wind_speed"],
+                    cloud_cover=row["cloud_area_fraction"],
+                    altitude=self._location_data.elevation,
+                    air_pressure_at_sea_level=row["air_pressure_at_sea_level"],
+                )
+                for _, row in df.iterrows()
+            ]
+        else:
+            tasks = [
+                self._atmosphere.calculate_seeing(
+                    temperature=row["air_temperature"],
+                    humidity=row["relative_humidity"],
+                    dew_point_temperature=row["dew_point_temperature"],
+                    wind_speed=row["wind_speed"],
+                    cloud_cover=row["cloud_area_fraction"],
+                    altitude=self._location_data.elevation,
+                    air_pressure_at_sea_level=row["air_pressure_at_sea_level"],
+                )
+                for _, row in df.iterrows()
+            ]
         results = await asyncio.gather(*tasks)
         return results
 
     async def _calculate_transparency(self, df):
-        tasks = [
-            self._atmosphere.magnitude_degradation(
-                temperature=row["air_temperature"],
-                humidity=row["relative_humidity"],
-                dew_point_temperature=row["dew_point_temperature"],
-                wind_speed=row["wind_speed"],
-                cloud_cover=row["cloud_area_fraction"],
-                altitude=self._location_data.elevation,
-                air_pressure_at_sea_level=row["air_pressure_at_sea_level"],
-            )
-            for _, row in df.iterrows()
-        ]
+        if self._experimental_features:
+            tasks = [
+                self._atmosphere.magnitude_degradation_11(
+                    temperature=row["air_temperature"],
+                    humidity=row["relative_humidity"],
+                    dew_point_temperature=row["dew_point_temperature"],
+                    wind_speed=row["wind_speed"],
+                    cloud_cover=row["cloud_area_fraction"],
+                    altitude=self._location_data.elevation,
+                    air_pressure_at_sea_level=row["air_pressure_at_sea_level"],
+                )
+                for _, row in df.iterrows()
+            ]
+        else:
+            tasks = [
+                self._atmosphere.magnitude_degradation(
+                    temperature=row["air_temperature"],
+                    humidity=row["relative_humidity"],
+                    dew_point_temperature=row["dew_point_temperature"],
+                    wind_speed=row["wind_speed"],
+                    cloud_cover=row["cloud_area_fraction"],
+                    altitude=self._location_data.elevation,
+                    air_pressure_at_sea_level=row["air_pressure_at_sea_level"],
+                )
+                for _, row in df.iterrows()
+            ]
         results = await asyncio.gather(*tasks)
         return results
 
     async def _calculate_lifted_index(self, df):
-        tasks = [
-            self._atmosphere.calculate_lifted_index(
-                temperature=row["air_temperature"],
-                dew_point_temperature=row["dew_point_temperature"],
-                altitude=self._location_data.elevation,
-                air_pressure_at_sea_level=row["air_pressure_at_sea_level"],
-            )
-            for _, row in df.iterrows()
-        ]
+        if self._experimental_features:
+            tasks = [
+                self._atmosphere.calculate_lifted_index_11(
+                    temperature=row["air_temperature"],
+                    dew_point_temperature=row["dew_point_temperature"],
+                    altitude=self._location_data.elevation,
+                    air_pressure_at_sea_level=row["air_pressure_at_sea_level"],
+                )
+                for _, row in df.iterrows()
+            ]
+        else:
+            tasks = [
+                self._atmosphere.calculate_lifted_index(
+                    temperature=row["air_temperature"],
+                    dew_point_temperature=row["dew_point_temperature"],
+                    altitude=self._location_data.elevation,
+                    air_pressure_at_sea_level=row["air_pressure_at_sea_level"],
+                )
+                for _, row in df.iterrows()
+            ]
         results = await asyncio.gather(*tasks)
         return results
 
@@ -246,7 +290,7 @@ class AstroWeather:
                 except MetnoConnectionError:
                     _LOGGER.warning("Could not retrieve Met.no data. Using existing data.")
                     return None
-                
+
                 if weather_df_metno is None:
                     _LOGGER.warning("Could not retrieve Met.no data. Using existing data.")
                     return None
@@ -257,11 +301,9 @@ class AstroWeather:
                 except OpenMeteoConnectionError:
                     _LOGGER.warning("Could not retrieve OpenMeteo data. Using existing data.")
                     return None
-                
+
                 # Merge the dataframes of metno and openmeteo
-                self._weather_df = weather_df_metno.merge(
-                    weather_df_openmeteo, on="time", how="left"
-                )
+                self._weather_df = weather_df_metno.merge(weather_df_openmeteo, on="time", how="left")
 
                 # Overwrite met.no forecast with open-meteo forcast
                 self._weather_df["cloud_area_fraction"] = self._weather_df["openmeteo_cloud_cover"]
@@ -355,7 +397,7 @@ class AstroWeather:
         # Return row from dataframe
         timestamp = time.replace(tzinfo=None).strftime("%Y-%m-%d %H:00:00+00:00")
         row = self._weather_df.loc[self._weather_df["time"] == timestamp].iloc[0]
-        
+
         cloudcover = float(row["cloud_area_fraction"])
         cloud_area_fraction = float(row["cloud_area_fraction"])
         cloudcover_high = float(row["cloud_area_fraction_high"])
@@ -377,6 +419,8 @@ class AstroWeather:
 
         # Calculate Fog Density
         fog2m = await self._atmosphere.calculate_fog_density(temp2m, rh2m, dewpoint2m, wind_speed) * 100
+        if self._experimental_features:
+            fog2m = await self._atmosphere.calculate_fog_density_11(temp2m, rh2m, dewpoint2m, wind_speed) * 100
 
         condition = ConditionDataModel(
             {
@@ -532,8 +576,8 @@ class AstroWeather:
 
         utc_to_local_diff = self._astro_routines.utc_to_local_diff()
         _LOGGER.debug("UTC to local diff: %s", str(utc_to_local_diff))
-        
-        if len(self._weather_df) == 0:
+
+        if self._weather_df is None or len(self._weather_df) == 0:
             _LOGGER.error("Weather data not available")
             return []
 
@@ -601,11 +645,11 @@ class AstroWeather:
         if self._test_datetime is not None:
             forecast_time = self._test_datetime.replace(minute=0, second=0, microsecond=0)
         _LOGGER.debug("Forecast time: %s", str(forecast_time))
-        
+
         utc_to_local_diff = self._astro_routines.utc_to_local_diff()
         _LOGGER.debug("UTC to local diff: %s", str(utc_to_local_diff))
 
-        if len(self._weather_df) == 0:
+        if self._weather_df is None or len(self._weather_df) == 0:
             _LOGGER.error("Weather data not available")
             return []
 
@@ -639,7 +683,7 @@ class AstroWeather:
             except KeyError as ke:
                 _LOGGER.error(f"Failed to parse location data model data: {ke}")
                 _LOGGER.error(row["time"])
-                
+
             try:
                 if item is not None:
                     items.append(ForecastData(data=item))

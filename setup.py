@@ -11,7 +11,7 @@ if os.path.isfile(requirement_path):
 setup(
     name="pyastroweatherio",
     packages=["pyastroweatherio"],
-    version="0.74.0",
+    version="0.75.0.dev1",
     license="MIT",
     description="Python Wrapper for OpenMeteo and Met.no REST API",
     long_description=" ".join(

@@ -81,7 +81,7 @@ class AtmosphericRoutines:
         if missing:
             _LOGGER.warning(f"calculate_lifted_index: The following variables are None or NaN: {', '.join(missing)}")
             return None
-            
+
         # Constants
         env_temp_500mb = -20  # Celsius (environmental temperature at 500 mb level)
 
@@ -119,8 +119,63 @@ class AtmosphericRoutines:
 
         return lifted_index
 
+    # _11
+    def _tlcl_bolton(self, T, Td):
+        # T, Td in Kelvin. Bolton (1980) eqn 15 surrogate:
+        return 1.0 / (1.0 / (Td - 56.0) + math.log(T / Td) / 800.0) + 56.0  # K
+
+    def _moist_adiabat_to(self, T_lcl, p_lcl, p_target):
+        # Bolton moist-adiabatic approximation via equivalent potential temp (θe)
+        # For brevity, use a simple iterative moist lapse (Γ_m) integrator; step dp.
+        T = T_lcl
+        p = p_lcl
+        dp = -5.0  # hPa step upward
+        while p + dp >= p_target:
+            # Γ_m ~ g*(1 + Lq/(Rd T)) / (cp + (L^2 q ε)/(R_d T^2))  [approx]
+            # keep it simple or use Bolton’s formulas if you prefer
+            gamma_m = 4.5  # K/km crude; replace with proper Γ_m(T,p)
+            dz = 8.0 * abs(dp)  # ~8 m/hPa
+            T -= gamma_m * (dz / 1000.0)
+            p += dp
+        return T
+
+    @typechecked
+    async def calculate_lifted_index_11(
+        self, temperature, altitude, dew_point_temperature, air_pressure_at_sea_level
+    ) -> None | float:
+        if any(
+            x is None or (isinstance(x, float) and math.isnan(x))
+            for x in (temperature, altitude, dew_point_temperature, air_pressure_at_sea_level)
+        ):
+            return None
+
+        T = temperature + 273.15
+        Td = dew_point_temperature + 273.15
+        p_sfc = air_pressure_at_sea_level  # hPa
+
+        # LCL (Bolton or Romps)
+        T_lcl = self._tlcl_bolton(T, Td)
+        # p_lcl from Poisson eqn dry-adiabatic: θ = T (1000/p)^(R/cp) constant
+        Rd_cp = 0.2854
+        theta = T * (1000.0 / p_sfc) ** Rd_cp
+        p_lcl = 1000.0 / ((theta / T_lcl) ** (1.0 / Rd_cp))
+
+        # Lift moist-adiabatically to 500 hPa
+        T_parcel_500 = self._moist_adiabat_to(T_lcl, p_lcl, 500.0)
+
+        # Get environmental T at 500 hPa (best: supply it!)
+        # Fallback: standard atmosphere lapse from 850→500
+        T_env_500 = -20.0 + 273.15  # placeholder: expose as parameter for real data
+
+        LI = T_env_500 - T_parcel_500  # K
+        return float(max(-7.0, min(7.0, LI)))
+
     # #####################################################
     # Calculate magniture degradation based on transparency
+    #
+    # Version _11:
+    # Extinction coefficient k (mag/airmass)
+    # Use pressure-scaled Rayleigh and an aerosol term
     # #####################################################
     @typechecked
     async def magnitude_degradation(
@@ -168,7 +223,7 @@ class AtmosphericRoutines:
         if missing:
             _LOGGER.warning(f"magnitude_degradation: The following variables are None or NaN: {', '.join(missing)}")
             return None
-        
+
         lifted_index = await self.calculate_lifted_index(
             temperature, altitude, dew_point_temperature, air_pressure_at_sea_level
         )
@@ -207,8 +262,52 @@ class AtmosphericRoutines:
 
         return magnitude_degradation
 
+    # _11
+    def _airmass_kasten_young(self, zenith_deg):
+        z = math.radians(zenith_deg)
+        return 1.0 / (math.cos(z) + 0.50572 * (96.07995 - zenith_deg) ** (-1.6364))
+
+    def _extinction_components(self, pressure_hpa, rh, vis_km):
+        # Rayleigh ~0.106 mag/airmass at sea level (V band), scale with pressure
+        k_R = 0.106 * (pressure_hpa / 1013.25)
+
+        # Aerosol from visibility: tau ≈ 3.912/Vis; convert to mag/airmass: k = 1.086*tau
+        tau_a = 3.912 / max(1.0, vis_km)
+        k_a = 1.086 * tau_a * 0.6  # 0.6 factor so "haze" vis isn’t overly punitive; tune
+
+        # Ozone & water vapor: small constants unless you have columns
+        k_O3 = 0.03
+        k_H2O = 0.00  # set >0 in NIR or humid site with strong bands
+
+        return k_R, k_a, k_O3, k_H2O
+
+    @typechecked
+    async def magnitude_degradation_11(
+        self, temperature, humidity, cloud_cover, wind_speed, altitude, dew_point_temperature, air_pressure_at_sea_level
+    ) -> None | float:
+        # Estimate visibility from RH (section 1), cap by cloud cover (simple screen)
+        vis_km = self._visibility_koschmieder(humidity)
+        if cloud_cover is not None:
+            # Reduce effective vis as clouds rise; linear knockdown
+            vis_km /= 1.0 + 3.0 * (cloud_cover / 100.0)
+
+        k_R, k_a, k_O3, k_H2O = self._extinction_components(air_pressure_at_sea_level, humidity, vis_km)
+        k_total = k_R + k_a + k_O3 + k_H2O
+
+        # If you know target altitude, compute zenith angle; otherwise assume X~1.2 median
+        X = 1.2
+        delta_m = k_total * X
+
+        # Optionally clamp
+        return float(min(MAG_DEGRATION_MAX, max(0.0, delta_m)))
+
     # #####################################################
     # Calculate atmospheric seeing
+    #
+    # Version _11:
+    # A more physical way is to estimate optical turbulence C2,n(z)
+    # with the Hufnagel–Valley 5/7 profile, integrate to get r0,
+    # then ϵ≈0.98λ/r.
     # #####################################################
     @typechecked
     async def calculate_seeing(
@@ -248,7 +347,7 @@ class AtmosphericRoutines:
         - seeing_factor
         - seeing
         """
-        
+
         values = {
             "temperature": temperature,
             "humidity": humidity,
@@ -264,7 +363,7 @@ class AtmosphericRoutines:
         if missing:
             _LOGGER.warning(f"calculate_seeing: The following variables are None or NaN: {', '.join(missing)}")
             return None
-        
+
         # Constants
         C = 6.5  # 1.7
 
@@ -292,8 +391,55 @@ class AtmosphericRoutines:
 
         return seeing
 
+    # Seeing with Hufnagel–Valley 5/7 profile
+    def _hv57_cn2(self, z, A=1.7e-14, v=20.0):
+        term1 = 0.00594 * (v / 27.0) ** 2 * (1e-5 * z) ** 10 * math.exp(-z / 1000.0)
+        term2 = 2.7e-16 * math.exp(-z / 1500.0)
+        term3 = A * math.exp(-z / 100.0)
+
+        return term1 + term2 + term3
+
+    def _seeing_from_hv57(self, wavelength_m=5.5e-7, v=20.0, A=1.7e-14, zmax=20000.0):
+        # integrate Cn^2 dz (simple Riemann sum)
+        dz = 25.0
+        z = 0.0
+        integral = 0.0
+
+        while z <= zmax:
+            integral += self._hv57_cn2(z, A=A, v=v) * dz
+            z += dz
+        k = 2.0 * math.pi / wavelength_m
+        r0 = (0.423 * k * k * integral) ** (-3.0 / 5.0)
+        beta_rad = 0.98 * wavelength_m / r0
+
+        return beta_rad * (180.0 / math.pi) * 3600.0  # arcsec
+
+    @typechecked
+    async def calculate_seeing_11(
+        self, temperature, humidity, dew_point_temperature, wind_speed, cloud_cover, altitude, air_pressure_at_sea_level
+    ) -> None | float:
+        # Map your measured 10 m wind to a free-atmosphere proxy v (cap 10–35 m/s)
+        v_free = max(10.0, min(35.0, 2.0 * wind_speed + 10.0))
+
+        # Strengthen ground layer at low altitudes / high RH:
+        A = (
+            1.7e-14
+            * (1.0 + 0.5 * max(0.0, (humidity - 70.0) / 30.0))
+            * (1.0 + 0.3 * max(0.0, (500.0 - altitude) / 500.0))
+        )
+        seeing = self._seeing_from_hv57(v=v_free, A=A)
+
+        return min(SEEING_MAX, seeing)
+
     # #####################################################
     # Calculate fog density at 2m
+    #
+    # Version _11:
+    # Tie to physics and aviation practice, estimate meteorological visibility
+    # V and then map it to a “fog density” in [0,1].
+    # anchor the metric to visibility vs extinction, a standard framework (Koschmieder).
+    # It’s still simple but behaves correctly near saturation and with wind
+    # Uses Koschmieder law: V = 3.912/betaext where betaext is the extinction coefficient
     # #####################################################
     @typechecked
     async def calculate_fog_density(self, temp2m, rh2m, dewpoint2m, wind_speed) -> float:
@@ -345,22 +491,37 @@ class AtmosphericRoutines:
 
         return float(adjusted_fog_density)
 
-    # @typechecked
-    # async def calculate_fog_density(self, temp2m, rh2m, dewpoint2m, wind_speed) -> int:
-    #     ffp = max(
-    #         0, 1 - abs(temp2m - dewpoint2m) / 5
-    #     )  # Scale factor: closer to 1 if near saturation
+    # Visibility via Koschmieder
+    def _visibility_koschmieder(self, rh, base_beta=0.02):
+        """
+        Crude RH→extinction: beta_ext = base_beta * f(RH).
+        base_beta ~0.02 1/km is a hazy baseline; ramp up sharply near saturation.
+        Returns visibility (km).
+        """
+        # Sigmoid that explodes as RH→100%
+        f = 1.0 + 20.0 / (1.0 + math.exp(-(rh - 95.0) / 1.5))  # ~1 below 90–92%, jumps past 95%
+        beta = base_beta * f  # 1/km
 
-    #     # (Relative Humidity Factor): Based on relative humidity; 1 at 100% RH, lower otherwise.
-    #     rh_factor = min(1, rh2m / 100)  # 1 if RH is 100%, scales down otherwise
+        return 3.912 / beta  # km
 
-    #     # (Wind Influence): Decreases with increasing wind_speed, favoring calm conditions.
-    #     wind_factor = max(0, 1 - wind_speed / 5)  # Scales down with higher wind speeds
+    @typechecked
+    async def calculate_fog_density_11(self, temp2m, rh2m, dewpoint2m, wind_speed) -> float:
+        # Favor calm, near-saturated, small (T-Td)
+        vis_km = self._visibility_koschmieder(rh2m)
 
-    #     # Calculate Fog Density
-    #     fog2m = ffp * rh_factor * wind_factor
+        # Penalize higher winds (disperse fog): halve “density” per ~5 m/s
+        wind_factor = math.exp(-wind_speed / 5.0)
 
-    #     return fog2m
+        # Map visibility to density: 0..1 over 0–5 km range
+        dens_from_vis = max(0.0, min(1.0, (5.0 - min(vis_km, 5.0)) / 5.0))
+
+        # Add a (T-Td) pinch
+        td_spread = max(0.0, min(1.0, 1.0 - abs(temp2m - dewpoint2m) / 3.0))
+
+        density = dens_from_vis * 0.7 + td_spread * 0.3
+        density *= wind_factor
+
+        return float(max(0.0, min(1.0, density)))
 
     # #####################################################
     # Calculate dew point at 2m
