@@ -159,7 +159,7 @@ class AstroWeatherIOTestCase(TestCase):
             calm_weight=2,
             uptonight_path=".",
             # test_datetime=datetime.strptime("2024-11-19T07:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
-            experimental_features=False,
+            experimental_features=True,
             forecast_model="icon_seamless",
         )
 
@@ -259,7 +259,7 @@ class AstroWeatherIOTestCase(TestCase):
             calm_weight=2,
             uptonight_path=".",
             # test_datetime=datetime.strptime("2024-11-19T07:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
-            experimental_features=False,
+            experimental_features=True,
             forecast_model="icon_seamless",
         )
 
@@ -323,7 +323,7 @@ class AstroWeatherIOTestCase(TestCase):
             calm_weight=2,
             uptonight_path=".",
             # test_datetime=datetime.strptime("2024-11-19T07:00:00Z", "%Y-%m-%dT%H:%M:%SZ"),
-            experimental_features=False,
+            experimental_features=True,
             forecast_model="icon_seamless",
         )
 

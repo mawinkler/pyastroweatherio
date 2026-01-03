@@ -59,6 +59,30 @@ class AtmosphericRoutines:
         # Air pressure at sea level in hPa
         # aerosol_density in kg/m^3
 
+    # ---------- small internal helpers ----------
+    @staticmethod
+    def _is_missing(values: dict) -> list[str]:
+        return [name for name, val in values.items() if val is None or (isinstance(val, float) and math.isnan(val))]
+
+    @staticmethod
+    def _svp_hpa_magnus(Tc: float) -> float:
+        """
+        Saturation vapor pressure over water (hPa), Magnus-Tetens.
+        Good for typical near-surface temps.
+        """
+        return 6.112 * math.exp((17.62 * Tc) / (243.12 + Tc))
+
+    @staticmethod
+    def _mixing_ratio_gpkg(e_hpa: float, p_hpa: float) -> float:
+        """Mixing ratio (g/kg) from vapor pressure e (hPa) and pressure p (hPa)."""
+        eps = 621.97  # g/kg * (hPa/hPa)
+        denom = max(1e-6, (p_hpa - e_hpa))
+        return eps * (e_hpa / denom)
+
+    @staticmethod
+    def _sigmoid(x: float) -> float:
+        return 1.0 / (1.0 + math.exp(-x))
+
     # #####################################################
     # Calculate lifted index
     # #####################################################
@@ -143,32 +167,82 @@ class AtmosphericRoutines:
     async def calculate_lifted_index_11(
         self, temperature, altitude, dew_point_temperature, air_pressure_at_sea_level
     ) -> None | float:
-        if any(
-            x is None or (isinstance(x, float) and math.isnan(x))
-            for x in (temperature, altitude, dew_point_temperature, air_pressure_at_sea_level)
-        ):
+        """
+        Returns a rough Lifted Index (LI) proxy in °C.
+
+        Real LI requires an environmental temperature profile (a sounding).
+        With only surface data, we:
+        - Estimate station pressure from sea-level pressure + altitude.
+        - Estimate LCL temperature using a common approximation.
+        - Estimate parcel temperature at 500 hPa via:
+          dry-adiabatic to LCL, then a simplified moist-adiabatic adjustment.
+        - Estimate environmental temperature at 500 hPa using a standard lapse proxy.
+
+        Output is clamped to [-7, +7].
+        """
+        values = {
+            "temperature": temperature,
+            "altitude": altitude,
+            "dew_point_temperature": dew_point_temperature,
+            "air_pressure_at_sea_level": air_pressure_at_sea_level,
+        }
+        missing = self._is_missing(values)
+        if missing:
+            _LOGGER.warning(f"calculate_lifted_index: None/NaN inputs: {', '.join(missing)}")
             return None
 
-        T = temperature + 273.15
-        Td = dew_point_temperature + 273.15
-        p_sfc = air_pressure_at_sea_level  # hPa
+        T = float(temperature)  # °C
+        Td = float(dew_point_temperature)
+        alt = float(altitude)
+        p0 = float(air_pressure_at_sea_level)  # hPa
 
-        # LCL (Bolton or Romps)
-        T_lcl = self._tlcl_bolton(T, Td)
-        # p_lcl from Poisson eqn dry-adiabatic: θ = T (1000/p)^(R/cp) constant
-        Rd_cp = 0.2854
-        theta = T * (1000.0 / p_sfc) ** Rd_cp
-        p_lcl = 1000.0 / ((theta / T_lcl) ** (1.0 / Rd_cp))
+        # Estimate station pressure at altitude (use your existing helper)
+        # (This uses a standard-atmosphere-like relationship and is good enough here.)
+        p_sfc = float(self._calculate_adjusted_pressure(p0, alt))
 
-        # Lift moist-adiabatically to 500 hPa
-        T_parcel_500 = self._moist_adiabat_to(T_lcl, p_lcl, 500.0)
+        # --- LCL temperature approximation (Bolton-style quick form) ---
+        # Use Kelvin
+        Tk = T + 273.15
+        Tdk = Td + 273.15
+        # Prevent nonsense
+        Tdk = min(Tk, max(180.0, Tdk))
 
-        # Get environmental T at 500 hPa (best: supply it!)
-        # Fallback: standard atmosphere lapse from 850→500
-        T_env_500 = -20.0 + 273.15  # placeholder: expose as parameter for real data
+        # Approx LCL temperature (K)
+        # This is a widely used approximation; stable and simple.
+        Tlcl = 1.0 / (1.0 / (Tdk - 56.0) + math.log(Tk / Tdk) / 800.0) + 56.0
 
-        LI = T_env_500 - T_parcel_500  # K
-        return float(max(-7.0, min(7.0, LI)))
+        # Approx LCL pressure using Poisson (dry adiabatic) relation
+        # p_lcl = p_sfc * (Tlcl/Tk)^(cp/Rd) with cp/Rd ≈ 3.5
+        p_lcl = p_sfc * (Tlcl / Tk) ** 3.5
+
+        # Parcel temperature at 500 hPa:
+        p_target = 500.0
+        if p_lcl <= p_target:
+            # LCL above 500 hPa: parcel stays unsaturated to 500
+            T_parcel_500 = Tk * (p_target / p_sfc) ** (2.0 / 7.0)  # κ ≈ 0.286
+        else:
+            # Dry-adiabatic to LCL, then “moist-ish” to 500 hPa.
+            # Very simplified moist-adiabatic cooling: use a reduced exponent.
+            # κ_moist ~ 0.12–0.18 depending on moisture; use RH proxy via Td depression.
+            dT = max(0.0, min(20.0, T - Td))
+            k_moist = 0.12 + 0.06 * self._sigmoid((5.0 - dT) / 1.5)  # wetter air => smaller cooling exponent
+            T_parcel_500 = Tlcl * (p_target / p_lcl) ** k_moist
+
+        # Environmental temperature at 500 hPa:
+        # Without a sounding, use a lapse-rate estimate from surface temperature.
+        # 500 hPa height is typically ~5.5 km; use (5.5km - altitude) thickness.
+        z500 = 5500.0
+        dz = max(0.0, z500 - alt)  # meters
+        env_lapse = 6.5 / 1000.0  # K/m (standard-ish)
+        T_env_500 = (T + 273.15) - env_lapse * dz
+
+        # LI = T_env(500) - T_parcel(500), in °C
+        LI = T_env_500 - T_parcel_500
+
+        # Clamp like your current implementation
+        LI = max(-7.0, min(7.0, float(LI)))
+
+        return LI
 
     # #####################################################
     # Calculate magniture degradation based on transparency
@@ -253,13 +327,6 @@ class AtmosphericRoutines:
         # Convert transparency to magnitude degradation
         magnitude_degradation = self._transparency_to_magnitude_degradation(transparency)
 
-        # _LOGGER.debug(
-        #     "Magnitude Degradation: {:.2f} mag (".format(magnitude_degradation)
-        #     + "Lifted Index (LI): {:.2f} °C, ".format(lifted_index)
-        #     + "Seeing: {:.2f} arcsec, ".format(seeing)
-        #     + "Estimated Atmospheric Transparency: {:.2f})".format(transparency)
-        # )
-
         return magnitude_degradation
 
     # _11
@@ -285,21 +352,75 @@ class AtmosphericRoutines:
     async def magnitude_degradation_11(
         self, temperature, humidity, cloud_cover, wind_speed, altitude, dew_point_temperature, air_pressure_at_sea_level
     ) -> None | float:
-        # Estimate visibility from RH (section 1), cap by cloud cover (simple screen)
-        vis_km = self._visibility_koschmieder(humidity)
-        if cloud_cover is not None:
-            # Reduce effective vis as clouds rise; linear knockdown
-            vis_km /= 1.0 + 3.0 * (cloud_cover / 100.0)
+        """
+        Returns a "magnitude degradation" (mag) proxy.
 
-        k_R, k_a, k_O3, k_H2O = self._extinction_components(air_pressure_at_sea_level, humidity, vis_km)
-        k_total = k_R + k_a + k_O3 + k_H2O
+        Improvements vs old version:
+        - Transparency -> mag uses a physically meaningful transform:
+          mag_loss ≈ -2.5 * log10(transparency)
+        - Uses improved LI + seeing as modifiers.
+        - Keeps output bounded by MAG_DEGRATION_MAX.
+        """
+        values = {
+            "temperature": temperature,
+            "humidity": humidity,
+            "cloud_cover": cloud_cover,
+            "wind_speed": wind_speed,
+            "altitude": altitude,
+            "dew_point_temperature": dew_point_temperature,
+            "air_pressure_at_sea_level": air_pressure_at_sea_level,
+        }
+        missing = self._is_missing(values)
+        if missing:
+            _LOGGER.warning(f"magnitude_degradation: None/NaN inputs: {', '.join(missing)}")
+            return None
 
-        # If you know target altitude, compute zenith angle; otherwise assume X~1.2 median
-        X = 1.2
-        delta_m = k_total * X
+        # Compute ingredients
+        lifted_index = await self.calculate_lifted_index(
+            temperature, altitude, dew_point_temperature, air_pressure_at_sea_level
+        )
+        seeing = await self.calculate_seeing(
+            temperature,
+            humidity,
+            dew_point_temperature,
+            wind_speed,
+            cloud_cover,
+            altitude,
+            air_pressure_at_sea_level,
+        )
 
-        # Optionally clamp
-        return float(min(MAG_DEGRATION_MAX, max(0.0, delta_m)))
+        if lifted_index is None or seeing is None:
+            return None
+
+        rh = max(0.0, min(100.0, float(humidity)))
+        cc = max(0.0, min(100.0, float(cloud_cover)))
+        ws = max(0.0, float(wind_speed))
+        alt = max(0.0, float(altitude))
+
+        # Base transparency from simple, bounded components
+        # (weights are chosen for stable behavior)
+        hum_pen = self._sigmoid((rh - 75.0) / 10.0)  # humidity haze risk
+        cloud_pen = (cc / 100.0) ** 1.2  # clouds dominate quickly
+        wind_pen = self._sigmoid((ws - 6.0) / 2.5) * 0.4  # blowing aerosols
+        li_pen = self._sigmoid((-lifted_index - 1.0) / 2.0) * 0.35  # unstable air -> more haze/cloud risk
+        seeing_pen = self._sigmoid((seeing - 2.0) / 0.8) * 0.25  # poor seeing correlates w/ bad transparency sometimes
+
+        # altitude improves transparency a bit (less column)
+        alt_gain = 1.0 - 0.12 * (1.0 - math.exp(-alt / 1800.0))
+
+        # Combine into transparency 0..1
+        penalty = 0.18 * hum_pen + 0.50 * cloud_pen + 0.12 * wind_pen + 0.10 * li_pen + 0.10 * seeing_pen
+        transparency = max(0.02, min(1.0, (1.0 - penalty) * alt_gain))
+
+        # Convert transparency to mag loss (extinction-like)
+        mag_loss = -2.5 * math.log10(transparency)
+
+        # Clamp to global max
+        mag_loss = min(float(MAG_DEGRATION_MAX), float(mag_loss))
+        if mag_loss < 0.0:
+            mag_loss = 0.0
+
+        return float(mag_loss)
 
     # #####################################################
     # Calculate atmospheric seeing
@@ -418,18 +539,70 @@ class AtmosphericRoutines:
     async def calculate_seeing_11(
         self, temperature, humidity, dew_point_temperature, wind_speed, cloud_cover, altitude, air_pressure_at_sea_level
     ) -> None | float:
-        # Map your measured 10 m wind to a free-atmosphere proxy v (cap 10–35 m/s)
-        v_free = max(10.0, min(35.0, 2.0 * wind_speed + 10.0))
+        """
+        Returns a rough seeing estimate in arcseconds.
 
-        # Strengthen ground layer at low altitudes / high RH:
-        A = (
-            1.7e-14
-            * (1.0 + 0.5 * max(0.0, (humidity - 70.0) / 30.0))
-            * (1.0 + 0.3 * max(0.0, (500.0 - altitude) / 500.0))
+        Improvements vs old version:
+        - Avoids unit-mismatch water-vapor-pressure math.
+        - Uses stable, bounded mapping driven by:
+          * wind (mechanical turbulence),
+          * dewpoint depression & RH (near-surface stability / saturation),
+          * cloud cover (proxy for active layers),
+          * altitude (usually helps boundary-layer seeing).
+        """
+        values = {
+            "temperature": temperature,
+            "humidity": humidity,
+            "dew_point_temperature": dew_point_temperature,
+            "wind_speed": wind_speed,
+            "cloud_cover": cloud_cover,
+            "altitude": altitude,
+            "air_pressure_at_sea_level": air_pressure_at_sea_level,
+        }
+        missing = self._is_missing(values)
+        if missing:
+            _LOGGER.warning(f"calculate_seeing: None/NaN inputs: {', '.join(missing)}")
+            return None
+
+        T = float(temperature)
+        Td = float(dew_point_temperature)
+        rh = max(0.0, min(100.0, float(humidity)))
+        ws = max(0.0, float(wind_speed))
+        cc = max(0.0, min(100.0, float(cloud_cover)))
+        alt = max(0.0, float(altitude))
+
+        # Boundary-layer proxies
+        dT = max(-5.0, min(25.0, T - Td))  # dewpoint depression
+        wind_term = math.log1p(ws)  # grows slowly, stable
+        cloud_term = (cc / 100.0) ** 0.7  # more sensitive at low-mid cloud
+        humid_term = self._sigmoid((rh - 80.0) / 8.0)  # ramps up beyond ~80%
+
+        # Altitude often helps (thinner BL, less heat shimmer).
+        # Don’t overdo it; this is a mild improvement curve.
+        altitude_gain = 0.85 + 0.15 * math.exp(-alt / 1800.0)  # ~1.0 at sea lvl -> ~0.85 at high alt
+
+        # Base seeing floor and contributions (tunable constants)
+        seeing = (
+            (
+                0.75
+                + 0.55 * wind_term
+                + 0.65 * cloud_term
+                + 0.45 * humid_term
+                + 0.35
+                * self._sigmoid(
+                    (dT - 4.0) / 1.8
+                )  # very dry air often correlates with better seeing aloft, but BL can still shimmer; this keeps it moderate
+            )
+            * altitude_gain
         )
-        seeing = self._seeing_from_hv57(v=v_free, A=A)
 
-        return min(SEEING_MAX, seeing)
+        # Clamp
+        if seeing > SEEING_MAX:
+            seeing = SEEING_MAX
+        if seeing < 0.4:
+            seeing = 0.4
+
+        return float(seeing)
 
     # #####################################################
     # Calculate fog density at 2m
@@ -506,22 +679,46 @@ class AtmosphericRoutines:
 
     @typechecked
     async def calculate_fog_density_11(self, temp2m, rh2m, dewpoint2m, wind_speed) -> float:
-        # Favor calm, near-saturated, small (T-Td)
-        vis_km = self._visibility_koschmieder(rh2m)
+        """
+        Returns a 0..1 "fog likelihood/density" proxy.
 
-        # Penalize higher winds (disperse fog): halve “density” per ~5 m/s
-        wind_factor = math.exp(-wind_speed / 5.0)
+        Improvements vs old version:
+        - Uses dewpoint depression (T - Td) + RH with a logistic curve (stable).
+        - Stronger penalty for wind mixing (fog dispersal).
+        - Handles edge cases (negative RH, etc.) safely.
+        """
+        # Validate
+        values = {"temp2m": temp2m, "rh2m": rh2m, "dewpoint2m": dewpoint2m, "wind_speed": wind_speed}
+        missing = self._is_missing(values)
+        if missing:
+            _LOGGER.warning(f"calculate_fog_density: None/NaN inputs: {', '.join(missing)}")
+            return 0.0
 
-        # Map visibility to density: 0..1 over 0–5 km range
-        dens_from_vis = max(0.0, min(1.0, (5.0 - min(vis_km, 5.0)) / 5.0))
+        rh = max(0.0, min(100.0, float(rh2m)))
+        T = float(temp2m)
+        Td = float(dewpoint2m)
+        ws = max(0.0, float(wind_speed))
 
-        # Add a (T-Td) pinch
-        td_spread = max(0.0, min(1.0, 1.0 - abs(temp2m - dewpoint2m) / 3.0))
+        # Dewpoint depression in °C
+        dT = max(-5.0, min(30.0, T - Td))
 
-        density = dens_from_vis * 0.7 + td_spread * 0.3
-        density *= wind_factor
+        # Core saturation term:
+        # - Fog becomes likely when RH is high AND dewpoint depression is small.
+        # - Map into 0..1 smoothly.
+        sat_score = (
+            2.2 * (rh - 92.0) / 8.0  # RH ~92% begins to matter strongly
+            - 2.6 * (dT - 1.2) / 1.8  # dT <~ 1–2°C drives fog likelihood
+        )
+        sat = self._sigmoid(sat_score)
 
-        return float(max(0.0, min(1.0, density)))
+        # Wind dispersal: calm helps fog; moderate wind destroys it.
+        # This is a smooth decay; tune the 2.5–4.0 range if you want.
+        wind_decay = math.exp(-ws / 3.0)
+
+        # Final, clipped
+        fog = sat * wind_decay
+
+        return float(max(0.0, min(1.0, fog)))
 
     # #####################################################
     # Calculate dew point at 2m
@@ -561,7 +758,7 @@ class AtmosphericRoutines:
         Calculate the adjusted pressure at a given altitude above sea level.
         """
 
-        lapse_rate = -0.0065  # Temperature lapse rate in K/m
+        lapse_rate = 0.0065  # Temperature lapse rate in K/m
         temperature_sea_level = 288.15  # Temperature at sea level in K
         gravity = 9.80665  # Acceleration due to gravity in m/s^2
         molar_mass_air = 0.02896  # Molar mass of Earth's air in kg/mol
@@ -613,7 +810,7 @@ class AtmosphericRoutines:
         # B = 265.5
 
         # Calculate vapor pressure using Magnus-Tetens formula
-        e = 0.61078 * math.exp((A * temperature) / (temperature + B))
+        e = 6.1078 * math.exp((A * temperature) / (temperature + B))
 
         return e
 
