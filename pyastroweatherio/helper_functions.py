@@ -135,33 +135,27 @@ class AtmosphericRoutines:
         # Ensure lifted index is within the valid range [-7, 7]
         lifted_index = max(-7, min(7, lifted_index))
 
-        # _LOGGER.debug(f"Vapor Pressure: {e}")
-        # _LOGGER.debug(f"Mixing Ratio: {w}")
-        # _LOGGER.debug(f"Lifting Condensation Level: {lcl}")
-        # _LOGGER.debug(f"Temperature of Lifted Parcel: {lifted_temp_500mb}")
-        # _LOGGER.debug(f"Lifted Index: {lifted_index}")
-
         return lifted_index
 
     # _11
-    def _tlcl_bolton(self, T, Td):
-        # T, Td in Kelvin. Bolton (1980) eqn 15 surrogate:
-        return 1.0 / (1.0 / (Td - 56.0) + math.log(T / Td) / 800.0) + 56.0  # K
+    # def _tlcl_bolton(self, T, Td):
+    #     # T, Td in Kelvin. Bolton (1980) eqn 15 surrogate:
+    #     return 1.0 / (1.0 / (Td - 56.0) + math.log(T / Td) / 800.0) + 56.0  # K
 
-    def _moist_adiabat_to(self, T_lcl, p_lcl, p_target):
-        # Bolton moist-adiabatic approximation via equivalent potential temp (θe)
-        # For brevity, use a simple iterative moist lapse (Γ_m) integrator; step dp.
-        T = T_lcl
-        p = p_lcl
-        dp = -5.0  # hPa step upward
-        while p + dp >= p_target:
-            # Γ_m ~ g*(1 + Lq/(Rd T)) / (cp + (L^2 q ε)/(R_d T^2))  [approx]
-            # keep it simple or use Bolton’s formulas if you prefer
-            gamma_m = 4.5  # K/km crude; replace with proper Γ_m(T,p)
-            dz = 8.0 * abs(dp)  # ~8 m/hPa
-            T -= gamma_m * (dz / 1000.0)
-            p += dp
-        return T
+    # def _moist_adiabat_to(self, T_lcl, p_lcl, p_target):
+    #     # Bolton moist-adiabatic approximation via equivalent potential temp (θe)
+    #     # For brevity, use a simple iterative moist lapse (Γ_m) integrator; step dp.
+    #     T = T_lcl
+    #     p = p_lcl
+    #     dp = -5.0  # hPa step upward
+    #     while p + dp >= p_target:
+    #         # Γ_m ~ g*(1 + Lq/(Rd T)) / (cp + (L^2 q ε)/(R_d T^2))  [approx]
+    #         # keep it simple or use Bolton’s formulas if you prefer
+    #         gamma_m = 4.5  # K/km crude; replace with proper Γ_m(T,p)
+    #         dz = 8.0 * abs(dp)  # ~8 m/hPa
+    #         T -= gamma_m * (dz / 1000.0)
+    #         p += dp
+    #     return T
 
     @typechecked
     async def calculate_lifted_index_11(
@@ -330,23 +324,23 @@ class AtmosphericRoutines:
         return magnitude_degradation
 
     # _11
-    def _airmass_kasten_young(self, zenith_deg):
-        z = math.radians(zenith_deg)
-        return 1.0 / (math.cos(z) + 0.50572 * (96.07995 - zenith_deg) ** (-1.6364))
+    # def _airmass_kasten_young(self, zenith_deg):
+    #     z = math.radians(zenith_deg)
+    #     return 1.0 / (math.cos(z) + 0.50572 * (96.07995 - zenith_deg) ** (-1.6364))
 
-    def _extinction_components(self, pressure_hpa, rh, vis_km):
-        # Rayleigh ~0.106 mag/airmass at sea level (V band), scale with pressure
-        k_R = 0.106 * (pressure_hpa / 1013.25)
+    # def _extinction_components(self, pressure_hpa, rh, vis_km):
+    #     # Rayleigh ~0.106 mag/airmass at sea level (V band), scale with pressure
+    #     k_R = 0.106 * (pressure_hpa / 1013.25)
 
-        # Aerosol from visibility: tau ≈ 3.912/Vis; convert to mag/airmass: k = 1.086*tau
-        tau_a = 3.912 / max(1.0, vis_km)
-        k_a = 1.086 * tau_a * 0.6  # 0.6 factor so "haze" vis isn’t overly punitive; tune
+    #     # Aerosol from visibility: tau ≈ 3.912/Vis; convert to mag/airmass: k = 1.086*tau
+    #     tau_a = 3.912 / max(1.0, vis_km)
+    #     k_a = 1.086 * tau_a * 0.6  # 0.6 factor so "haze" vis isn’t overly punitive; tune
 
-        # Ozone & water vapor: small constants unless you have columns
-        k_O3 = 0.03
-        k_H2O = 0.00  # set >0 in NIR or humid site with strong bands
+    #     # Ozone & water vapor: small constants unless you have columns
+    #     k_O3 = 0.03
+    #     k_H2O = 0.00  # set >0 in NIR or humid site with strong bands
 
-        return k_R, k_a, k_O3, k_H2O
+    #     return k_R, k_a, k_O3, k_H2O
 
     @typechecked
     async def magnitude_degradation_11(
@@ -499,56 +493,50 @@ class AtmosphericRoutines:
         seeing_factor = C * (water_vapor_pressure / 10) ** 0.25 * (wind_speed / 10) ** 0.75 * relative_pressure
         seeing = 0.98 / seeing_factor
 
-        # _LOGGER.debug(
-        #     "Seeing: {:.2f} arcsec (".format(seeing)
-        #     + "Water Vapor Pressure: {:.2f} mbar, ".format(water_vapor_pressure)
-        #     + "Wind Speed: {:.2f} m/s, ".format(wind_speed)
-        #     + "Relative Pressure: {:.2f} mbar, ".format(relative_pressure)
-        #     + "Seeing Factor: {:.2f})".format(seeing_factor)
-        # )
-
         if seeing > SEEING_MAX:
             seeing = SEEING_MAX  # max out seeing
 
         return seeing
 
     # Seeing with Hufnagel–Valley 5/7 profile
-    def _hv57_cn2(self, z, A=1.7e-14, v=20.0):
-        term1 = 0.00594 * (v / 27.0) ** 2 * (1e-5 * z) ** 10 * math.exp(-z / 1000.0)
-        term2 = 2.7e-16 * math.exp(-z / 1500.0)
-        term3 = A * math.exp(-z / 100.0)
+    # def _hv57_cn2(self, z, A=1.7e-14, v=20.0):
+    #     term1 = 0.00594 * (v / 27.0) ** 2 * (1e-5 * z) ** 10 * math.exp(-z / 1000.0)
+    #     term2 = 2.7e-16 * math.exp(-z / 1500.0)
+    #     term3 = A * math.exp(-z / 100.0)
 
-        return term1 + term2 + term3
+    #     return term1 + term2 + term3
 
-    def _seeing_from_hv57(self, wavelength_m=5.5e-7, v=20.0, A=1.7e-14, zmax=20000.0):
-        # integrate Cn^2 dz (simple Riemann sum)
-        dz = 25.0
-        z = 0.0
-        integral = 0.0
+    # def _seeing_from_hv57(self, wavelength_m=5.5e-7, v=20.0, A=1.7e-14, zmax=20000.0):
+    #     # integrate Cn^2 dz (simple Riemann sum)
+    #     dz = 25.0
+    #     z = 0.0
+    #     integral = 0.0
 
-        while z <= zmax:
-            integral += self._hv57_cn2(z, A=A, v=v) * dz
-            z += dz
-        k = 2.0 * math.pi / wavelength_m
-        r0 = (0.423 * k * k * integral) ** (-3.0 / 5.0)
-        beta_rad = 0.98 * wavelength_m / r0
+    #     while z <= zmax:
+    #         integral += self._hv57_cn2(z, A=A, v=v) * dz
+    #         z += dz
+    #     k = 2.0 * math.pi / wavelength_m
+    #     r0 = (0.423 * k * k * integral) ** (-3.0 / 5.0)
+    #     beta_rad = 0.98 * wavelength_m / r0
 
-        return beta_rad * (180.0 / math.pi) * 3600.0  # arcsec
+    #     return beta_rad * (180.0 / math.pi) * 3600.0  # arcsec
 
     @typechecked
     async def calculate_seeing_11(
         self, temperature, humidity, dew_point_temperature, wind_speed, cloud_cover, altitude, air_pressure_at_sea_level
     ) -> None | float:
         """
-        Returns a rough seeing estimate in arcseconds.
+        Returns a rough seeing estimate in arcseconds, tuned to behave more like
+        common forecast products (e.g., meteoblue) in terms of directionality.
 
         Improvements vs old version:
-        - Avoids unit-mismatch water-vapor-pressure math.
         - Uses stable, bounded mapping driven by:
           * wind (mechanical turbulence),
           * dewpoint depression & RH (near-surface stability / saturation),
           * cloud cover (proxy for active layers),
           * altitude (usually helps boundary-layer seeing).
+
+        Still a heuristic: with only surface inputs one cannot model free-atmosphere seeing.
         """
         values = {
             "temperature": temperature,
@@ -571,36 +559,52 @@ class AtmosphericRoutines:
         cc = max(0.0, min(100.0, float(cloud_cover)))
         alt = max(0.0, float(altitude))
 
-        # Boundary-layer proxies
-        dT = max(-5.0, min(25.0, T - Td))  # dewpoint depression
-        wind_term = math.log1p(ws)  # grows slowly, stable
-        cloud_term = (cc / 100.0) ** 0.7  # more sensitive at low-mid cloud
-        humid_term = self._sigmoid((rh - 80.0) / 8.0)  # ramps up beyond ~80%
+        # --- proxies ---
+        # Dewpoint depression: very small dT => near-saturation / stable layer; can be good or bad.
+        # We use it gently: extremes (very large dT) can correlate with strong radiative cooling + BL turbulence.
+        dT = max(0.0, min(25.0, T - Td))
 
-        # Altitude often helps (thinner BL, less heat shimmer).
-        # Don’t overdo it; this is a mild improvement curve.
-        altitude_gain = 0.85 + 0.15 * math.exp(-alt / 1800.0)  # ~1.0 at sea lvl -> ~0.85 at high alt
+        # Wind: best seeing often with light breeze (mixes BL), worse with dead calm or strong wind
+        # U-shaped penalty centered near ~3 m/s.
+        wind_opt = 3.0
+        wind_sigma = 2.5
+        wind_pen = 1.0 - math.exp(-((ws - wind_opt) ** 2) / (2.0 * wind_sigma**2))  # 0 near optimum, ->1 away
 
-        # Base seeing floor and contributions (tunable constants)
-        seeing = (
-            (
-                0.75
-                + 0.55 * wind_term
-                + 0.65 * cloud_term
-                + 0.45 * humid_term
-                + 0.35
-                * self._sigmoid(
-                    (dT - 4.0) / 1.8
-                )  # very dry air often correlates with better seeing aloft, but BL can still shimmer; this keeps it moderate
-            )
-            * altitude_gain
-        )
+        # Humidity: very high RH often accompanies haze/fog layers and BL issues; moderate is fine.
+        humid_pen = self._sigmoid((rh - 85.0) / 7.0)  # ramps above ~85%
 
-        # Clamp
-        if seeing > SEEING_MAX:
-            seeing = SEEING_MAX
-        if seeing < 0.4:
-            seeing = 0.4
+        # Clouds: weak proxy for turbulence aloft. Keep influence small.
+        cloud_pen = (cc / 100.0) ** 1.5
+
+        # Altitude: generally helps a bit.
+        alt_gain = 1.0 - 0.12 * (1.0 - math.exp(-alt / 1800.0))  # ~1.0 sea level -> ~0.88 high alt
+
+        # Very large dT (very dry) can mean strong surface cooling at night => local turbulence.
+        # Mild penalty that only kicks in past ~8°C depression.
+        dry_pen = self._sigmoid((dT - 8.0) / 2.5)
+
+        # --- combine into a "quality" score (higher = better) ---
+        # Start near 1.0, subtract penalties.
+        quality = 1.0
+        quality -= 0.35 * wind_pen
+        quality -= 0.25 * humid_pen
+        quality -= 0.10 * cloud_pen
+        quality -= 0.20 * dry_pen
+
+        # Apply altitude improvement
+        quality *= alt_gain
+
+        # Clamp quality to sane range
+        quality = max(0.05, min(0.98, quality))
+
+        # Map to seeing arcsec: better quality => smaller FWHM
+        # Choose a realistic range for forecasts (tunable):
+        best = 0.7  # arcsec
+        worst = 4.0  # arcsec
+        seeing = worst - (worst - best) * quality
+
+        # Clamp to global max
+        seeing = max(0.4, min(float(SEEING_MAX), seeing))
 
         return float(seeing)
 
@@ -665,17 +669,17 @@ class AtmosphericRoutines:
         return float(adjusted_fog_density)
 
     # Visibility via Koschmieder
-    def _visibility_koschmieder(self, rh, base_beta=0.02):
-        """
-        Crude RH→extinction: beta_ext = base_beta * f(RH).
-        base_beta ~0.02 1/km is a hazy baseline; ramp up sharply near saturation.
-        Returns visibility (km).
-        """
-        # Sigmoid that explodes as RH→100%
-        f = 1.0 + 20.0 / (1.0 + math.exp(-(rh - 95.0) / 1.5))  # ~1 below 90–92%, jumps past 95%
-        beta = base_beta * f  # 1/km
+    # def _visibility_koschmieder(self, rh, base_beta=0.02):
+    #     """
+    #     Crude RH→extinction: beta_ext = base_beta * f(RH).
+    #     base_beta ~0.02 1/km is a hazy baseline; ramp up sharply near saturation.
+    #     Returns visibility (km).
+    #     """
+    #     # Sigmoid that explodes as RH→100%
+    #     f = 1.0 + 20.0 / (1.0 + math.exp(-(rh - 95.0) / 1.5))  # ~1 below 90–92%, jumps past 95%
+    #     beta = base_beta * f  # 1/km
 
-        return 3.912 / beta  # km
+    #     return 3.912 / beta  # km
 
     @typechecked
     async def calculate_fog_density_11(self, temp2m, rh2m, dewpoint2m, wind_speed) -> float:
