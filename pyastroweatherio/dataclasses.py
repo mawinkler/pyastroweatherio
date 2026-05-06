@@ -3,7 +3,6 @@
 import math
 from dataclasses import dataclass
 from datetime import datetime
-from pprint import pprint as pp
 from typing import TypedDict
 
 from typeguard import typechecked
@@ -1010,7 +1009,7 @@ class ForecastData:
     def deep_sky_view(self) -> bool:
         """Return True if Deep Sky should be possible."""
 
-        if self.condition_percentage <= DEEP_SKY_THRESHOLD:
+        if self.condition_percentage >= DEEP_SKY_THRESHOLD:
             return True
         return False
 

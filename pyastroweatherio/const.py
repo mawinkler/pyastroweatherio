@@ -178,6 +178,15 @@ DARK_NIGHT_MAX_MOON_PHASE = 0.05
 DARK_NIGHT_MAX_MOON_ALT = "5:0:0"
 
 # #####################################################
+# Astronomical constants
+# #####################################################
+AU_TO_KM = 149_597_870.7          # km per AU (IAU 2012)
+MOON_MEAN_DISTANCE_KM = 384_400   # mean Moon–Earth distance (km)
+MOON_MEAN_ANGULAR_SIZE_DEG = 0.5181  # mean lunar angular diameter (°)
+LUNAR_MONTH_DAYS = 29.33          # mean synodic month (days)
+KELVIN_OFFSET = 273.15            # °C to K conversion
+
+# #####################################################
 # Forecast
 # #####################################################
 FORECAST_TYPE_DAILY = "daily"

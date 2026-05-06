@@ -8,19 +8,14 @@ import os.path
 import socket
 from datetime import UTC, datetime, timedelta, timezone
 from json.decoder import JSONDecodeError
-from pprint import pprint as pp
 from typing import Any, Dict, List, Optional
 
 import aiofiles
 
-# from aiohttp.client import ClientError, ClientResponseError, ClientSession
-import numpy as np  # from retry_requests import retry
-
-# import openmeteo_requests
-# import requests_cache
+import numpy as np
 import pandas as pd
 from aiohttp import ClientSession, ClientTimeout
-from aiohttp.client import ClientResponseError, ClientSession
+from aiohttp.client import ClientResponseError
 from aiohttp.client_exceptions import ClientError
 from typeguard import typechecked
 
@@ -103,6 +98,13 @@ class AstroWeather:
         experimental_features=False,
         forecast_model=None,
     ):
+        if not -90 <= latitude <= 90:
+            raise ValueError(f"Latitude must be between -90 and 90, got {latitude}")
+        if not -180 <= longitude <= 180:
+            raise ValueError(f"Longitude must be between -180 and 180, got {longitude}")
+        if not -500 <= elevation <= 9000:
+            raise ValueError(f"Elevation must be between -500 and 9000 meters, got {elevation}")
+
         self._session: ClientSession = session
         self._location_data = self._get_location(
             latitude,
@@ -192,8 +194,8 @@ class AstroWeather:
             )
             for _, row in df.iterrows()
         ]
-        results = await asyncio.gather(*tasks)
-        return results
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return [r if not isinstance(r, BaseException) else (_LOGGER.warning("Dew point calculation failed: %s", r) or float("nan")) for r in results]
 
     async def _calculate_seeing(self, df):
         if self._experimental_features:
@@ -222,8 +224,8 @@ class AstroWeather:
                 )
                 for _, row in df.iterrows()
             ]
-        results = await asyncio.gather(*tasks)
-        return results
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return [r if not isinstance(r, BaseException) else (_LOGGER.warning("Seeing calculation failed: %s", r) or float("nan")) for r in results]
 
     async def _calculate_transparency(self, df):
         if self._experimental_features:
@@ -252,8 +254,8 @@ class AstroWeather:
                 )
                 for _, row in df.iterrows()
             ]
-        results = await asyncio.gather(*tasks)
-        return results
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return [r if not isinstance(r, BaseException) else (_LOGGER.warning("Transparency calculation failed: %s", r) or float("nan")) for r in results]
 
     async def _calculate_lifted_index(self, df):
         if self._experimental_features:
@@ -276,10 +278,10 @@ class AstroWeather:
                 )
                 for _, row in df.iterrows()
             ]
-        results = await asyncio.gather(*tasks)
-        return results
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return [r if not isinstance(r, BaseException) else (_LOGGER.warning("Lifted index calculation failed: %s", r) or float("nan")) for r in results]
 
-    async def _retrive_data(self) -> None:
+    async def _retrieve_data(self) -> None:
         """Retrieves current data from all data sources."""
         async with self._lock:
             if ((datetime.now() - self._weather_data_timestamp).total_seconds()) > DEFAULT_CACHE_TIMEOUT:
@@ -357,6 +359,7 @@ class AstroWeather:
                 self._weather_df["transparency"] = await self._calculate_transparency(self._weather_df)
                 self._weather_df["lifted_index"] = await self._calculate_lifted_index(self._weather_df)
 
+                self._weather_df = self._weather_df.set_index("time")
                 self._test_weather_df()
             else:
                 _LOGGER.debug("Using cached data")
@@ -395,8 +398,10 @@ class AstroWeather:
         """Returns a validated Weather Conditions data object"""
 
         # Return row from dataframe
-        timestamp = time.replace(tzinfo=None).strftime("%Y-%m-%d %H:00:00+00:00")
-        row = self._weather_df.loc[self._weather_df["time"] == timestamp].iloc[0]
+        ts = pd.Timestamp(time).replace(minute=0, second=0, microsecond=0)
+        if ts.tzinfo is None:
+            ts = ts.tz_localize("UTC")
+        row = self._weather_df.loc[ts]
 
         cloudcover = float(row["cloud_area_fraction"])
         cloud_area_fraction = float(row["cloud_area_fraction"])
@@ -560,7 +565,7 @@ class AstroWeather:
 
         items = []
 
-        await self._retrive_data()
+        await self._retrieve_data()
 
         now = datetime.now(UTC).replace(tzinfo=None)
 
@@ -581,7 +586,8 @@ class AstroWeather:
             _LOGGER.error("Weather data not available")
             return []
 
-        data_index = int((self._weather_df["time"] == now.strftime("%Y-%m-%d %H:00:00+00:00")).idxmax())
+        now_ts = pd.Timestamp(now).tz_localize("UTC").replace(minute=0, second=0, microsecond=0)
+        data_index = self._weather_df.index.get_loc(now_ts) if now_ts in self._weather_df.index else 0
         _LOGGER.debug("Data index: %s", str(data_index))
 
         time_data = TimeDataModel(
@@ -634,7 +640,7 @@ class AstroWeather:
 
         items = []
 
-        await self._retrive_data()
+        await self._retrieve_data()
 
         now = datetime.now(UTC).replace(tzinfo=None)
 
@@ -653,11 +659,12 @@ class AstroWeather:
             _LOGGER.error("Weather data not available")
             return []
 
-        data_index = int((self._weather_df["time"] == now.strftime("%Y-%m-%d %H:00:00+00:00")).idxmax())
+        now_ts = pd.Timestamp(now).tz_localize("UTC").replace(minute=0, second=0, microsecond=0)
+        data_index = self._weather_df.index.get_loc(now_ts) if now_ts in self._weather_df.index else 0
         _LOGGER.debug("Data index: %s", str(data_index))
 
-        for index, row in self._weather_df.iterrows():
-            forecast_time = row["time"].replace(microsecond=0, tzinfo=timezone.utc)
+        for ts, row in self._weather_df.iterrows():
+            forecast_time = ts.replace(microsecond=0)
 
             td = TimeDataModel(
                 {
@@ -676,13 +683,13 @@ class AstroWeather:
                 item = ForecastDataModel(
                     {
                         "time_data": time_data,  # Time data
-                        "hour": row["time"].hour,  # forecast_time.hour % 24,
-                        "condition_data": await self._get_condition(row["time"]),
+                        "hour": ts.hour,  # forecast_time.hour % 24,
+                        "condition_data": await self._get_condition(ts),
                     }
                 )
             except KeyError as ke:
                 _LOGGER.error(f"Failed to parse location data model data: {ke}")
-                _LOGGER.error(row["time"])
+                _LOGGER.error(ts)
 
             try:
                 if item is not None:
@@ -1183,8 +1190,9 @@ class AstroWeather:
             # "temperature_unit": "C",
             "precipitation_unit": "mm",
             "wind_speed_unit": "ms",
-            "models": self._forecast_model,
         }
+        if self._forecast_model is not None:
+            params["models"] = self._forecast_model
 
         try:
             _LOGGER.debug(f"Query url: {BASE_URL_OPENMETEO}")

@@ -13,10 +13,15 @@ from zoneinfo import ZoneInfo
 
 from pyastroweatherio.const import (
     ASTRONOMICAL_DUSK_DAWN,
+    AU_TO_KM,
     CIVIL_DUSK_DAWN,
     DARK_NIGHT_MAX_MOON_ALT,
     DARK_NIGHT_MAX_MOON_PHASE,
+    KELVIN_OFFSET,
+    LUNAR_MONTH_DAYS,
     MAG_DEGRATION_MAX,
+    MOON_MEAN_ANGULAR_SIZE_DEG,
+    MOON_MEAN_DISTANCE_KM,
     NAUTICAL_DUSK_DAWN,
     SEEING_MAX,
 )
@@ -31,6 +36,30 @@ from pyastroweatherio.dataclasses import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Standard atmosphere (ISA, ICAO Doc 7488/3)
+_ISA_TEMP_K = 288.15              # K, standard sea-level temperature
+_GRAVITY = 9.80665                # m/s², standard gravitational acceleration
+_MOLAR_MASS_AIR = 0.02896         # kg/mol, molar mass of dry air
+_GAS_CONSTANT_R = 8.31447         # J/(mol·K), universal gas constant
+_STANDARD_LAPSE_RATE_K_M = 0.0065  # K/m, standard temperature lapse rate (6.5 K/km)
+
+# Magnus formula for saturation vapor pressure (Monteith & Unsworth 2008), valid -10 to 50°C
+_MAGNUS_A = 17.27
+_MAGNUS_B = 237.3    # °C
+_MAGNUS_SVP0 = 6.1078  # hPa, saturation vapor pressure at 0°C
+
+# Magnus formula (WMO variant), valid -45 to 60°C — used by dew point and _svp_hpa_magnus
+_MAGNUS_A_WMO = 17.62
+_MAGNUS_B_WMO = 243.12   # °C
+_MAGNUS_SVP0_WMO = 6.112  # hPa
+
+# Mixing ratio constant (ratio of molar masses Mw/Md ≈ 0.622, scaled to g/kg)
+_MIXING_RATIO_K = 621.97  # g/kg
+
+# LCL pressure approximation (Clausius-Clapeyron-based)
+_LCL_A = 2440    # K
+_LCL_B = 0.00029  # K⁻¹
+
 
 class ConversionFunctions:
     """Convert between different units."""
@@ -38,7 +67,7 @@ class ConversionFunctions:
     async def epoch_to_datetime(self, value) -> str:
         """Converts EPOC time to Date Time String."""
 
-        return datetime.datetime.fromtimestamp(int(value)).strftime("%Y-%m-%d %H:%M:%S")
+        return datetime.fromtimestamp(int(value)).strftime("%Y-%m-%d %H:%M:%S")
 
 
 class AtmosphericRoutines:
@@ -70,14 +99,13 @@ class AtmosphericRoutines:
         Saturation vapor pressure over water (hPa), Magnus-Tetens.
         Good for typical near-surface temps.
         """
-        return 6.112 * math.exp((17.62 * Tc) / (243.12 + Tc))
+        return _MAGNUS_SVP0_WMO * math.exp((_MAGNUS_A_WMO * Tc) / (_MAGNUS_B_WMO + Tc))
 
     @staticmethod
     def _mixing_ratio_gpkg(e_hpa: float, p_hpa: float) -> float:
         """Mixing ratio (g/kg) from vapor pressure e (hPa) and pressure p (hPa)."""
-        eps = 621.97  # g/kg * (hPa/hPa)
         denom = max(1e-6, (p_hpa - e_hpa))
-        return eps * (e_hpa / denom)
+        return _MIXING_RATIO_K * (e_hpa / denom)
 
     @staticmethod
     def _sigmoid(x: float) -> float:
@@ -106,8 +134,7 @@ class AtmosphericRoutines:
             _LOGGER.warning(f"calculate_lifted_index: The following variables are None or NaN: {', '.join(missing)}")
             return None
 
-        # Constants
-        env_temp_500mb = -20  # Celsius (environmental temperature at 500 mb level)
+        env_temp_500mb = -20.0  # °C, approximate environmental temperature at 500 hPa
 
         # Calculate saturation vapor pressure at surface temperature
         # Checked with https://www.weather.gov/epz/wxcalc_vaporpressure
@@ -115,7 +142,7 @@ class AtmosphericRoutines:
 
         # Calculate actual Vapor Pressure at surface
         # Checked with https://www.weather.gov/epz/wxcalc_vaporpressure
-        e = self._calculate_vapor_pressure(dew_point_temperature)  # 6.112 * (10 ** (7.5 * (Td - Tn) / (Td - 35.85)))
+        e = self._calculate_vapor_pressure(dew_point_temperature)
 
         # Calculate Mixing Ratio at Surface in grams per kilogram
         # Checked with https://www.weather.gov/epz/wxcalc_mixingratio
@@ -137,42 +164,27 @@ class AtmosphericRoutines:
 
         return lifted_index
 
-    # _11
-    # def _tlcl_bolton(self, T, Td):
-    #     # T, Td in Kelvin. Bolton (1980) eqn 15 surrogate:
-    #     return 1.0 / (1.0 / (Td - 56.0) + math.log(T / Td) / 800.0) + 56.0  # K
-
-    # def _moist_adiabat_to(self, T_lcl, p_lcl, p_target):
-    #     # Bolton moist-adiabatic approximation via equivalent potential temp (θe)
-    #     # For brevity, use a simple iterative moist lapse (Γ_m) integrator; step dp.
-    #     T = T_lcl
-    #     p = p_lcl
-    #     dp = -5.0  # hPa step upward
-    #     while p + dp >= p_target:
-    #         # Γ_m ~ g*(1 + Lq/(Rd T)) / (cp + (L^2 q ε)/(R_d T^2))  [approx]
-    #         # keep it simple or use Bolton’s formulas if you prefer
-    #         gamma_m = 4.5  # K/km crude; replace with proper Γ_m(T,p)
-    #         dz = 8.0 * abs(dp)  # ~8 m/hPa
-    #         T -= gamma_m * (dz / 1000.0)
-    #         p += dp
-    #     return T
-
     @typechecked
     async def calculate_lifted_index_11(
         self, temperature, altitude, dew_point_temperature, air_pressure_at_sea_level
     ) -> None | float:
         """
-        Returns a rough Lifted Index (LI) proxy in °C.
+        Returns a rough Lifted Index (LI) proxy in °C, clamped to [-7, +7].
 
-        Real LI requires an environmental temperature profile (a sounding).
-        With only surface data, we:
-        - Estimate station pressure from sea-level pressure + altitude.
-        - Estimate LCL temperature using a common approximation.
-        - Estimate parcel temperature at 500 hPa via:
-          dry-adiabatic to LCL, then a simplified moist-adiabatic adjustment.
-        - Estimate environmental temperature at 500 hPa using a standard lapse proxy.
+        The Lifted Index measures atmospheric stability: negative = unstable
+        (thunderstorm risk), positive = stable. Real LI requires a full sounding;
+        this proxy is derived from surface data only.
 
-        Output is clamped to [-7, +7].
+        Method:
+        1. Station pressure estimated via the barometric formula (ISA).
+        2. LCL temperature via the Bolton (1980) approximation:
+           T_lcl = 1 / (1/(T_d - 56) + ln(T/T_d)/800) + 56  [K]
+        3. Parcel lifted dry-adiabatically (κ ≈ 2/7) to LCL, then
+           moist-adiabatically (κ_moist ≈ 0.12–0.18, moisture-dependent) to 500 hPa.
+        4. Environmental T at 500 hPa estimated from surface T minus a
+           standard lapse rate (6.5 K/km) over the ~5.5 km column.
+
+        References: Bolton (1980), MWR 108:1046–1053.
         """
         values = {
             "temperature": temperature,
@@ -196,8 +208,8 @@ class AtmosphericRoutines:
 
         # --- LCL temperature approximation (Bolton-style quick form) ---
         # Use Kelvin
-        Tk = T + 273.15
-        Tdk = Td + 273.15
+        Tk = T + KELVIN_OFFSET
+        Tdk = Td + KELVIN_OFFSET
         # Prevent nonsense
         Tdk = min(Tk, max(180.0, Tdk))
 
@@ -227,8 +239,8 @@ class AtmosphericRoutines:
         # 500 hPa height is typically ~5.5 km; use (5.5km - altitude) thickness.
         z500 = 5500.0
         dz = max(0.0, z500 - alt)  # meters
-        env_lapse = 6.5 / 1000.0  # K/m (standard-ish)
-        T_env_500 = (T + 273.15) - env_lapse * dz
+        env_lapse = _STANDARD_LAPSE_RATE_K_M
+        T_env_500 = (T + KELVIN_OFFSET) - env_lapse * dz
 
         # LI = T_env(500) - T_parcel(500), in °C
         LI = T_env_500 - T_parcel_500
@@ -323,37 +335,41 @@ class AtmosphericRoutines:
 
         return magnitude_degradation
 
-    # _11
-    # def _airmass_kasten_young(self, zenith_deg):
-    #     z = math.radians(zenith_deg)
-    #     return 1.0 / (math.cos(z) + 0.50572 * (96.07995 - zenith_deg) ** (-1.6364))
-
-    # def _extinction_components(self, pressure_hpa, rh, vis_km):
-    #     # Rayleigh ~0.106 mag/airmass at sea level (V band), scale with pressure
-    #     k_R = 0.106 * (pressure_hpa / 1013.25)
-
-    #     # Aerosol from visibility: tau ≈ 3.912/Vis; convert to mag/airmass: k = 1.086*tau
-    #     tau_a = 3.912 / max(1.0, vis_km)
-    #     k_a = 1.086 * tau_a * 0.6  # 0.6 factor so "haze" vis isn’t overly punitive; tune
-
-    #     # Ozone & water vapor: small constants unless you have columns
-    #     k_O3 = 0.03
-    #     k_H2O = 0.00  # set >0 in NIR or humid site with strong bands
-
-    #     return k_R, k_a, k_O3, k_H2O
-
     @typechecked
     async def magnitude_degradation_11(
         self, temperature, humidity, cloud_cover, wind_speed, altitude, dew_point_temperature, air_pressure_at_sea_level
     ) -> None | float:
         """
-        Returns a "magnitude degradation" (mag) proxy.
+        Estimate stellar magnitude loss due to atmospheric extinction.
 
-        Improvements vs old version:
-        - Transparency -> mag uses a physically meaningful transform:
-          mag_loss ≈ -2.5 * log10(transparency)
-        - Uses improved LI + seeing as modifiers.
-        - Keeps output bounded by MAG_DEGRATION_MAX.
+        Uses the Pogson relation  mag_loss = −2.5 · log₁₀(transparency)  to
+        convert a dimensionless transparency [0,1] to a magnitude penalty.
+        Transparency is assembled from five weighted penalties:
+
+          Component         Weight  Notes
+          ──────────────────────────────────────────────────────────────────
+          Cloud cover         50 %  dominates; raised to power 1.2
+          Humidity haze       18 %  logistic ramp above ~75 % RH
+          Wind-blown aerosol  12 %  logistic ramp above ~6 m/s
+          Lifted-index        10 %  unstable air (LI < −1) increases haze
+          Seeing correlation  10 %  poor seeing weakly correlates with haze
+          ──────────────────────────────────────────────────────────────────
+
+        Altitude provides a small transparency gain (up to ~12 % at high
+        elevations) via  1 − 0.12·(1 − exp(−h/1800)).
+
+        Args:
+            temperature: Surface temperature in °C.
+            humidity: Relative humidity in %.
+            cloud_cover: Cloud cover in %.
+            wind_speed: Wind speed in m/s.
+            altitude: Station altitude in m above sea level.
+            dew_point_temperature: Dew-point temperature in °C.
+            air_pressure_at_sea_level: QNH / sea-level pressure in hPa.
+
+        Returns:
+            Magnitude loss in mag (0 … MAG_DEGRATION_MAX), or None if any
+            required input is missing.
         """
         values = {
             "temperature": temperature,
@@ -498,45 +514,51 @@ class AtmosphericRoutines:
 
         return seeing
 
-    # Seeing with Hufnagel–Valley 5/7 profile
-    # def _hv57_cn2(self, z, A=1.7e-14, v=20.0):
-    #     term1 = 0.00594 * (v / 27.0) ** 2 * (1e-5 * z) ** 10 * math.exp(-z / 1000.0)
-    #     term2 = 2.7e-16 * math.exp(-z / 1500.0)
-    #     term3 = A * math.exp(-z / 100.0)
-
-    #     return term1 + term2 + term3
-
-    # def _seeing_from_hv57(self, wavelength_m=5.5e-7, v=20.0, A=1.7e-14, zmax=20000.0):
-    #     # integrate Cn^2 dz (simple Riemann sum)
-    #     dz = 25.0
-    #     z = 0.0
-    #     integral = 0.0
-
-    #     while z <= zmax:
-    #         integral += self._hv57_cn2(z, A=A, v=v) * dz
-    #         z += dz
-    #     k = 2.0 * math.pi / wavelength_m
-    #     r0 = (0.423 * k * k * integral) ** (-3.0 / 5.0)
-    #     beta_rad = 0.98 * wavelength_m / r0
-
-    #     return beta_rad * (180.0 / math.pi) * 3600.0  # arcsec
-
     @typechecked
     async def calculate_seeing_11(
         self, temperature, humidity, dew_point_temperature, wind_speed, cloud_cover, altitude, air_pressure_at_sea_level
     ) -> None | float:
         """
-        Returns a rough seeing estimate in arcseconds, tuned to behave more like
-        common forecast products (e.g., meteoblue) in terms of directionality.
+        Estimate astronomical seeing (FWHM) in arcseconds from surface inputs.
 
-        Improvements vs old version:
-        - Uses stable, bounded mapping driven by:
-          * wind (mechanical turbulence),
-          * dewpoint depression & RH (near-surface stability / saturation),
-          * cloud cover (proxy for active layers),
-          * altitude (usually helps boundary-layer seeing).
+        A quality score [0.05, 0.98] is built by subtracting four weighted
+        penalties from 1.0 and then scaling by an altitude gain factor:
 
-        Still a heuristic: with only surface inputs one cannot model free-atmosphere seeing.
+          Penalty               Weight  Model
+          ──────────────────────────────────────────────────────────────────────
+          Wind turbulence         35 %  Gaussian centred at 3 m/s optimal wind
+                                        (σ = 2.5 m/s); dead-calm and strong
+                                        winds both degrade seeing.
+          Humidity haze           25 %  Logistic ramp above ~85 % RH.
+          Dewpoint depression     20 %  Logistic ramp above ~8 °C dT; very dry
+                                        air can drive strong nocturnal cooling
+                                        and boundary-layer turbulence.
+          Cloud-layer proxy       10 %  (cloud_cover/100)^1.5, weak influence.
+          ──────────────────────────────────────────────────────────────────────
+
+        Altitude benefit (same expression as magnitude_degradation_11):
+          alt_gain = 1 − 0.12·(1 − exp(−h/1800)), capped to ~12 % at summit.
+
+        The quality score is then mapped linearly to arcseconds:
+          seeing = worst − (worst − best) · quality,  best=0.7", worst=4.0"
+        and clamped to [0.4, SEEING_MAX].
+
+        Note: free-atmosphere seeing requires upper-air data (e.g.
+        Hufnagel-Valley profile + Fried parameter r₀). This model uses only
+        surface inputs and should be treated as a directional heuristic.
+
+        Args:
+            temperature: Surface temperature in °C.
+            humidity: Relative humidity in %.
+            dew_point_temperature: Dew-point temperature in °C.
+            wind_speed: Wind speed in m/s.
+            cloud_cover: Cloud cover in %.
+            altitude: Station altitude in m above sea level.
+            air_pressure_at_sea_level: QNH / sea-level pressure in hPa.
+
+        Returns:
+            Seeing FWHM in arcseconds (0.4 … SEEING_MAX), or None if any
+            required input is missing.
         """
         values = {
             "temperature": temperature,
@@ -668,28 +690,39 @@ class AtmosphericRoutines:
 
         return float(adjusted_fog_density)
 
-    # Visibility via Koschmieder
-    # def _visibility_koschmieder(self, rh, base_beta=0.02):
-    #     """
-    #     Crude RH→extinction: beta_ext = base_beta * f(RH).
-    #     base_beta ~0.02 1/km is a hazy baseline; ramp up sharply near saturation.
-    #     Returns visibility (km).
-    #     """
-    #     # Sigmoid that explodes as RH→100%
-    #     f = 1.0 + 20.0 / (1.0 + math.exp(-(rh - 95.0) / 1.5))  # ~1 below 90–92%, jumps past 95%
-    #     beta = base_beta * f  # 1/km
-
-    #     return 3.912 / beta  # km
-
     @typechecked
     async def calculate_fog_density_11(self, temp2m, rh2m, dewpoint2m, wind_speed) -> float:
         """
-        Returns a 0..1 "fog likelihood/density" proxy.
+        Estimate fog likelihood as a dimensionless density in [0, 1].
 
-        Improvements vs old version:
-        - Uses dewpoint depression (T - Td) + RH with a logistic curve (stable).
-        - Stronger penalty for wind mixing (fog dispersal).
-        - Handles edge cases (negative RH, etc.) safely.
+        The score combines two physical signals:
+
+        1. **Saturation score** — logistic function of RH and dewpoint depression:
+              sat_score = 2.2·(RH − 92)/8 − 2.6·(dT − 1.2)/1.8
+              sat = sigmoid(sat_score)
+           Fog becomes likely when RH exceeds ~92 % AND the dewpoint depression
+           dT = T − Td falls below ~1–2 °C.  The logistic ensures a smooth,
+           bounded transition rather than a hard threshold.
+
+        2. **Wind dispersal** — exponential decay:
+              wind_decay = exp(−wind_speed / 3.0)
+           Calm conditions (ws ≈ 0) leave fog intact; moderate winds (ws ≥ 6 m/s)
+           suppress the score to < 0.14.
+
+        Final result: fog = sat · wind_decay, clamped to [0, 1].
+
+        This is simpler than the Koschmieder visibility approach used in the
+        original version but avoids the instability of the exponential humidity
+        term near saturation while still behaving correctly at the extremes.
+
+        Args:
+            temp2m: Surface temperature in °C.
+            rh2m: Relative humidity in % (clamped to [0, 100] internally).
+            dewpoint2m: Dew-point temperature in °C.
+            wind_speed: Wind speed in m/s.
+
+        Returns:
+            Fog density in [0, 1]; 0.0 if any required input is missing.
         """
         # Validate
         values = {"temp2m": temp2m, "rh2m": rh2m, "dewpoint2m": dewpoint2m, "wind_speed": wind_speed}
@@ -744,14 +777,8 @@ class AtmosphericRoutines:
         Returns:
         - float: Dew point temperature in °C.
         """
-        # Constants
-        a = 17.62
-        b = 243.12
-
-        # Calculate alpha
-        alpha = math.log(rh2m / 100) + (a * temp2m) / (b + temp2m)
-
-        return (b * alpha) / (a - alpha)
+        alpha = math.log(max(rh2m, 1.0) / 100) + (_MAGNUS_A_WMO * temp2m) / (_MAGNUS_B_WMO + temp2m)
+        return (_MAGNUS_B_WMO * alpha) / (_MAGNUS_A_WMO - alpha)
 
     # #####################################################
     # Atmospheric calculations
@@ -762,11 +789,11 @@ class AtmosphericRoutines:
         Calculate the adjusted pressure at a given altitude above sea level.
         """
 
-        lapse_rate = 0.0065  # Temperature lapse rate in K/m
-        temperature_sea_level = 288.15  # Temperature at sea level in K
-        gravity = 9.80665  # Acceleration due to gravity in m/s^2
-        molar_mass_air = 0.02896  # Molar mass of Earth's air in kg/mol
-        gas_constant = 8.31447  # Universal gas constant in J/(mol*K)
+        lapse_rate = _STANDARD_LAPSE_RATE_K_M
+        temperature_sea_level = _ISA_TEMP_K
+        gravity = _GRAVITY
+        molar_mass_air = _MOLAR_MASS_AIR
+        gas_constant = _GAS_CONSTANT_R
 
         pressure_adjusted = pressure_sea_level * (1 - (lapse_rate * altitude) / temperature_sea_level) ** (
             (gravity * molar_mass_air) / (gas_constant * lapse_rate)
@@ -789,32 +816,10 @@ class AtmosphericRoutines:
         Returns:
         - e: Actual vapor pressure at the surface in millibars (mb) or hectopascals (hPa).
 
-        Magnus coefficients:
-
-        Temperatures in between -45°C bis 60°C:
-            a=17.62
-            b=243.12
-        Temperatures in between 0°C bis 100°C:
-            a=7.5
-            b=237.7
-        Temperatures in between -10°C bis 50°C:
-            a=17.27
-            b=237.7
+        Magnus coefficients used: Monteith & Unsworth (2008), valid -10 to 50°C.
         """
-        # # Constants
-        # A = 17.62
-        # B = 243.12
-
-        # # Monteith and Unsworth (2008) provide Tetens' formula for temperatures above 0 °C
-        A = 17.27
-        B = 237.3
-
-        # Murray (1967) provides Tetens' equation for temperatures below 0 °C
-        # A = 21.875
-        # B = 265.5
-
         # Calculate vapor pressure using Magnus-Tetens formula
-        e = 6.1078 * math.exp((A * temperature) / (temperature + B))
+        e = _MAGNUS_SVP0 * math.exp((_MAGNUS_A * temperature) / (temperature + _MAGNUS_B))
 
         return e
 
@@ -853,11 +858,7 @@ class AtmosphericRoutines:
         - w: mixing ratio at surface in grams per kilogram
         """
 
-        # Constants
-        A = 621.97
-
-        # Calculate actual vapor pressure using Magnus-Tetens formula
-        w = A * (e / (air_pressure_at_sea_level - e))
+        w = _MIXING_RATIO_K * (e / (air_pressure_at_sea_level - e))
 
         return w
 
@@ -880,12 +881,8 @@ class AtmosphericRoutines:
         - lcl: LCL in meters
         """
 
-        # Constants
-        A = 2440
-        B = 0.00029
-
         # Calculate Lifting Condensation Level using the Clausius-Clapeyron equation
-        lcl = (A * w) / ((air_pressure_at_sea_level - w) * (1 - B * air_pressure_at_sea_level))
+        lcl = (_LCL_A * w) / ((air_pressure_at_sea_level - w) * (1 - _LCL_B * air_pressure_at_sea_level))
 
         return lcl
 
@@ -1091,6 +1088,33 @@ class AstronomicalRoutines:
 
         return observer
 
+    def _ephem_find_event(
+        self,
+        observer: ephem.Observer,
+        make_call,
+        forward: bool,
+        label: str,
+    ) -> datetime | None:
+        """Compute a rise/set event, searching ±365 days if the body is circumpolar."""
+        try:
+            return make_call().datetime().replace(tzinfo=UTC)
+        except (ephem.AlwaysUpError, ephem.NeverUpError):
+            start = observer.date.datetime()
+            step = timedelta(minutes=1440) if forward else timedelta(minutes=-1440)
+            limit = start + timedelta(days=365) if forward else start - timedelta(days=365)
+            timestamp = start
+            cnt = 1
+            while (timestamp < limit) if forward else (timestamp > limit):
+                timestamp += step
+                observer.date = timestamp
+                try:
+                    result = make_call().datetime().replace(tzinfo=UTC)
+                    _LOGGER.debug(f"{label} in {cnt} days.")
+                    return result
+                except (ephem.AlwaysUpError, ephem.NeverUpError):
+                    cnt += 1
+            return None
+
     # #########################################################################
     # Sun
     # #########################################################################
@@ -1134,7 +1158,7 @@ class AstronomicalRoutines:
         if (
             not self._test_data(
                 self._sun_data,
-                ["next_rising_astro", "next_rising_nautical", "next_rising_civil"],
+                ["next_setting_astro", "next_setting_nautical", "next_setting_civil"],
             )
             or self._forecast_time > self._sun_data["next_setting_astro"]
             or self._forecast_time > self._sun_data["next_setting_nautical"]
@@ -1162,219 +1186,44 @@ class AstronomicalRoutines:
         if self._sun is None:
             self._sun = ephem.Sun()
 
-        self._calculate_sun_civil()
-        self._calculate_sun_nautical()
-        self._calculate_sun_astro()
+        obs_c = self._sun_observer
+        obs_c.date = self._forecast_time
+        self._sun.compute(obs_c)
+        self._sun_data["next_rising_civil"] = self._ephem_find_event(
+            obs_c, lambda: obs_c.next_rising(ephem.Sun(), use_center=True), True, "Sun next rising civil"
+        )
+        self._sun_data["next_setting_civil"] = self._ephem_find_event(
+            obs_c, lambda: obs_c.next_setting(ephem.Sun(), use_center=True), True, "Sun next setting civil"
+        )
+
+        obs_n = self._sun_observer_nautical
+        obs_n.date = self._forecast_time
+        self._sun.compute(obs_n)
+        self._sun_data["next_rising_nautical"] = self._ephem_find_event(
+            obs_n, lambda: obs_n.next_rising(ephem.Sun(), use_center=True), True, "Sun next rising nautical"
+        )
+        self._sun_data["next_setting_nautical"] = self._ephem_find_event(
+            obs_n, lambda: obs_n.next_setting(ephem.Sun(), use_center=True), True, "Sun next setting nautical"
+        )
+
+        obs_a = self._sun_observer_astro
+        obs_a.date = self._forecast_time
+        self._sun.compute(obs_a)
+        self._sun_data["next_rising_astro"] = self._ephem_find_event(
+            obs_a, lambda: obs_a.next_rising(ephem.Sun(), use_center=True), True, "Sun next rising astro"
+        )
+        self._sun_data["previous_rising_astro"] = self._ephem_find_event(
+            obs_a, lambda: obs_a.previous_rising(ephem.Sun(), use_center=True), False, "Sun previous rising astro"
+        )
+        self._sun_data["next_setting_astro"] = self._ephem_find_event(
+            obs_a, lambda: obs_a.next_setting(ephem.Sun(), use_center=True), True, "Sun next setting astro"
+        )
+        self._sun_data["previous_setting_astro"] = self._ephem_find_event(
+            obs_a, lambda: obs_a.previous_setting(ephem.Sun(), use_center=True), False, "Sun previous setting astro"
+        )
+
         self._calculate_sun_altaz()
         self._calculate_sun_constellation()
-
-    def _calculate_sun_civil(self) -> None:
-        # Rise and Setting (Civil)
-        try:
-            self._sun_data["next_rising_civil"] = (
-                self._sun_observer.next_rising(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
-            )
-        except (ephem.AlwaysUpError, ephem.NeverUpError):
-            # Search for the next rising
-            start = self._sun_observer.date.datetime()
-            end = self._sun_observer.date.datetime() + timedelta(days=365)
-            timestamp = start
-            cnt = 1
-            while timestamp < end:
-                timestamp += timedelta(minutes=1440)
-                self._sun_observer.date = timestamp
-                try:
-                    self._sun_data["next_rising_civil"] = (
-                        self._sun_observer.next_rising(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
-                    )
-                except (ephem.AlwaysUpError, ephem.NeverUpError):
-                    cnt += 1
-                    continue
-                _LOGGER.debug(f"Sun next rising civil in {cnt} days.")
-                break
-
-        try:
-            self._sun_data["next_setting_civil"] = (
-                self._sun_observer.next_setting(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
-            )
-        except (ephem.AlwaysUpError, ephem.NeverUpError):
-            # Search for the next setting
-            start = self._sun_observer.date.datetime()
-            end = self._sun_observer.date.datetime() + timedelta(days=365)
-            timestamp = start
-            cnt = 1
-            while timestamp < end:
-                timestamp += timedelta(minutes=1440)
-                self._sun_observer.date = timestamp
-                try:
-                    self._sun_data["next_setting_civil"] = (
-                        self._sun_observer.next_setting(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
-                    )
-                except (ephem.AlwaysUpError, ephem.NeverUpError):
-                    cnt += 1
-                    continue
-                _LOGGER.debug(f"Sun next setting civil in {cnt} days.")
-                break
-
-    def _calculate_sun_nautical(self) -> None:
-        # Rise and Setting (Nautical)
-        self._sun_observer_nautical.date = self._forecast_time
-        self._sun.compute(self._sun_observer_nautical)
-
-        try:
-            self._sun_data["next_rising_nautical"] = (
-                self._sun_observer_nautical.next_rising(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
-            )
-        except (ephem.AlwaysUpError, ephem.NeverUpError):
-            # Search for the next astronomical rising
-            start = self._sun_observer_nautical.date.datetime()
-            end = self._sun_observer_nautical.date.datetime() + timedelta(days=365)
-            timestamp = start
-            cnt = 1
-            while timestamp < end:
-                timestamp += timedelta(minutes=1440)
-                self._sun_observer_nautical.date = timestamp
-                try:
-                    self._sun_data["next_rising_nautical"] = (
-                        self._sun_observer_nautical.next_rising(ephem.Sun(), use_center=True)
-                        .datetime()
-                        .replace(tzinfo=UTC)
-                    )
-                except (ephem.AlwaysUpError, ephem.NeverUpError):
-                    cnt += 1
-                    continue
-                _LOGGER.debug(f"Sun next rising nautical in {cnt} days.")
-                break
-
-        try:
-            self._sun_data["next_setting_nautical"] = (
-                self._sun_observer_nautical.next_setting(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
-            )
-        except (ephem.AlwaysUpError, ephem.NeverUpError):
-            # Search for the next astronomical setting
-            start = self._sun_observer_nautical.date.datetime()
-            end = self._sun_observer_nautical.date.datetime() + timedelta(days=365)
-            timestamp = start
-            cnt = 1
-            while timestamp < end:
-                timestamp += timedelta(minutes=1440)
-                self._sun_observer_nautical.date = timestamp
-                try:
-                    self._sun_data["next_setting_nautical"] = (
-                        self._sun_observer_nautical.next_setting(ephem.Sun(), use_center=True)
-                        .datetime()
-                        .replace(tzinfo=UTC)
-                    )
-                except (ephem.AlwaysUpError, ephem.NeverUpError):
-                    cnt += 1
-                    continue
-                _LOGGER.debug(f"Sun next setting nautical in {cnt} days.")
-                break
-
-    def _calculate_sun_astro(self) -> None:
-        # Rise and Setting (Astronomical)
-        self._sun_observer_astro.date = self._forecast_time
-        self._sun.compute(self._sun_observer_astro)
-
-        try:
-            self._sun_data["next_rising_astro"] = (
-                self._sun_observer_astro.next_rising(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
-            )
-        except (ephem.AlwaysUpError, ephem.NeverUpError):
-            # Search for the next astronomical rising
-            start = self._sun_observer_astro.date.datetime()
-            end = self._sun_observer_astro.date.datetime() + timedelta(days=365)
-            timestamp = start
-            cnt = 1
-            while timestamp < end:
-                timestamp += timedelta(minutes=1440)
-                self._sun_observer_astro.date = timestamp
-                try:
-                    self._sun_data["next_rising_astro"] = (
-                        self._sun_observer_astro.next_rising(ephem.Sun(), use_center=True)
-                        .datetime()
-                        .replace(tzinfo=UTC)
-                    )
-                except (ephem.AlwaysUpError, ephem.NeverUpError):
-                    cnt += 1
-                    continue
-                _LOGGER.debug(f"Sun next rising astro in {cnt} days.")
-                break
-
-        try:
-            self._sun_data["previous_rising_astro"] = (
-                self._sun_observer_astro.previous_rising(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
-            )
-        except (ephem.AlwaysUpError, ephem.NeverUpError):
-            # Search for the previous astronomical rising
-            start = self._sun_observer_astro.date.datetime()
-            end = self._sun_observer_astro.date.datetime() - timedelta(days=365)
-            timestamp = start
-            cnt = 1
-            while timestamp > end:
-                timestamp -= timedelta(minutes=1440)
-                self._sun_observer_astro.date = timestamp
-                try:
-                    self._sun_data["previous_rising_astro"] = (
-                        self._sun_observer_astro.previous_rising(ephem.Sun(), use_center=True)
-                        .datetime()
-                        .replace(tzinfo=UTC)
-                    )
-                except (ephem.AlwaysUpError, ephem.NeverUpError):
-                    cnt += 1
-                    continue
-                _LOGGER.debug(f"Sun previous rising astro {cnt} days before.")
-                break
-
-        try:
-            self._sun_data["next_setting_astro"] = (
-                self._sun_observer_astro.next_setting(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
-            )
-        except (ephem.AlwaysUpError, ephem.NeverUpError):
-            # Search for the next astronomical setting
-            start = self._sun_observer_astro.date.datetime()
-            end = self._sun_observer_astro.date.datetime() + timedelta(days=365)
-            timestamp = start
-            cnt = 1
-            while timestamp < end:
-                timestamp += timedelta(minutes=1440)
-                self._sun_observer_astro.date = timestamp
-                try:
-                    self._sun_data["next_setting_astro"] = (
-                        self._sun_observer_astro.next_setting(ephem.Sun(), use_center=True)
-                        .datetime()
-                        .replace(tzinfo=UTC)
-                    )
-                except (ephem.AlwaysUpError, ephem.NeverUpError):
-                    cnt += 1
-                    continue
-                _LOGGER.debug(f"Sun next setting astro in {cnt} days.")
-                break
-
-        try:
-            self._sun_data["previous_setting_astro"] = (
-                self._sun_observer_astro.previous_setting(ephem.Sun(), use_center=True).datetime().replace(tzinfo=UTC)
-            )
-        except (ephem.AlwaysUpError, ephem.NeverUpError):
-            # Search for the previous astronomical setting
-            start = self._sun_observer_astro.date.datetime()
-            end = self._sun_observer_astro.date.datetime() - timedelta(days=365)
-            timestamp = start
-            cnt = 1
-            while timestamp > end:
-                timestamp -= timedelta(minutes=1440)
-                self._sun_observer_astro.date = timestamp
-                try:
-                    self._sun_data["previous_setting_astro"] = (
-                        self._sun_observer_astro.previous_setting(ephem.Sun(), use_center=True)
-                        .datetime()
-                        .replace(tzinfo=UTC)
-                    )
-                except (ephem.AlwaysUpError, ephem.NeverUpError):
-                    cnt += 1
-                    continue
-                _LOGGER.debug(f"Sun previous setting astro {cnt} days before.")
-                break
 
     def _calculate_sun_altaz(self) -> None:
         """Calculates sun altitude and azimuth."""
@@ -1435,110 +1284,19 @@ class AstronomicalRoutines:
         self._moon_observer.date = self._forecast_time
         self._moon.compute(self._moon_observer)
 
-        try:
-            self._moon_data["next_rising"] = (
-                self._moon_observer.next_rising(ephem.Moon()).datetime().replace(tzinfo=UTC)
-            )
-        except (ephem.AlwaysUpError, ephem.NeverUpError):
-            # Search for the next astronomical rising
-            start = self._moon_observer.date.datetime()
-            end = self._moon_observer.date.datetime() + timedelta(days=365)
-            timestamp = start
-            cnt = 1
-            while timestamp < end:
-                timestamp += timedelta(minutes=1440)
-                self._moon_observer.date = timestamp
-                try:
-                    self._moon_data["next_rising"] = (
-                        self._moon_observer.next_rising(ephem.Moon()).datetime().replace(tzinfo=UTC)
-                    )
-                except (ephem.AlwaysUpError, ephem.NeverUpError):
-                    cnt += 1
-                    continue
-                _LOGGER.debug(f"Moon next rising in {cnt} days.")
-                break
-
-        try:
-            self._moon_data["next_setting"] = (
-                self._moon_observer.next_setting(ephem.Moon()).datetime().replace(tzinfo=UTC)
-            )
-        except (ephem.AlwaysUpError, ephem.NeverUpError):
-            # Search for the next astronomical setting
-            start = self._moon_observer.date.datetime()
-            end = self._moon_observer.date.datetime() + timedelta(days=365)
-            timestamp = start
-            cnt = 1
-            while timestamp < end:
-                timestamp += timedelta(minutes=1440)
-                self._moon_observer.date = timestamp
-                try:
-                    self._moon_data["next_setting"] = (
-                        self._moon_observer.next_setting(ephem.Moon()).datetime().replace(tzinfo=UTC)
-                    )
-                except (ephem.AlwaysUpError, ephem.NeverUpError):
-                    cnt += 1
-                    continue
-                _LOGGER.debug(f"Moon next setting in {cnt} days.")
-                break
-
-        try:
-            self._moon_data["previous_rising"] = (
-                self._moon_observer.previous_rising(ephem.Moon()).datetime().replace(tzinfo=UTC)
-            )
-        except (ephem.AlwaysUpError, ephem.NeverUpError):
-            # Search for the previous astronomical rising
-            start = self._moon_observer.date.datetime()
-            end = self._moon_observer.date.datetime() - timedelta(days=365)
-            timestamp = start
-            cnt = 1
-            while timestamp > end:
-                timestamp -= timedelta(minutes=1440)
-                self._moon_observer.date = timestamp
-                try:
-                    self._moon_data["previous_rising"] = (
-                        self._moon_observer.previous_rising(ephem.Moon()).datetime().replace(tzinfo=UTC)
-                    )
-                except (ephem.AlwaysUpError, ephem.NeverUpError):
-                    cnt += 1
-                    continue
-                _LOGGER.debug(f"Moon previous rising {cnt} days before.")
-                break
-
-        try:
-            self._moon_data["previous_setting"] = (
-                self._moon_observer.previous_setting(ephem.Moon()).datetime().replace(tzinfo=UTC)
-            )
-        except (ephem.AlwaysUpError, ephem.NeverUpError):
-            # Search for the previous astronomical setting
-            start = self._moon_observer.date.datetime()
-            end = self._moon_observer.date.datetime() - timedelta(days=365)
-            timestamp = start
-            cnt = 1
-            while timestamp > end:
-                timestamp -= timedelta(minutes=1440)
-                self._moon_observer.date = timestamp
-                try:
-                    self._moon_data["previous_setting"] = (
-                        self._moon_observer.previous_setting(ephem.Moon()).datetime().replace(tzinfo=UTC)
-                    )
-                except (ephem.AlwaysUpError, ephem.NeverUpError):
-                    cnt += 1
-                    continue
-                _LOGGER.debug(f"Moon previous setting {cnt} days before.")
-                break
-
-        # self._moon_observer.date = self._forecast_time + timedelta(days=1)
-        # self._moon.compute(self._moon_observer)
-
-        # try:
-        #     self._moon_day_after_next_rising = self._moon_observer.next_rising(ephem.Moon()).datetime().replace(tzinfo=UTC)
-        # except (ephem.AlwaysUpError, ephem.NeverUpError):
-        #     pass
-
-        # try:
-        #     self._moon_day_after_next_setting = self._moon_observer.next_setting(ephem.Moon()).datetime().replace(tzinfo=UTC)
-        # except (ephem.AlwaysUpError, ephem.NeverUpError):
-        #     pass
+        obs = self._moon_observer
+        self._moon_data["next_rising"] = self._ephem_find_event(
+            obs, lambda: obs.next_rising(ephem.Moon()), True, "Moon next rising"
+        )
+        self._moon_data["next_setting"] = self._ephem_find_event(
+            obs, lambda: obs.next_setting(ephem.Moon()), True, "Moon next setting"
+        )
+        self._moon_data["previous_rising"] = self._ephem_find_event(
+            obs, lambda: obs.previous_rising(ephem.Moon()), False, "Moon previous rising"
+        )
+        self._moon_data["previous_setting"] = self._ephem_find_event(
+            obs, lambda: obs.previous_setting(ephem.Moon()), False, "Moon previous setting"
+        )
 
         # Next new Moon
         self._moon_data["next_new_moon"] = ephem.next_new_moon(self._forecast_time).datetime().replace(tzinfo=UTC)
@@ -1589,14 +1347,14 @@ class AstronomicalRoutines:
         self._moon_data["distance"] = self._moon.earth_distance  # in AU (Astronomical Units)
 
         # Convert to kilometers
-        self._moon_data["distance_km"] = self._moon_data["distance"] * 149597870.7  # 1 AU = 149597870.7 km
+        self._moon_data["distance_km"] = self._moon_data["distance"] * AU_TO_KM
 
-        # Get the Moon's angular size (in degrees)
-        self._moon_data["angular_size"] = self._moon.radius * 2 * 57.29578  # 180 / pi
+        # Get the Moon's angular diameter (radius is in radians in ephem)
+        self._moon_data["angular_size"] = math.degrees(self._moon.radius * 2)
 
         # Average distance and angular size for comparison
-        self._moon_data["avg_distance_km"] = 384400  # Average distance of the Moon from Earth in km
-        self._moon_data["avg_angular_size"] = 0.5181  # Average angular size in degrees
+        self._moon_data["avg_distance_km"] = MOON_MEAN_DISTANCE_KM
+        self._moon_data["avg_angular_size"] = MOON_MEAN_ANGULAR_SIZE_DEG
 
         # Relative distance and size compared to average
         self._moon_data["relative_distance"] = self._moon_data["distance_km"] / self._moon_data["avg_distance_km"]
@@ -1628,7 +1386,7 @@ class AstronomicalRoutines:
         want.
         """
 
-        day = 1.0 / 29.33
+        day = 1.0 / LUNAR_MONTH_DAYS
         moonphase = [
             (0.0 / 4.0 + day, "🌑", "New moon", "moon-new"),
             (1.0 / 4.0 - day, "🌒", "Waxing crescent moon", "moon-waxing-crescent"),
@@ -1772,15 +1530,7 @@ class AstronomicalRoutines:
     async def night_duration_astronomical(self) -> float:
         """Returns the remaining timespan of astronomical darkness."""
 
-        start_timestamp = None
-
-        # Are we already in darkness?
-        if self._astronomical_darkness():
-            start_timestamp = self._sun_data["previous_setting_astro"]
-        else:
-            start_timestamp = self._sun_data["next_setting_astro"]
-
-        return (self._sun_data["next_rising_astro"] - start_timestamp).total_seconds()
+        return (self._sun_data["next_rising_astro"] - self._night_start_timestamp()).total_seconds()
 
     def _deep_sky_darkness(self) -> float:
         """Returns the remaining timespan of deep sky darkness."""
@@ -1836,6 +1586,12 @@ class AstronomicalRoutines:
             return True
         return False
 
+    def _night_start_timestamp(self):
+        """Returns the start of the current (or next) astronomical night."""
+        if self._astronomical_darkness():
+            return self._sun_data["previous_setting_astro"]
+        return self._sun_data["next_setting_astro"]
+
     def _moon_down(self) -> bool:
         """Returns true while moon is set-"""
 
@@ -1846,13 +1602,7 @@ class AstronomicalRoutines:
     def _deep_sky_darkness_moon_rises(self) -> bool:
         """Returns true if moon rises during astronomical night."""
 
-        start_timestamp = None
-
-        # Are we already in darkness?
-        if self._astronomical_darkness():
-            start_timestamp = self._sun_data["previous_setting_astro"]
-        else:
-            start_timestamp = self._sun_data["next_setting_astro"]
+        start_timestamp = self._night_start_timestamp()
 
         if (
             self._moon_data["next_rising"] > start_timestamp
@@ -1865,13 +1615,7 @@ class AstronomicalRoutines:
     def _deep_sky_darkness_moon_sets(self) -> bool:
         """Returns true if moon sets during astronomical night."""
 
-        start_timestamp = None
-
-        # Are we already in darkness?
-        if self._astronomical_darkness():
-            start_timestamp = self._sun_data["previous_setting_astro"]
-        else:
-            start_timestamp = self._sun_data["next_setting_astro"]
+        start_timestamp = self._night_start_timestamp()
 
         # Did Moon already set in darkness?
         if self._moon_down() and self._astronomical_darkness():
@@ -1887,13 +1631,7 @@ class AstronomicalRoutines:
     def _deep_sky_darkness_moon_always_up(self) -> bool:
         """Returns true if moon is up during astronomical night."""
 
-        start_timestamp = None
-
-        # Are we already in darkness?
-        if self._astronomical_darkness():
-            start_timestamp = self._sun_data["previous_setting_astro"]
-        else:
-            start_timestamp = self._sun_data["next_setting_astro"]
+        start_timestamp = self._night_start_timestamp()
 
         if (
             self._moon_data["next_rising"] < start_timestamp
@@ -1906,13 +1644,7 @@ class AstronomicalRoutines:
     def _deep_sky_darkness_moon_always_down(self) -> bool:
         """Returns true if moon is down during astronomical night."""
 
-        start_timestamp = None
-
-        # Are we already in darkness?
-        if self._astronomical_darkness():
-            start_timestamp = self._sun_data["previous_setting_astro"]
-        else:
-            start_timestamp = self._sun_data["next_setting_astro"]
+        start_timestamp = self._night_start_timestamp()
 
         if (
             self._moon_data["previous_setting"] < start_timestamp
