@@ -516,36 +516,40 @@ class AtmosphericRoutines:
 
     @typechecked
     async def calculate_seeing_11(
-        self, temperature, humidity, dew_point_temperature, wind_speed, cloud_cover, altitude, air_pressure_at_sea_level
+        self, temperature, humidity, dew_point_temperature, wind_speed, cloud_cover, altitude, air_pressure_at_sea_level,
+        boundary_layer_height=None,
     ) -> None | float:
         """
-        Estimate astronomical seeing (FWHM) in arcseconds from surface inputs.
+        Estimate astronomical seeing (FWHM) in arcseconds.
 
-        A quality score [0.05, 0.98] is built by subtracting four weighted
-        penalties from 1.0 and then scaling by an altitude gain factor:
+        When `boundary_layer_height` (GFS NWP output, metres) is supplied it
+        becomes the dominant input (60 % weight).  A shallow, stable nocturnal
+        boundary layer (< 200 m) indicates excellent seeing; a deep convective
+        layer (> 2000 m) indicates poor seeing.  The PBL penalty uses a logistic
+        on the log-scale, centred at 600 m:
+          pbl_pen = sigmoid((log10(pbl) − log10(600)) / 0.35)
+
+        Wind weight is intentionally reduced to 5 % in this path because PBL
+        height already captures boundary-layer stability; keeping the full
+        surface-wind penalty would double-count the same physics and
+        over-penalise moderate winds (e.g. 6–8 m/s) on otherwise stable nights.
+
+        Without PBL data the function falls back to a surface-only heuristic:
 
           Penalty               Weight  Model
           ──────────────────────────────────────────────────────────────────────
           Wind turbulence         35 %  Gaussian centred at 3 m/s optimal wind
-                                        (σ = 2.5 m/s); dead-calm and strong
-                                        winds both degrade seeing.
+                                        (σ = 2.5 m/s).
           Humidity haze           25 %  Logistic ramp above ~85 % RH.
-          Dewpoint depression     20 %  Logistic ramp above ~8 °C dT; very dry
-                                        air can drive strong nocturnal cooling
-                                        and boundary-layer turbulence.
-          Cloud-layer proxy       10 %  (cloud_cover/100)^1.5, weak influence.
+          Dewpoint depression     20 %  Logistic ramp above ~8 °C dT.
+          Cloud-layer proxy       10 %  (cloud_cover/100)^1.5.
           ──────────────────────────────────────────────────────────────────────
 
-        Altitude benefit (same expression as magnitude_degradation_11):
-          alt_gain = 1 − 0.12·(1 − exp(−h/1800)), capped to ~12 % at summit.
+        In both modes an altitude gain factor is applied:
+          alt_gain = 1 − 0.12·(1 − exp(−h/1800))
 
-        The quality score is then mapped linearly to arcseconds:
-          seeing = worst − (worst − best) · quality,  best=0.7", worst=4.0"
-        and clamped to [0.4, SEEING_MAX].
-
-        Note: free-atmosphere seeing requires upper-air data (e.g.
-        Hufnagel-Valley profile + Fried parameter r₀). This model uses only
-        surface inputs and should be treated as a directional heuristic.
+        Quality score → arcseconds:  seeing = 4.0 − 3.3·quality,
+        clamped to [0.4, SEEING_MAX].
 
         Args:
             temperature: Surface temperature in °C.
@@ -555,6 +559,8 @@ class AtmosphericRoutines:
             cloud_cover: Cloud cover in %.
             altitude: Station altitude in m above sea level.
             air_pressure_at_sea_level: QNH / sea-level pressure in hPa.
+            boundary_layer_height: NWP planetary boundary layer height in m
+                (optional; from GFS).  When provided, dominates the quality score.
 
         Returns:
             Seeing FWHM in arcseconds (0.4 … SEEING_MAX), or None if any
@@ -606,12 +612,25 @@ class AtmosphericRoutines:
         dry_pen = self._sigmoid((dT - 8.0) / 2.5)
 
         # --- combine into a "quality" score (higher = better) ---
-        # Start near 1.0, subtract penalties.
-        quality = 1.0
-        quality -= 0.35 * wind_pen
-        quality -= 0.25 * humid_pen
-        quality -= 0.10 * cloud_pen
-        quality -= 0.20 * dry_pen
+        pbl = None
+        if boundary_layer_height is not None:
+            try:
+                pbl_val = float(boundary_layer_height)
+                if not math.isnan(pbl_val):
+                    pbl = max(10.0, pbl_val)
+            except (TypeError, ValueError):
+                pass
+
+        if pbl is not None:
+            # PBL-aware path: boundary layer height dominates (60 %).
+            # Wind weight is reduced to 5 % because PBL height already encodes
+            # boundary-layer stability — the surface wind penalty would otherwise
+            # double-count the same physics and over-penalise moderate winds.
+            pbl_pen = self._sigmoid((math.log10(pbl) - math.log10(600.0)) / 0.35)
+            quality = 1.0 - 0.60 * pbl_pen - 0.05 * wind_pen - 0.25 * humid_pen - 0.10 * cloud_pen
+        else:
+            # Surface-only fallback
+            quality = 1.0 - 0.35 * wind_pen - 0.25 * humid_pen - 0.10 * cloud_pen - 0.20 * dry_pen
 
         # Apply altitude improvement
         quality *= alt_gain

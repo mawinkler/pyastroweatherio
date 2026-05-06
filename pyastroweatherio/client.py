@@ -199,6 +199,7 @@ class AstroWeather:
 
     async def _calculate_seeing(self, df):
         if self._experimental_features:
+            has_pbl = "gfs_boundary_layer_height" in df.columns
             tasks = [
                 self._atmosphere.calculate_seeing_11(
                     temperature=row["air_temperature"],
@@ -208,6 +209,7 @@ class AstroWeather:
                     cloud_cover=row["cloud_area_fraction"],
                     altitude=self._location_data.elevation,
                     air_pressure_at_sea_level=row["air_pressure_at_sea_level"],
+                    boundary_layer_height=row["gfs_boundary_layer_height"] if has_pbl else None,
                 )
                 for _, row in df.iterrows()
             ]
@@ -258,6 +260,32 @@ class AstroWeather:
         return [r if not isinstance(r, BaseException) else (_LOGGER.warning("Transparency calculation failed: %s", r) or float("nan")) for r in results]
 
     async def _calculate_lifted_index(self, df):
+        if self._experimental_features and "gfs_lifted_index" in df.columns:
+            # Use NWP model output from GFS; fall back to Bolton approximation for any missing values
+            results = []
+            fallback_idx = [i for i, (_, row) in enumerate(df.iterrows()) if pd.isna(row["gfs_lifted_index"])]
+            if fallback_idx:
+                fallback_rows = df.iloc[fallback_idx]
+                fallback_tasks = [
+                    self._atmosphere.calculate_lifted_index_11(
+                        temperature=row["air_temperature"],
+                        dew_point_temperature=row["dew_point_temperature"],
+                        altitude=self._location_data.elevation,
+                        air_pressure_at_sea_level=row["air_pressure_at_sea_level"],
+                    )
+                    for _, row in fallback_rows.iterrows()
+                ]
+                fallback_computed = await asyncio.gather(*fallback_tasks, return_exceptions=True)
+                fallback_map = dict(zip(fallback_idx, fallback_computed))
+            else:
+                fallback_map = {}
+            for i, (_, row) in enumerate(df.iterrows()):
+                if not pd.isna(row["gfs_lifted_index"]):
+                    results.append(float(row["gfs_lifted_index"]))
+                else:
+                    r = fallback_map.get(i)
+                    results.append(r if not isinstance(r, BaseException) else float("nan"))
+            return results
         if self._experimental_features:
             tasks = [
                 self._atmosphere.calculate_lifted_index_11(
@@ -296,13 +324,24 @@ class AstroWeather:
                 if weather_df_metno is None:
                     _LOGGER.warning("Could not retrieve Met.no data. Using existing data.")
                     return None
-                await self._retrieve_data_uptonight()
+                # Fetch uptonight (local I/O), Open-Meteo primary, and GFS supplementary in parallel
+                uptonight_result, openmeteo_result, gfs_result = await asyncio.gather(
+                    self._retrieve_data_uptonight(),
+                    self._retrieve_data_openmeteo(),
+                    self._retrieve_data_gfs(),
+                    return_exceptions=True,
+                )
 
-                try:
-                    weather_df_openmeteo = await self._retrieve_data_openmeteo()
-                except OpenMeteoConnectionError:
-                    _LOGGER.warning("Could not retrieve OpenMeteo data. Using existing data.")
+                if isinstance(openmeteo_result, BaseException):
+                    _LOGGER.warning("Could not retrieve Open-Meteo data. Using existing data.")
                     return None
+                weather_df_openmeteo = openmeteo_result
+
+                if isinstance(gfs_result, BaseException):
+                    _LOGGER.warning("Could not retrieve GFS supplementary data: %s", gfs_result)
+                    weather_df_gfs = None
+                else:
+                    weather_df_gfs = gfs_result
 
                 # Merge the dataframes of metno and openmeteo
                 self._weather_df = weather_df_metno.merge(weather_df_openmeteo, on="time", how="left")
@@ -333,6 +372,13 @@ class AstroWeather:
                     ],
                     axis=1,
                 )
+
+                # Merge GFS supplementary data (lifted_index, cape, boundary_layer_height, visibility)
+                if weather_df_gfs is not None:
+                    self._weather_df = self._weather_df.merge(weather_df_gfs, on="time", how="left")
+                else:
+                    for col in ("gfs_lifted_index", "gfs_cape", "gfs_boundary_layer_height", "gfs_visibility"):
+                        self._weather_df[col] = float("nan")
 
                 # Clean up rows with missing values
                 self._weather_df = self._weather_df.dropna(subset=["air_temperature"])
@@ -423,9 +469,16 @@ class AstroWeather:
         lifted_index = float(row["lifted_index"])
 
         # Calculate Fog Density
-        fog2m = await self._atmosphere.calculate_fog_density(temp2m, rh2m, dewpoint2m, wind_speed) * 100
         if self._experimental_features:
-            fog2m = await self._atmosphere.calculate_fog_density_11(temp2m, rh2m, dewpoint2m, wind_speed) * 100
+            gfs_vis = row.get("gfs_visibility", float("nan"))
+            gfs_vis = float(gfs_vis) if gfs_vis is not None else float("nan")
+            if not math.isnan(gfs_vis):
+                # Map GFS visibility (m) to fog density [0, 1]: 0 m = dense fog, ≥10 km = clear
+                fog2m = max(0.0, min(100.0, (1.0 - gfs_vis / 10000.0) * 100.0))
+            else:
+                fog2m = await self._atmosphere.calculate_fog_density_11(temp2m, rh2m, dewpoint2m, wind_speed) * 100
+        else:
+            fog2m = await self._atmosphere.calculate_fog_density(temp2m, rh2m, dewpoint2m, wind_speed) * 100
 
         condition = ConditionDataModel(
             {
@@ -1262,3 +1315,90 @@ class AstroWeather:
         weather_df_openmeteo["time"] = weather_df_openmeteo["time"].dt.tz_localize("UTC")
 
         return weather_df_openmeteo
+
+    async def _retrieve_data_gfs(self) -> pd.DataFrame:
+        """Fetch atmospheric stability variables from GFS via Open-Meteo.
+
+        Always uses gfs_seamless regardless of the user's primary forecast model,
+        because lifted_index, cape, boundary_layer_height, and visibility are only
+        available for GFS in the Open-Meteo API.
+        """
+        _LOGGER.debug("Updating supplementary data from GFS")
+
+        use_running_session = self._session and not self._session.closed
+        if use_running_session:
+            session = self._session
+        else:
+            session = ClientSession(timeout=ClientTimeout(total=DEFAULT_TIMEOUT))
+
+        params = {
+            "latitude": self._location_data.latitude,
+            "longitude": self._location_data.longitude,
+            "hourly": [
+                "lifted_index",
+                "cape",
+                "boundary_layer_height",
+                "visibility",
+            ],
+            "timezone": "UTC",
+            "models": "gfs_seamless",
+        }
+
+        try:
+            _LOGGER.debug(f"Query url (GFS): {BASE_URL_OPENMETEO}")
+            response = await session.get(BASE_URL_OPENMETEO, params=params)
+        except asyncio.TimeoutError as exception:
+            _LOGGER.error(f"Timeout occurred while connecting to the Open-Meteo GFS API: {exception}")
+            raise OpenMeteoConnectionError(exception) from exception
+        except (
+            ClientError,
+            ClientResponseError,
+            socket.gaierror,
+        ) as exception:
+            _LOGGER.error(f"Error occurred while communicating with Open-Meteo GFS API: {exception}")
+            raise OpenMeteoConnectionError(exception) from exception
+        finally:
+            if not use_running_session:
+                await session.close()
+
+        content_type = response.headers.get("Content-Type", "")
+
+        if (response.status // 100) in [4, 5]:
+            if "application/json" in content_type:
+                data = await response.json()
+                response.close()
+                if data.get("error") is True and (reason := data.get("reason")):
+                    raise OpenMeteoError(reason)
+                raise OpenMeteoError(response.status, data)
+            contents = await response.read()
+            response.close()
+            raise OpenMeteoError(response.status, {"message": contents.decode("utf8")})
+
+        text = await response.text()
+        if "application/json" not in content_type:
+            raise OpenMeteoError(
+                "Unexpected response from the Open-Meteo GFS API",
+                {"Content-Type": content_type, "response": text},
+            )
+
+        data = await response.json()
+        if self._test_mode:
+            json_string = json.dumps(data)
+            with open("debug/openmeteo_gfs.json", "w") as outfile:
+                outfile.write(json_string)
+
+        response.close()
+        hourly = data.get("hourly")
+
+        hourly_data = {
+            "time": np.array(hourly.get("time")),
+            "gfs_lifted_index": np.array(hourly.get("lifted_index")),
+            "gfs_cape": np.array(hourly.get("cape")),
+            "gfs_boundary_layer_height": np.array(hourly.get("boundary_layer_height")),
+            "gfs_visibility": np.array(hourly.get("visibility")),
+        }
+
+        weather_df_gfs = pd.DataFrame(data=hourly_data)
+        weather_df_gfs["time"] = pd.to_datetime(weather_df_gfs["time"]).dt.tz_localize("UTC")
+
+        return weather_df_gfs

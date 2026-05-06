@@ -56,5 +56,5 @@ twine upload dist/*
 ## Test
 
 ```sh
-python -m unittest -v tests/client.py
+python -m unittest -v tests/test_client.py
 ```
