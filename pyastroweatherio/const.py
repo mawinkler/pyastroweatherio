@@ -4,6 +4,7 @@
 # Requests
 # #####################################################
 BASE_URL_OPENMETEO = "https://api.open-meteo.com/v1/forecast"
+BASE_URL_OPENMETEO_AQ = "https://air-quality-api.open-meteo.com/v1/air-quality"
 BASE_URL_MET = "https://api.met.no/weatherapi/locationforecast/2.0/complete"
 HEADERS = {"User-Agent": "AstroWeather github.com/mawinkler/astroweather"}
 
@@ -45,18 +46,18 @@ ASTRONOMICAL_DUSK_DAWN = -18
 # #####################################################
 # Seeing
 # #####################################################
-SEEING = [0.25, 0.625, 0.875, 1.125, 1.375, 1.75, 2.25, 2.5]
+SEEING = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
 # SEEING_PLAIN = [
 #     'Below 0.5"',
-#     '0.5 to 0.75"',
-#     '0.75 to 1"',
-#     '1 to 1.25"',
-#     '1.25 to 1.5"',
-#     '1.5 to 2"',
-#     '2 to 2.5"',
-#     'Over 2.5"',
+#     '0.5 to 1.0"',
+#     '1.0 to 1.5"',
+#     '1.5 to 2.0"',
+#     '2.0 to 2.5"',
+#     '2.5 to 3.0"',
+#     '3.0 to 3.5"',
+#     'Over 3.5"',
 # ]
-SEEING_MAX = 2.5
+SEEING_MAX = 4.0
 
 # #####################################################
 # Transparency
@@ -159,14 +160,24 @@ WIND10M_PLAIN = [
     "Moderate gale",
 ]
 WIND10M_MAX = 16.5
+PRECIP_MAX = 1.0                  # mm/h at which precipitation fully degrades condition
+PRECIP_VETO_THRESHOLD = 0.1       # mm/h: any measurable precipitation immediately vetoes observing
+AOD_TO_MAG_FACTOR = 1.086         # Bouguer-Lambert: mag extinction ≈ AOD × 1.086 at zenith
+
+# #####################################################
+# Condition scoring penalties
+# #####################################################
+MOON_PENALTY_WEIGHT = 40          # max % points deducted for full moon at zenith (illuminance=1.0)
+DEW_SPREAD_THRESHOLD = 3.0        # °C: dew/condensation risk begins below this temp–dewpoint spread
+DEW_PENALTY_MAX = 15              # max % points deducted at zero spread (dew point = air temperature)
 
 # #####################################################
 # Condition
 # #####################################################
 DEFAULT_CONDITION_CLOUDCOVER_WEIGHT = 3
-DEFAULT_CONDITION_CLOUDCOVER_HIGH_WEAKENING = 1
-DEFAULT_CONDITION_CLOUDCOVER_MEDIUM_WEAKENING = 1
-DEFAULT_CONDITION_CLOUDCOVER_LOW_WEAKENING = 1
+DEFAULT_CONDITION_CLOUDCOVER_HIGH_WEAKENING = 0.40   # cirrus is largely transparent
+DEFAULT_CONDITION_CLOUDCOVER_MEDIUM_WEAKENING = 0.70  # altocumulus is semi-opaque
+DEFAULT_CONDITION_CLOUDCOVER_LOW_WEAKENING = 1.00     # stratus/fog blocks fully
 DEFAULT_CONDITION_FOG_WEIGHT = 3
 DEFAULT_CONDITION_SEEING_WEIGHT = 2
 DEFAULT_CONDITION_TRANSPARENCY_WEIGHT = 1
@@ -174,8 +185,7 @@ DEFAULT_CONDITION_CALM_WEIGHT = 2
 CONDITION_PLAIN = ["excellent", "good", "fair", "poor", "bad"]
 CONDITION = ["█", "▆", "▄", "▂", "▁"]
 DEEP_SKY_THRESHOLD = 75
-DARK_NIGHT_MAX_MOON_PHASE = 0.05
-DARK_NIGHT_MAX_MOON_ALT = "5:0:0"
+DARK_NIGHT_MAX_ILLUMINANCE = 0.05  # max (phase_fraction × sin(altitude)) for a dark night
 
 # #####################################################
 # Astronomical constants
@@ -183,7 +193,7 @@ DARK_NIGHT_MAX_MOON_ALT = "5:0:0"
 AU_TO_KM = 149_597_870.7          # km per AU (IAU 2012)
 MOON_MEAN_DISTANCE_KM = 384_400   # mean Moon–Earth distance (km)
 MOON_MEAN_ANGULAR_SIZE_DEG = 0.5181  # mean lunar angular diameter (°)
-LUNAR_MONTH_DAYS = 29.33          # mean synodic month (days)
+LUNAR_MONTH_DAYS = 29.53059       # mean synodic month (days)
 KELVIN_OFFSET = 273.15            # °C to K conversion
 
 # #####################################################

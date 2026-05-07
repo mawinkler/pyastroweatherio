@@ -1,7 +1,6 @@
 """Unit tests for atmospheric calculations in AtmosphericRoutines."""
 
 import asyncio
-import math
 import unittest
 
 from pyastroweatherio.helper_functions import AtmosphericRoutines
@@ -98,27 +97,6 @@ class TestAtmosphericCalculations(unittest.TestCase):
         self.assertIsNone(result)
 
     # ---------------------------------------------------------------
-    # calculate_lifted_index_11
-    # ---------------------------------------------------------------
-    def test_lifted_index_11_in_range(self):
-        c = self.clear
-        result = asyncio.run(self.atm.calculate_lifted_index_11(
-            temperature=c["temperature"], altitude=c["altitude"],
-            dew_point_temperature=c["dew_point_temperature"],
-            air_pressure_at_sea_level=c["air_pressure_at_sea_level"],
-        ))
-        self.assertIsNotNone(result)
-        self.assertGreaterEqual(result, -7.0)
-        self.assertLessEqual(result, 7.0)
-
-    def test_lifted_index_11_returns_none_on_missing(self):
-        result = asyncio.run(self.atm.calculate_lifted_index_11(
-            temperature=None, altitude=500.0,
-            dew_point_temperature=5.0, air_pressure_at_sea_level=1013.25,
-        ))
-        self.assertIsNone(result)
-
-    # ---------------------------------------------------------------
     # calculate_seeing
     # ---------------------------------------------------------------
     def test_seeing_clear_in_range(self):
@@ -131,40 +109,17 @@ class TestAtmosphericCalculations(unittest.TestCase):
         ))
         self.assertIsNotNone(result)
         self.assertGreater(result, 0.0)
-        self.assertLessEqual(result, 2.5)
+        self.assertLessEqual(result, 4.0)
 
-    def test_seeing_returns_none_on_missing(self):
-        result = asyncio.run(self.atm.calculate_seeing(
-            temperature=None, humidity=50.0, dew_point_temperature=5.0,
-            wind_speed=2.0, cloud_cover=0.0, altitude=500.0,
-            air_pressure_at_sea_level=1013.25,
-        ))
-        self.assertIsNone(result)
-
-    # ---------------------------------------------------------------
-    # calculate_seeing_11
-    # ---------------------------------------------------------------
-    def test_seeing_11_clear_in_range(self):
-        c = self.clear
-        result = asyncio.run(self.atm.calculate_seeing_11(
-            temperature=c["temperature"], humidity=c["humidity"],
-            dew_point_temperature=c["dew_point_temperature"],
-            wind_speed=c["wind_speed"], cloud_cover=c["cloud_cover"],
-            altitude=c["altitude"], air_pressure_at_sea_level=c["air_pressure_at_sea_level"],
-        ))
-        self.assertIsNotNone(result)
-        self.assertGreater(result, 0.0)
-        self.assertLessEqual(result, 2.5)
-
-    def test_seeing_11_worse_overcast(self):
+    def test_seeing_worse_overcast(self):
         c, o = self.clear, self.overcast
-        r_clear = asyncio.run(self.atm.calculate_seeing_11(
+        r_clear = asyncio.run(self.atm.calculate_seeing(
             temperature=c["temperature"], humidity=c["humidity"],
             dew_point_temperature=c["dew_point_temperature"],
             wind_speed=c["wind_speed"], cloud_cover=c["cloud_cover"],
             altitude=c["altitude"], air_pressure_at_sea_level=c["air_pressure_at_sea_level"],
         ))
-        r_overcast = asyncio.run(self.atm.calculate_seeing_11(
+        r_overcast = asyncio.run(self.atm.calculate_seeing(
             temperature=o["temperature"], humidity=o["humidity"],
             dew_point_temperature=o["dew_point_temperature"],
             wind_speed=o["wind_speed"], cloud_cover=o["cloud_cover"],
@@ -173,8 +128,8 @@ class TestAtmosphericCalculations(unittest.TestCase):
         # Larger arcsec value = worse seeing
         self.assertGreater(r_overcast, r_clear)
 
-    def test_seeing_11_returns_none_on_missing(self):
-        result = asyncio.run(self.atm.calculate_seeing_11(
+    def test_seeing_returns_none_on_missing(self):
+        result = asyncio.run(self.atm.calculate_seeing(
             temperature=None, humidity=50.0, dew_point_temperature=5.0,
             wind_speed=2.0, cloud_cover=0.0, altitude=500.0,
             air_pressure_at_sea_level=1013.25,
@@ -194,22 +149,9 @@ class TestAtmosphericCalculations(unittest.TestCase):
         result = asyncio.run(self.atm.calculate_fog_density(10.0, 99.0, 9.8, 0.5))
         self.assertGreater(result, 0.3)
 
-    # ---------------------------------------------------------------
-    # calculate_fog_density_11
-    # ---------------------------------------------------------------
-    def test_fog_density_11_clear_is_low(self):
-        result = asyncio.run(self.atm.calculate_fog_density_11(15.0, 50.0, 4.6, 2.0))
-        self.assertGreaterEqual(result, 0.0)
-        self.assertLessEqual(result, 1.0)
-        self.assertLess(result, 0.3)
-
-    def test_fog_density_11_saturated_is_high(self):
-        result = asyncio.run(self.atm.calculate_fog_density_11(10.0, 99.0, 9.8, 0.5))
-        self.assertGreater(result, 0.3)
-
-    def test_fog_density_11_wind_disperses_fog(self):
-        result_calm = asyncio.run(self.atm.calculate_fog_density_11(10.0, 99.0, 9.8, 0.0))
-        result_windy = asyncio.run(self.atm.calculate_fog_density_11(10.0, 99.0, 9.8, 15.0))
+    def test_fog_density_wind_disperses_fog(self):
+        result_calm = asyncio.run(self.atm.calculate_fog_density(10.0, 99.0, 9.8, 0.0))
+        result_windy = asyncio.run(self.atm.calculate_fog_density(10.0, 99.0, 9.8, 15.0))
         self.assertGreater(result_calm, result_windy)
 
     # ---------------------------------------------------------------
@@ -227,51 +169,15 @@ class TestAtmosphericCalculations(unittest.TestCase):
         self.assertGreaterEqual(result, 0.0)
         self.assertLessEqual(result, 1.0)
 
-    def test_magnitude_degradation_overcast_is_high(self):
-        o = self.overcast
-        result = asyncio.run(self.atm.magnitude_degradation(
-            temperature=o["temperature"], humidity=o["humidity"],
-            cloud_cover=o["cloud_cover"], wind_speed=o["wind_speed"],
-            altitude=o["altitude"], dew_point_temperature=o["dew_point_temperature"],
-            air_pressure_at_sea_level=o["air_pressure_at_sea_level"],
-        ))
-        self.assertIsNotNone(result)
-        self.assertGreaterEqual(result, 0.5)
-
-    def test_magnitude_degradation_returns_none_on_missing(self):
-        c = self.clear
-        result = asyncio.run(self.atm.magnitude_degradation(
-            temperature=None, humidity=c["humidity"],
-            cloud_cover=c["cloud_cover"], wind_speed=c["wind_speed"],
-            altitude=c["altitude"], dew_point_temperature=c["dew_point_temperature"],
-            air_pressure_at_sea_level=c["air_pressure_at_sea_level"],
-        ))
-        self.assertIsNone(result)
-
-    # ---------------------------------------------------------------
-    # magnitude_degradation_11
-    # ---------------------------------------------------------------
-    def test_magnitude_degradation_11_clear_in_range(self):
-        c = self.clear
-        result = asyncio.run(self.atm.magnitude_degradation_11(
-            temperature=c["temperature"], humidity=c["humidity"],
-            cloud_cover=c["cloud_cover"], wind_speed=c["wind_speed"],
-            altitude=c["altitude"], dew_point_temperature=c["dew_point_temperature"],
-            air_pressure_at_sea_level=c["air_pressure_at_sea_level"],
-        ))
-        self.assertIsNotNone(result)
-        self.assertGreaterEqual(result, 0.0)
-        self.assertLessEqual(result, 1.0)
-
-    def test_magnitude_degradation_11_worse_overcast(self):
+    def test_magnitude_degradation_worse_overcast(self):
         c, o = self.clear, self.overcast
-        r_clear = asyncio.run(self.atm.magnitude_degradation_11(
+        r_clear = asyncio.run(self.atm.magnitude_degradation(
             temperature=c["temperature"], humidity=c["humidity"],
             cloud_cover=c["cloud_cover"], wind_speed=c["wind_speed"],
             altitude=c["altitude"], dew_point_temperature=c["dew_point_temperature"],
             air_pressure_at_sea_level=c["air_pressure_at_sea_level"],
         ))
-        r_overcast = asyncio.run(self.atm.magnitude_degradation_11(
+        r_overcast = asyncio.run(self.atm.magnitude_degradation(
             temperature=o["temperature"], humidity=o["humidity"],
             cloud_cover=o["cloud_cover"], wind_speed=o["wind_speed"],
             altitude=o["altitude"], dew_point_temperature=o["dew_point_temperature"],
@@ -279,9 +185,9 @@ class TestAtmosphericCalculations(unittest.TestCase):
         ))
         self.assertGreater(r_overcast, r_clear)
 
-    def test_magnitude_degradation_11_returns_none_on_missing(self):
+    def test_magnitude_degradation_returns_none_on_missing(self):
         c = self.clear
-        result = asyncio.run(self.atm.magnitude_degradation_11(
+        result = asyncio.run(self.atm.magnitude_degradation(
             temperature=None, humidity=c["humidity"],
             cloud_cover=c["cloud_cover"], wind_speed=c["wind_speed"],
             altitude=c["altitude"], dew_point_temperature=c["dew_point_temperature"],

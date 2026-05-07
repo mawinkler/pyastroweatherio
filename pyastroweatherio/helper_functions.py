@@ -15,8 +15,7 @@ from pyastroweatherio.const import (
     ASTRONOMICAL_DUSK_DAWN,
     AU_TO_KM,
     CIVIL_DUSK_DAWN,
-    DARK_NIGHT_MAX_MOON_ALT,
-    DARK_NIGHT_MAX_MOON_PHASE,
+    DARK_NIGHT_MAX_ILLUMINANCE,
     KELVIN_OFFSET,
     LUNAR_MONTH_DAYS,
     MAG_DEGRATION_MAX,
@@ -118,56 +117,6 @@ class AtmosphericRoutines:
     async def calculate_lifted_index(
         self, temperature, altitude, dew_point_temperature, air_pressure_at_sea_level
     ) -> None | float:
-        """Calculate atmospheric lifted index."""
-        # https://en.wikipedia.org/wiki/Lifted_index
-
-        values = {
-            "temperature": temperature,
-            "altitude": altitude,
-            "dew_point_temperature": dew_point_temperature,
-            "air_pressure_at_sea_level": air_pressure_at_sea_level,
-        }
-
-        missing = [name for name, val in values.items() if val is None or (isinstance(val, float) and math.isnan(val))]
-
-        if missing:
-            _LOGGER.warning(f"calculate_lifted_index: The following variables are None or NaN: {', '.join(missing)}")
-            return None
-
-        env_temp_500mb = -20.0  # °C, approximate environmental temperature at 500 hPa
-
-        # Calculate saturation vapor pressure at surface temperature
-        # Checked with https://www.weather.gov/epz/wxcalc_vaporpressure
-        # es = self._calculate_vapor_pressure(temperature)
-
-        # Calculate actual Vapor Pressure at surface
-        # Checked with https://www.weather.gov/epz/wxcalc_vaporpressure
-        e = self._calculate_vapor_pressure(dew_point_temperature)
-
-        # Calculate Mixing Ratio at Surface in grams per kilogram
-        # Checked with https://www.weather.gov/epz/wxcalc_mixingratio
-        w = self._calculate_mixing_ratio(e, air_pressure_at_sea_level)
-
-        # Calculate Lifting Condensation Level
-        lcl = self._calculate_lifting_condensation_level(w, air_pressure_at_sea_level)
-
-        # Calculate temperature of lifted parcel at 500 mb level
-        lifted_temp_500mb = (
-            env_temp_500mb + (temperature - lcl) * 0.5
-        )  # Assumption: 500 mb is halfway through the troposphere
-
-        # Calculate Lifted Index
-        lifted_index = (env_temp_500mb - lifted_temp_500mb) * 2 + 7
-
-        # Ensure lifted index is within the valid range [-7, 7]
-        lifted_index = max(-7, min(7, lifted_index))
-
-        return lifted_index
-
-    @typechecked
-    async def calculate_lifted_index_11(
-        self, temperature, altitude, dew_point_temperature, air_pressure_at_sea_level
-    ) -> None | float:
         """
         Returns a rough Lifted Index (LI) proxy in °C, clamped to [-7, +7].
 
@@ -251,92 +200,10 @@ class AtmosphericRoutines:
         return LI
 
     # #####################################################
-    # Calculate magniture degradation based on transparency
-    #
-    # Version _11:
-    # Extinction coefficient k (mag/airmass)
-    # Use pressure-scaled Rayleigh and an aerosol term
+    # Calculate magnitude degradation based on transparency
     # #####################################################
     @typechecked
     async def magnitude_degradation(
-        self,
-        temperature,
-        humidity,
-        cloud_cover,
-        wind_speed,
-        altitude,
-        dew_point_temperature,
-        air_pressure_at_sea_level,
-    ) -> None | float:
-        """
-        Calculates the magnitude_degradation of the atmosphere.
-        This algorithm first calculates the lifted index and the seeing and uses them to calculate
-        the transparency from which the magnitude degradation is derived from.
-
-        Args:
-        - temperature: Surface temperature in Celsius.
-        - humidity: Humidity in Percent.
-        - dew_point_temperature: Dew point temperature in Celsius.
-        - wind_speed: Wind speed in meters per second.
-        - altitude: Altitude in meters.
-        - air_pressure_at_sea_level: Air pressure at sea level.
-        - cloud_cover: Cloud cover in Percent.
-        - lifted_index:
-        - seeing:
-
-        Returns:
-        - magnitude_degradation: In magnitude
-        """
-
-        values = {
-            "temperature": temperature,
-            "humidity": humidity,
-            "cloud_cover": cloud_cover,
-            "wind_speed": wind_speed,
-            "altitude": altitude,
-            "dew_point_temperature": dew_point_temperature,
-            "air_pressure_at_sea_level": air_pressure_at_sea_level,
-        }
-
-        missing = [name for name, val in values.items() if val is None or (isinstance(val, float) and math.isnan(val))]
-
-        if missing:
-            _LOGGER.warning(f"magnitude_degradation: The following variables are None or NaN: {', '.join(missing)}")
-            return None
-
-        lifted_index = await self.calculate_lifted_index(
-            temperature, altitude, dew_point_temperature, air_pressure_at_sea_level
-        )
-        seeing = await self.calculate_seeing(
-            temperature,
-            humidity,
-            dew_point_temperature,
-            wind_speed,
-            cloud_cover,
-            altitude,
-            air_pressure_at_sea_level,
-        )
-
-        # Calculate transparency
-        transparency = self._calculate_transparency(
-            humidity,
-            temperature,
-            cloud_cover,
-            wind_speed,
-            altitude,
-            dew_point_temperature,
-            air_pressure_at_sea_level,
-            lifted_index,
-            seeing,
-        )
-
-        # Convert transparency to magnitude degradation
-        magnitude_degradation = self._transparency_to_magnitude_degradation(transparency)
-
-        return magnitude_degradation
-
-    @typechecked
-    async def magnitude_degradation_11(
         self, temperature, humidity, cloud_cover, wind_speed, altitude, dew_point_temperature, air_pressure_at_sea_level
     ) -> None | float:
         """
@@ -434,88 +301,9 @@ class AtmosphericRoutines:
 
     # #####################################################
     # Calculate atmospheric seeing
-    #
-    # Version _11:
-    # A more physical way is to estimate optical turbulence C2,n(z)
-    # with the Hufnagel–Valley 5/7 profile, integrate to get r0,
-    # then ϵ≈0.98λ/r.
     # #####################################################
     @typechecked
     async def calculate_seeing(
-        self,
-        temperature,
-        humidity,
-        dew_point_temperature,
-        wind_speed,
-        cloud_cover,
-        altitude,
-        air_pressure_at_sea_level,
-    ) -> None | float:
-        """
-        Calculated seeing of the atmosphere. This algorithm first calculates the seeing factor based on temperature,
-        humidity, wind speed and altitude above sea level. The seeing factor is then used to calculate the astronomical
-        seeing in arcseconds. The empirical relationship used here states that the seeing in arcseconds is approximately
-        equal to the reciprocal of the seeing factor multiplied by a conversion factor of 0.98.
-
-        Used by: magnitude degradation
-
-        Args:
-        - temperature: Surface temperature in Celsius.
-        - humidity: Humidity in Percent.
-        - dew_point_temperature: Dew point temperature in Celsius.
-        - wind_speed: Wind speed in meters per second.
-        - cloud_cover: Cloud cover in Percent.
-        - altitude: Altitude in meters.
-        - air_pressure_at_sea_level: Air pressure at sea level.
-
-        Returns:
-        - seeing: In arcsecs
-
-        Flow:
-        - _calculate_water_vapor_pressure
-        - adjusted_pressure
-        - relative_pressure
-        - seeing_factor
-        - seeing
-        """
-
-        values = {
-            "temperature": temperature,
-            "humidity": humidity,
-            "dew_point_temperature": dew_point_temperature,
-            "wind_speed": wind_speed,
-            "cloud_cover": cloud_cover,
-            "altitude": altitude,
-            "air_pressure_at_sea_level": air_pressure_at_sea_level,
-        }
-
-        missing = [name for name, val in values.items() if val is None or (isinstance(val, float) and math.isnan(val))]
-
-        if missing:
-            _LOGGER.warning(f"calculate_seeing: The following variables are None or NaN: {', '.join(missing)}")
-            return None
-
-        # Constants
-        C = 6.5  # 1.7
-
-        water_vapor_pressure = self._calculate_water_vapor_pressure(dew_point_temperature, humidity)
-
-        # adjusted_pressure = air_pressure_at_sea_level * math.exp(-0.00012 * altitude)
-        adjusted_pressure = self._calculate_adjusted_pressure(air_pressure_at_sea_level, altitude)
-        relative_pressure = adjusted_pressure / air_pressure_at_sea_level
-
-        if wind_speed == 0:
-            wind_speed = 0.01
-        seeing_factor = C * (water_vapor_pressure / 10) ** 0.25 * (wind_speed / 10) ** 0.75 * relative_pressure
-        seeing = 0.98 / seeing_factor
-
-        if seeing > SEEING_MAX:
-            seeing = SEEING_MAX  # max out seeing
-
-        return seeing
-
-    @typechecked
-    async def calculate_seeing_11(
         self, temperature, humidity, dew_point_temperature, wind_speed, cloud_cover, altitude, air_pressure_at_sea_level,
         boundary_layer_height=None,
     ) -> None | float:
@@ -651,66 +439,9 @@ class AtmosphericRoutines:
 
     # #####################################################
     # Calculate fog density at 2m
-    #
-    # Version _11:
-    # Tie to physics and aviation practice, estimate meteorological visibility
-    # V and then map it to a “fog density” in [0,1].
-    # anchor the metric to visibility vs extinction, a standard framework (Koschmieder).
-    # It’s still simple but behaves correctly near saturation and with wind
-    # Uses Koschmieder law: V = 3.912/betaext where betaext is the extinction coefficient
     # #####################################################
     @typechecked
     async def calculate_fog_density(self, temp2m, rh2m, dewpoint2m, wind_speed) -> float:
-        """
-        To calculate fog density, one can use a method based on the Liquid Water Content (LWC)
-        in fog, which depends on the difference between air temperature and dew point, relative
-        humidity, and wind speed. While there is no universally agreed-upon formula for fog
-        density, the implemented approximate method can provide a rough measure.
-        Note that actual fog density can be influenced by more complex microclimatic factors,
-        so this approach serves as a simplified approximation.
-
-        Args:
-        - temp2m: Surface temperature in Celsius.
-        - rh2m: Humidity in Percent.
-        - dewpoint2m: Dew point temperature in Celsius.
-        - wind_speed: Wind speed in meters per second.
-
-        Returns:
-        - adjusted_fog_density
-        """
-
-        # Constants
-        # A normalizing constant chosen empirically to scale the fog density to a reasonable
-        # range. Adjust this based on the desired scale of output (e.g., 0.1 for very light
-        # fog, 1 for dense fog).
-        k = 0.50
-
-        # Controls how sensitive the density calculation is to the temperature-dew point
-        # difference. Smaller values of a make fog density increase faster as the temperature
-        # approaches the dew point.
-        a = 1.5
-
-        # Dampening constant for wind speed. This value ensures a gradual decay in fog density
-        # as wind speed increases, which reflects that moderate wind disperses fog.
-        b = 10
-
-        # Calculate initial fog density based on temperature and humidity
-        humidity_factor = rh2m / 100  # Relative humidity as a fraction
-        temp_dew_diff = temp2m - dewpoint2m
-
-        # Calculate fog density
-        fog_density = k * humidity_factor * math.exp(-temp_dew_diff / a)
-
-        # Adjust for wind speed
-        adjusted_fog_density = fog_density * math.exp(-wind_speed / b)
-
-        # Ensure fog density is within the valid range [0, 1]
-        adjusted_fog_density = max(0, min(1, adjusted_fog_density))
-
-        return float(adjusted_fog_density)
-
-    @typechecked
-    async def calculate_fog_density_11(self, temp2m, rh2m, dewpoint2m, wind_speed) -> float:
         """
         Estimate fog likelihood as a dimensionless density in [0, 1].
 
@@ -1454,49 +1185,69 @@ class AstronomicalRoutines:
         except (ephem.AlwaysUpError, ephem.NeverUpError):
             return None, None
 
+    @staticmethod
+    def _moon_illuminance(alt_rad: float, phase_pct: float) -> float:
+        """Return lunar illuminance proxy: phase_fraction × max(0, sin(altitude)).
+
+        Combines phase and altitude into a single value on [0, 1]:
+        - 0   → moon invisible (below horizon or new moon)
+        - 1   → full moon directly overhead
+        A value below DARK_NIGHT_MAX_ILLUMINANCE indicates negligible sky glow.
+        """
+        return (phase_pct / 100.0) * max(0.0, math.sin(alt_rad))
+
+    def moon_illuminance_at(self, dt: datetime) -> float:
+        """Return the lunar illuminance proxy at an arbitrary UTC datetime.
+
+        Intended for per-hour forecast calculations so that the moon's actual
+        position at each forecast timestamp drives the score, not its position
+        at the time the coordinator last ran.
+        """
+        if self._moon_observer is None:
+            self._moon_observer = self._get_moon_observer()
+        if self._moon is None:
+            self._moon = ephem.Moon()
+        self._moon_observer.date = dt.replace(tzinfo=None)
+        self._moon.compute(self._moon_observer)
+        return self._moon_illuminance(float(self._moon.alt), self._moon.phase)
+
+    def moon_altitude_at(self, dt: datetime) -> float:
+        """Return moon altitude in degrees at an arbitrary UTC datetime."""
+        if self._moon_observer is None:
+            self._moon_observer = self._get_moon_observer()
+        if self._moon is None:
+            self._moon = ephem.Moon()
+        self._moon_observer.date = dt.replace(tzinfo=None)
+        self._moon.compute(self._moon_observer)
+        return deg(float(self._moon.alt))
+
     # Function to check Moon conditions for the whole night
     def _is_moon_dark_whole_night(self, night_start, night_end) -> bool:
-        """
-        Test if Moon phase is less than 5% and/or maximum Moon altitide during
-        astronomical darkness is less than 5°.
+        """Return True if the night qualifies as a dark night.
 
-        Args:
-        - night_start: Sun set -18°
-        - night_end: Sun rise -18°
-
-        Returns:
-        - dark_night: True, if Moon is within constraints.
+        Uses an integrated lunar illuminance proxy instead of independent
+        phase / altitude thresholds. The proxy is:
+            illuminance = (phase / 100) × max(0, sin(altitude_radians))
+        A night is dark when the peak illuminance over the whole night stays
+        below DARK_NIGHT_MAX_ILLUMINANCE, which avoids the edge cases of the
+        previous approach (e.g. a full moon 3° above the horizon being accepted
+        because its altitude was below the 5° threshold).
         """
         current_time = night_start
-
-        moon_alts = []
-        moon_phases = []
-        dark_night = True
+        peak_illuminance = 0.0
 
         while current_time <= night_end:
             self._moon_observer.date = current_time
             moon = ephem.Moon(self._moon_observer)
-
-            moon_alt = moon.alt
-            moon_alts.append(moon_alt)
-            moon_phase = moon.phase  # Moon phase in percentage
-            moon_phases.append(moon_phase)
-
-            # If at any point the Moon is above horizon and > 10% illuminated, return False
-            if moon_alt > ephem.degrees(DARK_NIGHT_MAX_MOON_ALT):  # and moon_phase >= DARK_NIGHT_MAX_MOON_PHASE * 10:
-                dark_night = False
-                break
-
-            # Step in time (e.g., every 15 minutes)
+            illuminance = self._moon_illuminance(float(moon.alt), moon.phase)
+            if illuminance > peak_illuminance:
+                peak_illuminance = illuminance
             current_time += timedelta(minutes=5)
 
-        moon_phases_avg = sum(moon_phases) / len(moon_phases)
-        if dark_night or moon_phases_avg <= DARK_NIGHT_MAX_MOON_PHASE * 10:
-            _LOGGER.debug(
-                f"Next dark night: {night_start.strftime("%Y-%m-%d")}, Altidudes min/max: {min(moon_alts)}/{max(moon_alts)}, Phase mix/max: {min(moon_phases):.2f}/{max(moon_phases):.2f}%"
-            )
-        else:
-            dark_night = False
+        dark_night = peak_illuminance <= DARK_NIGHT_MAX_ILLUMINANCE
+        _LOGGER.debug(
+            f"Night {night_start.strftime('%Y-%m-%d')}: peak illuminance {peak_illuminance:.4f} → dark_night={dark_night}"
+        )
         return dark_night
 
     def _next_dark_night(self) -> None:

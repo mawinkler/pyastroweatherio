@@ -190,6 +190,9 @@ class ConditionDataModel(TypedDict):
     weather6: str
     precipitation_amount: float
     precipitation_amount6: float
+    moon_altitude: float
+    moon_illuminance: float
+    aerosol_optical_depth: float
 
 
 @typechecked
@@ -217,6 +220,9 @@ class ConditionData:
         self._weather6 = data["weather6"]
         self.precipitation_amount = data["precipitation_amount"]
         self.precipitation_amount6 = data["precipitation_amount6"]
+        self.moon_altitude = data["moon_altitude"]
+        self.moon_illuminance = data["moon_illuminance"]
+        self.aerosol_optical_depth = data["aerosol_optical_depth"]
 
     # #########################################################################
     # Condition
@@ -1108,6 +1114,10 @@ class ForecastData:
     @property
     def precipitation_amount6(self) -> float:
         return self.condition_data.precipitation_amount6
+
+    @property
+    def moon_illuminance(self) -> float:
+        return self.condition_data.moon_illuminance
 
 
 class NightlyConditionsDataModel(TypedDict):
