@@ -140,6 +140,9 @@ class AstroWeather:
         # Weather data
         self._weather_df = None
 
+        # Whether GFS supplementary data was available in the last update
+        self._has_gfs_data: bool = False
+
         # Forecast data
         self._forecast_data = None
 
@@ -347,9 +350,11 @@ class AstroWeather:
                 # Merge GFS supplementary data (lifted_index, cape, boundary_layer_height, visibility)
                 if weather_df_gfs is not None:
                     self._weather_df = self._weather_df.merge(weather_df_gfs, on="time", how="left")
+                    self._has_gfs_data = True
                 else:
                     for col in ("gfs_lifted_index", "gfs_cape", "gfs_boundary_layer_height", "gfs_visibility"):
                         self._weather_df[col] = float("nan")
+                    self._has_gfs_data = False
 
                 # Merge CAMS AOD data (aerosol optical depth)
                 if weather_df_aod is not None:
@@ -618,18 +623,26 @@ class AstroWeather:
         return True
 
     def _test_weather_df(self) -> None:
-        # Check main dataframe for any NaN values
+        # Optional columns are intentionally NaN when their source fetch failed.
+        # Warn about those once at fetch time; suppress per-cell noise here.
+        _OPTIONAL_COLUMNS = {
+            "gfs_lifted_index",
+            "gfs_cape",
+            "gfs_boundary_layer_height",
+            "gfs_visibility",
+            "aerosol_optical_depth",
+        }
+
         nan_locations = self._weather_df.isna()
 
-        # Find column names and index positions of NaNs
+        core_cols = [c for c in nan_locations.columns if c not in _OPTIONAL_COLUMNS]
         result = [
             (index, col)
-            for col in nan_locations.columns
+            for col in core_cols
             for index in nan_locations.index
             if nan_locations.at[index, col]
         ]
 
-        # Print results
         if result:
             _LOGGER.warning("NaN in main dataframe found at:")
             for index, col in result:
@@ -700,6 +713,7 @@ class AstroWeather:
                 "night_duration_astronomical": await self._astro_routines.night_duration_astronomical(),
                 "deepsky_forecast": await self._get_deepsky_forecast(),
                 "condition_data": await self._get_condition(now),
+                "gfs_supplementary_data": self._has_gfs_data,
                 # Uptonight objects
                 "uptonight": await self._get_deepsky_objects(),
                 "uptonight_bodies": await self._get_bodies(),

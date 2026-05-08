@@ -475,6 +475,7 @@ class LocationDataModel(TypedDict):
     night_duration_astronomical: float
     deepsky_forecast: list
     condition_data: ConditionData
+    gfs_supplementary_data: bool
     uptonight: list
     uptonight_bodies: list
     uptonight_comets: list
@@ -495,6 +496,7 @@ class LocationData:
         self.night_duration_astronomical = data["night_duration_astronomical"]
         self.deepsky_forecast = data["deepsky_forecast"]
         self.condition_data = data["condition_data"]
+        self.gfs_supplementary_data = data["gfs_supplementary_data"]
         self._uptonight = data["uptonight"]
         self._uptonight_bodies = data["uptonight_bodies"]
         self._uptonight_comets = data["uptonight_comets"]
