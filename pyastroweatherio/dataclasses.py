@@ -67,9 +67,11 @@ class SunDataModel(TypedDict):
     next_rising_astro: datetime
     next_rising_civil: datetime
     next_rising_nautical: datetime
+    next_rising_visual: datetime
     next_setting_astro: datetime
     next_setting_civil: datetime
     next_setting_nautical: datetime
+    next_setting_visual: datetime
     previous_rising_astro: datetime
     previous_setting_astro: datetime
     constellation: str
@@ -85,9 +87,11 @@ class SunData:
         self.next_rising_astro = data["next_rising_astro"]
         self.next_rising_civil = data["next_rising_civil"]
         self.next_rising_nautical = data["next_rising_nautical"]
+        self.next_rising_visual = data["next_rising_visual"]
         self.next_setting_astro = data["next_setting_astro"]
         self.next_setting_civil = data["next_setting_civil"]
         self.next_setting_nautical = data["next_setting_nautical"]
+        self.next_setting_visual = data["next_setting_visual"]
         self.previous_rising_astro = data["previous_rising_astro"]
         self.previous_setting_astro = data["previous_setting_astro"]
         self.constellation = data["constellation"]
@@ -695,9 +699,9 @@ class LocationData:
 
     @property
     def sun_next_rising(self) -> datetime:
-        """Return Sun Next Rising Civil."""
+        """Return Sun Next Rising (apparent, i.e. true horizon crossing)."""
 
-        return self.sun_data.next_rising_civil
+        return self.sun_data.next_rising_visual
 
     @property
     def sun_next_rising_nautical(self) -> datetime:
@@ -713,9 +717,9 @@ class LocationData:
 
     @property
     def sun_next_setting(self) -> datetime:
-        """Return Next Setting Civil."""
+        """Return Sun Next Setting (apparent, i.e. true horizon crossing)."""
 
-        return self.sun_data.next_setting_civil
+        return self.sun_data.next_setting_visual
 
     @property
     def sun_next_setting_nautical(self) -> datetime:

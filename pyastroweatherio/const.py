@@ -28,6 +28,11 @@ NAUTICAL_DUSK_DAWN = -12
 ASTRONOMICAL_TWILIGHT = -12
 ASTRONOMICAL_DUSK_DAWN = -18
 
+# Apparent sunrise/sunset horizon: standard atmospheric refraction (34')
+# plus the Sun's angular radius (16'), matching the USNO/Cartes du Ciel
+# definition of sunrise/sunset. https://aa.usno.navy.mil/data/RS_OneDay
+VISUAL_HORIZON = "-0:50"
+
 # #####################################################
 # Cloudcover
 # #####################################################
