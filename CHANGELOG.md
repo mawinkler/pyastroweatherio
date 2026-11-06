@@ -1,5 +1,18 @@
 # Changelog
 
+## (2026-11-06)
+
+### Bug Fixes
+
+#### Sun rise/set off by ~20-30 minutes vs. planetarium software
+
+`SunData.next_rising` / `SunData.next_setting` (exposed as `sun_next_rising` / `sun_next_setting`) were computed with the **civil twilight** horizon (`CIVIL_DUSK_DAWN = -6°`) instead of the apparent horizon used by Cartes du Ciel, Stellarium, and the USNO (standard refraction + solar radius, `-0:50`). This made the reported sunrise/sunset consistently 20-30 minutes early (evening) / late (morning), depending on latitude and season.
+
+- **`VISUAL_HORIZON`** (`const.py`): New `"-0:50"` horizon constant for the apparent sunrise/sunset.
+- **`_get_sun_observer`** (`helper_functions.py`): Now accepts either a numeric degree offset or a pre-formatted ephem angle string (e.g. `VISUAL_HORIZON`) without double-applying the `degree` conversion.
+- **`_calculate_sun`** (`helper_functions.py`): Computes `next_rising_visual` / `next_setting_visual` using a new `_sun_observer_visual` (horizon `-0:50`), alongside the existing civil/nautical/astronomical thresholds.
+- **`SunDataModel` / `SunData`** (`dataclasses.py`): Added `next_rising_visual` / `next_setting_visual` fields. `sun_next_rising` / `sun_next_setting` now return these instead of the civil-twilight values; `next_rising_civil` / `next_setting_civil` are unchanged and still available for consumers that want the civil twilight threshold specifically.
+
 ## (2026-05-29)
 
 ### New Features

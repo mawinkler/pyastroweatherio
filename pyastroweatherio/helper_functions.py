@@ -23,6 +23,7 @@ from pyastroweatherio.const import (
     MOON_MEAN_DISTANCE_KM,
     NAUTICAL_DUSK_DAWN,
     SEEING_MAX,
+    VISUAL_HORIZON,
 )
 from pyastroweatherio.dataclasses import (
     DarknessData,
@@ -757,6 +758,7 @@ class AstronomicalRoutines:
             self._test_mode = True
 
         self._sun_observer = None
+        self._sun_observer_visual = None
         self._sun_observer_nautical = None
         self._sun_observer_astro = None
         self._moon_observer = None
@@ -815,7 +817,9 @@ class AstronomicalRoutines:
         observer.lon = str(self._location_data.longitude)  # * degree
         observer.lat = str(self._location_data.latitude)  # * degree
         observer.elevation = self._location_data.elevation
-        observer.horizon = below_horizon * degree
+        # A string (e.g. VISUAL_HORIZON = "-0:50") is already an ephem angle
+        # literal and must not be multiplied by `degree` again.
+        observer.horizon = below_horizon if isinstance(below_horizon, str) else below_horizon * degree
         observer.pressure = 0
         observer.epoch = datetime.now().strftime("%Y/%m/%d")
 
@@ -929,6 +933,8 @@ class AstronomicalRoutines:
 
         if self._sun_observer is None:
             self._sun_observer = self._get_sun_observer(CIVIL_DUSK_DAWN)
+        if self._sun_observer_visual is None:
+            self._sun_observer_visual = self._get_sun_observer(VISUAL_HORIZON)
         if self._sun_observer_nautical is None:
             self._sun_observer_nautical = self._get_sun_observer(NAUTICAL_DUSK_DAWN)
         if self._sun_observer_astro is None:
@@ -944,6 +950,19 @@ class AstronomicalRoutines:
         )
         self._sun_data["next_setting_civil"] = self._ephem_find_event(
             obs_c, lambda: obs_c.next_setting(ephem.Sun(), use_center=True), True, "Sun next setting civil"
+        )
+
+        # Apparent (visual) sunrise/sunset - what Cartes du Ciel and other
+        # planetarium software show, using the standard refraction + solar
+        # radius horizon depression instead of the civil twilight horizon.
+        obs_v = self._sun_observer_visual
+        obs_v.date = self._forecast_time
+        self._sun.compute(obs_v)
+        self._sun_data["next_rising_visual"] = self._ephem_find_event(
+            obs_v, lambda: obs_v.next_rising(ephem.Sun(), use_center=True), True, "Sun next rising visual"
+        )
+        self._sun_data["next_setting_visual"] = self._ephem_find_event(
+            obs_v, lambda: obs_v.next_setting(ephem.Sun(), use_center=True), True, "Sun next setting visual"
         )
 
         obs_n = self._sun_observer_nautical
